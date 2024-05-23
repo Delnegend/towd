@@ -49,7 +49,7 @@ func NewEvent() Event {
 }
 
 // set the isModified flag to true and update the updatedAt field
-func (e *Event) modify() {
+func (e *Event) hasModified() {
 	e.isModified = true
 	e.updatedAt = time.Now()
 }
@@ -125,12 +125,12 @@ func (e *Event) GetRecurrenceID() time.Time {
 // #region Setters
 
 func (e *Event) SetID(id string) {
-	e.modify()
+	e.hasModified()
 	e.id = id
 }
 
 func (e *Event) SetSummary(summary string) {
-	e.modify()
+	e.hasModified()
 	e.summary = summary
 }
 
@@ -139,7 +139,7 @@ func (e *Event) SetDescription(description string) {
 }
 
 func (e *Event) SetLocation(location string) {
-	e.modify()
+	e.hasModified()
 	e.location = location
 }
 
@@ -147,7 +147,7 @@ func (e *Event) SetUrl(url_ string) error {
 	if _, err := url.ParseRequestURI(url_); err != nil {
 		return errors.New(errInvalidURL)
 	}
-	e.modify()
+	e.hasModified()
 	e.url = url_
 	return nil
 }
@@ -156,7 +156,7 @@ func (e *Event) SetStartDate(startDate time.Time) error {
 	if !e.endDate.IsZero() && startDate.After(e.endDate) {
 		return errors.New(errStartDateAfterEndDate)
 	}
-	e.modify()
+	e.hasModified()
 	e.startDate = startDate
 	return nil
 }
@@ -165,29 +165,29 @@ func (e *Event) SetEndDate(endDate time.Time) error {
 	if !e.startDate.IsZero() && endDate.Before(e.startDate) {
 		return errors.New(errStartDateAfterEndDate)
 	}
-	e.modify()
+	e.hasModified()
 	e.endDate = endDate
 	return nil
 }
 
 func (e *Event) ClearStartEndDate() {
-	e.modify()
+	e.hasModified()
 	e.startDate = time.Time{}
 	e.endDate = time.Time{}
 }
 
 func (e *Event) SetAttendee(attendee []string) {
-	e.modify()
+	e.hasModified()
 	e.attendee = attendee
 }
 
 func (e *Event) SetOrganizer(organizer string) {
-	e.modify()
+	e.hasModified()
 	e.organizer = organizer
 }
 
 func (e *Event) SetRRule(rrule_ string) error {
-	e.modify()
+	e.hasModified()
 	result, err := rrule.StrToRRule(rrule_)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (e *Event) SetRRule(rrule_ string) error {
 }
 
 func (e *Event) SetExDate(exdate []time.Time) {
-	e.modify()
+	e.hasModified()
 	e.exdate = exdate
 }
 
@@ -206,7 +206,7 @@ func (e *Event) SetRDate(rdate []time.Time) {
 }
 
 func (e *Event) SetRecurrenceID(recurrenceID time.Time) {
-	e.modify()
+	e.hasModified()
 	e.recurrenceID = recurrenceID
 }
 
