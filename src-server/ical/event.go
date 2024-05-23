@@ -240,6 +240,17 @@ func (e *Event) Validate() error {
 	if e.endDate.IsZero() {
 		return errors.New("end date is missing")
 	}
+
+	recurrenceIDExist := !e.recurrenceID.IsZero()
+	rruleExist := e.rrule != nil
+	if recurrenceIDExist && rruleExist {
+		return errors.New("recurrence-id and rrule cannot be used together")
+	}
+
+	if recurrenceIDExist && (len(e.rdate)+len(e.exdate)) > 0 {
+		return errors.New("recurrence-id and rdate/exdate cannot be used together")
+	}
+
 	return nil
 }
 
