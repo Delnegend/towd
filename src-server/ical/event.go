@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/xyedo/rrule"
 )
 
 type Event struct {
@@ -24,7 +25,7 @@ type Event struct {
 	updatedAt time.Time
 	sequence  int
 
-	rrule        string
+	rrule        *rrule.RRule
 	exdate       []time.Time
 	rdate        []time.Time
 	recurrenceID time.Time
@@ -101,7 +102,7 @@ func (e *Event) GetSequence() int {
 	return e.sequence
 }
 
-func (e *Event) GetRRule() string {
+func (e *Event) GetRRule() *rrule.RRule {
 	return e.rrule
 }
 
@@ -183,9 +184,14 @@ func (e *Event) SetOrganizer(organizer string) {
 	e.organizer = organizer
 }
 
-func (e *Event) SetRRule(rrule string) {
+func (e *Event) SetRRule(rrule_ string) error {
 	e.modify()
-	e.rrule = rrule
+	result, err := rrule.StrToRRule(rrule_)
+	if err != nil {
+		return err
+	}
+	e.rrule = result
+	return nil
 }
 
 func (e *Event) SetExDate(exdate []time.Time) {
