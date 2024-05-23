@@ -45,6 +45,10 @@ func NewEvent() Event {
 		sequence:   -1,
 		wholeDay:   false,
 		isModified: false,
+
+		attendee: make([]string, 0),
+		exdate:   make([]time.Time, 0),
+		rdate:    make([]time.Time, 0),
 	}
 }
 
