@@ -212,6 +212,7 @@ func (e *Event) SetExDate(exdate []time.Time) {
 }
 
 func (e *Event) SetRDate(rdate []time.Time) {
+	e.hasModified()
 	e.rdate = rdate
 }
 
