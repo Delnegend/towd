@@ -16,10 +16,13 @@ type Event struct {
 	description string
 	location    string
 	url         string
-	startDate   time.Time // required
-	endDate     time.Time // required
-	attendee    []string
-	organizer   string // required
+
+	startDate time.Time // required
+	endDate   time.Time // required
+	wholeDay  bool
+
+	attendee  []string
+	organizer string // required
 
 	createdAt time.Time // required
 	updatedAt time.Time
