@@ -2,6 +2,7 @@ package ical
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -254,3 +255,62 @@ func (e *Event) Validate() error {
 	return nil
 }
 
+func (e *Event) Marshal() (string, error) {
+	if err := e.Validate(); err != nil {
+		return "", err
+	}
+
+	if e.isModified {
+		e.isModified = false
+		e.sequence++
+	}
+
+	result := make([]string, 0)
+
+	result = append(result, "BEGIN:VEVENT")
+	result = append(result, "UID:"+e.id)
+	result = append(result, "SUMMARY:"+e.summary)
+	if e.description != "" {
+		result = append(result, "DESCRIPTION:"+e.description)
+	}
+	if e.location != "" {
+		result = append(result, "LOCATION:"+e.location)
+	}
+	if e.url != "" {
+		result = append(result, "URL:"+e.url)
+	}
+
+	var timeFormat string
+	if e.wholeDay {
+		timeFormat = "20060102"
+	} else {
+		timeFormat = "20060102T150405Z"
+	}
+
+	result = append(result, "DTSTART:"+e.startDate.Format(timeFormat))
+	result = append(result, "DTEND:"+e.endDate.Format(timeFormat))
+
+	result = append(result, "CREATED:"+e.createdAt.Format("20060102T150405Z"))
+	if !e.updatedAt.IsZero() {
+		result = append(result, "LAST-MODIFIED:"+e.updatedAt.Format("20060102T150405Z"))
+	}
+	if e.sequence >= 0 {
+		result = append(result, fmt.Sprintf("SEQUENCE:%d", e.sequence))
+	}
+	if e.rrule != nil {
+		result = append(result, "RRULE:"+e.rrule.String())
+	}
+	for _, exdate := range e.exdate {
+		result = append(result, "EXDATE:"+exdate.Format(timeFormat))
+	}
+	for _, rdate := range e.rdate {
+		result = append(result, "RDATE:"+rdate.Format(timeFormat))
+	}
+	if !e.recurrenceID.IsZero() {
+		result = append(result, "RECURRENCE-ID:"+e.recurrenceID.Format(timeFormat))
+	}
+	result = append(result, fmt.Sprintf("DTSTAMP:%s", time.Now().Format("20060102T150405Z")))
+	result = append(result, "END:VEVENT")
+
+	return strings.Join(result, "\n"), nil
+}
