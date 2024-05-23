@@ -40,11 +40,10 @@ type Event struct {
 // initialize a new event struct
 func NewEvent() Event {
 	return Event{
-		id: uuid.NewString(),
-
-		createdAt: time.Now(),
-		sequence:  -1,
-
+		id:         uuid.NewString(),
+		createdAt:  time.Now(),
+		sequence:   -1,
+		wholeDay:   false,
 		isModified: false,
 	}
 }
