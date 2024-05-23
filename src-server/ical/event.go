@@ -222,3 +222,19 @@ func (e *Event) SetRecurrenceID(recurrenceID time.Time) {
 
 // #endregion
 
+func (e *Event) Validate() error {
+	if e.id == "" {
+		return errors.New("id not initialized")
+	}
+	if e.summary == "" {
+		return errors.New("summary is missing")
+	}
+	if e.startDate.IsZero() {
+		return errors.New("start date is missing")
+	}
+	if e.endDate.IsZero() {
+		return errors.New("end date is missing")
+	}
+	return nil
+}
+
