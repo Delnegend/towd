@@ -191,6 +191,11 @@ func (e *Event) SetOrganizer(organizer string) {
 	e.organizer = organizer
 }
 
+// WARNING: use with responsibility
+func (e *Event) SetSequence(sequence int) {
+	e.sequence = sequence
+}
+
 func (e *Event) SetRRule(rrule_ string) error {
 	e.hasModified()
 	result, err := rrule.StrToRRule(rrule_)
