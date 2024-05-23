@@ -170,6 +170,11 @@ func (e *Event) SetEndDate(endDate time.Time) error {
 	return nil
 }
 
+func (e *Event) SetWholeDay(wholeDay bool) {
+	e.hasModified()
+	e.wholeDay = wholeDay
+}
+
 func (e *Event) ClearStartEndDate() {
 	e.hasModified()
 	e.startDate = time.Time{}
