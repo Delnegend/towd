@@ -145,7 +145,7 @@ func (e *Event) SetLocation(location string) {
 
 func (e *Event) SetUrl(url_ string) error {
 	if _, err := url.ParseRequestURI(url_); err != nil {
-		return errors.New(errInvalidURL)
+		return errors.New("invalid URL")
 	}
 	e.hasModified()
 	e.url = url_
@@ -154,7 +154,7 @@ func (e *Event) SetUrl(url_ string) error {
 
 func (e *Event) SetStartDate(startDate time.Time) error {
 	if !e.endDate.IsZero() && startDate.After(e.endDate) {
-		return errors.New(errStartDateAfterEndDate)
+		return errors.New("start date is after end date")
 	}
 	e.hasModified()
 	e.startDate = startDate
@@ -163,7 +163,7 @@ func (e *Event) SetStartDate(startDate time.Time) error {
 
 func (e *Event) SetEndDate(endDate time.Time) error {
 	if !e.startDate.IsZero() && endDate.Before(e.startDate) {
-		return errors.New(errStartDateAfterEndDate)
+		return errors.New("end date is before start date")
 	}
 	e.hasModified()
 	e.endDate = endDate
