@@ -135,10 +135,6 @@ func (e *Event) GetRecurrenceID() time.Time {
 // #endregion
 
 // #region Setters
-func (e *Event) SetID(id string) {
-	e.hasModified()
-	e.id = id
-}
 func (e *Event) SetSummary(summary string) {
 	e.hasModified()
 	e.summary = summary
@@ -202,10 +198,6 @@ func (e *Event) SetOrganizer(organizer string) {
 	e.hasModified()
 	e.organizer = organizer
 }
-
-// WARNING: use with responsibility
-func (e *Event) SetSequence(sequence int) {
-	e.sequence = sequence
 }
 
 func (e *Event) SetRRule(rrule_ string) error {
