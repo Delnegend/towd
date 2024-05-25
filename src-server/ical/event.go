@@ -262,9 +262,11 @@ func (e *Event) ClearRDate() error {
 	e.rdate = make([]time.Time, 0)
 	return nil
 }
-func (e *Event) SetRecurrenceID(recurrenceID time.Time) {
+func (e *Event) SetRecurrenceID(recurrenceID time.Time) error {
+	// TODO: check if match any recurrence rule
 	e.hasModified()
 	e.recurrenceID = recurrenceID
+	return nil
 }
 
 // #endregion
