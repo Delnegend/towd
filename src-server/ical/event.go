@@ -1,7 +1,6 @@
 package ical
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -150,7 +149,7 @@ func (e *Event) SetLocation(location string) {
 
 func (e *Event) SetUrl(url_ string) error {
 	if _, err := url.ParseRequestURI(url_); err != nil {
-		return errors.New("invalid URL")
+		return fmt.Errorf("invalid URL")
 	}
 	e.hasModified()
 	e.url = url_
@@ -159,7 +158,7 @@ func (e *Event) SetUrl(url_ string) error {
 
 func (e *Event) SetStartDate(startDate time.Time) error {
 	if !e.endDate.IsZero() && startDate.After(e.endDate) {
-		return errors.New("start date is after end date")
+		return fmt.Errorf("start date is after end date")
 	}
 	e.hasModified()
 	e.startDate = startDate
@@ -168,7 +167,7 @@ func (e *Event) SetStartDate(startDate time.Time) error {
 
 func (e *Event) SetEndDate(endDate time.Time) error {
 	if !e.startDate.IsZero() && endDate.Before(e.startDate) {
-		return errors.New("end date is before start date")
+		return fmt.Errorf("end date is before start date")
 	}
 	e.hasModified()
 	e.endDate = endDate
@@ -230,26 +229,26 @@ func (e *Event) SetRecurrenceID(recurrenceID time.Time) {
 
 func (e *Event) Validate() error {
 	if e.id == "" {
-		return errors.New("id not initialized")
+		return fmt.Errorf("id not initialized")
 	}
 	if e.summary == "" {
-		return errors.New("summary is missing")
+		return fmt.Errorf("summary is missing")
 	}
 	if e.startDate.IsZero() {
-		return errors.New("start date is missing")
+		return fmt.Errorf("start date is missing")
 	}
 	if e.endDate.IsZero() {
-		return errors.New("end date is missing")
+		return fmt.Errorf("end date is missing")
 	}
 
 	recurrenceIDExist := !e.recurrenceID.IsZero()
 	rruleExist := e.rrule != nil
 	if recurrenceIDExist && rruleExist {
-		return errors.New("recurrence-id and rrule cannot be used together")
+		return fmt.Errorf("recurrence-id and rrule cannot be used together")
 	}
 
 	if recurrenceIDExist && (len(e.rdate)+len(e.exdate)) > 0 {
-		return errors.New("recurrence-id and rdate/exdate cannot be used together")
+		return fmt.Errorf("recurrence-id and rdate/exdate cannot be used together")
 	}
 
 	return nil
