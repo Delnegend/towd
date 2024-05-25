@@ -442,10 +442,6 @@ func (c *Calendar) SetVersion(version string) {
 	c.version = version
 }
 
-func (c *Calendar) SetUrl(url string) {
-	c.url = url
-}
-
 // #endregion
 
 func (c *Calendar) AddEvent(event Event) {
