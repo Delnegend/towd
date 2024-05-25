@@ -59,67 +59,51 @@ func (e *Event) hasModified() {
 }
 
 // #region Getters
-
 func (e *Event) GetId() string {
 	return e.id
 }
-
 func (e *Event) GetSummary() string {
 	return e.summary
 }
-
 func (e *Event) GetDescription() string {
 	return e.description
 }
-
 func (e *Event) GetLocation() string {
 	return e.location
 }
-
 func (e *Event) GetUrl() string {
 	return e.url
 }
-
 func (e *Event) GetStartDate() time.Time {
 	return e.startDate
 }
-
 func (e *Event) GetEndDate() time.Time {
 	return e.endDate
 }
-
 func (e *Event) GetAttendee() []string {
 	return e.attendee
 }
-
 func (e *Event) GetOrganizer() string {
 	return e.organizer
 }
-
 func (e *Event) GetCreatedAt() time.Time {
 	return e.createdAt
 }
-
 func (e *Event) GetUpdatedAt() time.Time {
 	return e.updatedAt
 }
-
 func (e *Event) GetSequence() int {
 	return e.sequence
 }
-
 func (e *Event) GetRRule() *rrule.RRule {
 	return e.rrule
 }
-
 func (e *Event) GetExDate() []time.Time {
 	return e.exdate
 }
-
 func (e *Event) GetRDate() []time.Time {
 	return e.rdate
 }
-
 func (e *Event) GetRecurrenceID() time.Time {
 	return e.recurrenceID
 }
@@ -127,26 +111,21 @@ func (e *Event) GetRecurrenceID() time.Time {
 // #endregion
 
 // #region Setters
-
 func (e *Event) SetID(id string) {
 	e.hasModified()
 	e.id = id
 }
-
 func (e *Event) SetSummary(summary string) {
 	e.hasModified()
 	e.summary = summary
 }
-
 func (e *Event) SetDescription(description string) {
 	e.description = description
 }
-
 func (e *Event) SetLocation(location string) {
 	e.hasModified()
 	e.location = location
 }
-
 func (e *Event) SetUrl(url_ string) error {
 	if _, err := url.ParseRequestURI(url_); err != nil {
 		return fmt.Errorf("invalid URL")
@@ -155,7 +134,6 @@ func (e *Event) SetUrl(url_ string) error {
 	e.url = url_
 	return nil
 }
-
 func (e *Event) SetStartDate(startDate time.Time) error {
 	if !e.endDate.IsZero() && startDate.After(e.endDate) {
 		return fmt.Errorf("start date is after end date")
@@ -164,7 +142,6 @@ func (e *Event) SetStartDate(startDate time.Time) error {
 	e.startDate = startDate
 	return nil
 }
-
 func (e *Event) SetEndDate(endDate time.Time) error {
 	if !e.startDate.IsZero() && endDate.Before(e.startDate) {
 		return fmt.Errorf("end date is before start date")
@@ -173,7 +150,6 @@ func (e *Event) SetEndDate(endDate time.Time) error {
 	e.endDate = endDate
 	return nil
 }
-
 func (e *Event) SetWholeDay(wholeDay bool) {
 	e.hasModified()
 	e.wholeDay = wholeDay
