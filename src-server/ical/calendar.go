@@ -367,23 +367,18 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 }
 
 // #region Getters
-
 func (c *Calendar) GetId() string {
 	return c.id
 }
-
 func (c *Calendar) GetName() string {
 	return c.name
 }
-
 func (c *Calendar) GetDescription() string {
 	return c.description
 }
-
 func (c *Calendar) GetVersion() string {
 	return c.version
 }
-
 func (c *Calendar) GetUrl() string {
 	return c.url
 }
@@ -391,15 +386,12 @@ func (c *Calendar) GetUrl() string {
 // #endregion
 
 // #region Setters
-
 func (c *Calendar) SetName(name string) {
 	c.name = name
 }
-
 func (c *Calendar) SetDescription(description string) {
 	c.description = description
 }
-
 func (c *Calendar) SetVersion(version string) {
 	c.version = version
 }
