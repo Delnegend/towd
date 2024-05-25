@@ -18,7 +18,6 @@ type Calendar struct {
 	name        string
 	description string
 	version     string
-	timezone    string // use when the (datetime != UTC) & TZID not provided
 	url         string
 	events      []Event
 }
@@ -385,10 +384,6 @@ func (c *Calendar) GetVersion() string {
 	return c.version
 }
 
-func (c *Calendar) GetTimezone() string {
-	return c.timezone
-}
-
 func (c *Calendar) GetUrl() string {
 	return c.url
 }
@@ -407,10 +402,6 @@ func (c *Calendar) SetDescription(description string) {
 
 func (c *Calendar) SetVersion(version string) {
 	c.version = version
-}
-
-func (c *Calendar) SetTimezone(timezone string) {
-	c.timezone = timezone
 }
 
 func (c *Calendar) SetUrl(url string) {
