@@ -178,14 +178,20 @@ func (e *Event) SetEndDate(endDate time.Time) error {
 	e.endDate = endDate
 	return nil
 }
+func (e *Event) AddAttendee(attendee string) {
 	e.hasModified()
+	e.attendee = append(e.attendee, attendee)
 }
-
-func (e *Event) SetAttendee(attendee []string) {
+func (e *Event) RemoveAttendee(attendee string) error {
 	e.hasModified()
-	e.attendee = attendee
+	for i, a := range e.attendee {
+		if a != attendee {
+			e.attendee = append(e.attendee[:i], e.attendee[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("attendee not found")
 }
-
 func (e *Event) SetOrganizer(organizer string) {
 	e.hasModified()
 	e.organizer = organizer
