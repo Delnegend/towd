@@ -3,6 +3,8 @@ package ical
 import (
 	"bufio"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -29,25 +31,69 @@ func NewCalendar() Calendar {
 }
 
 func FromFile(path string) (*Calendar, *utils.SlogError) {
-	cal := NewCalendar()
-
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, &utils.SlogError{
-			Msg: "error opening file",
+			Msg:  "error opening file",
+			Args: []interface{}{"path", path, "err", err},
 		}
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	lineCh := make(chan string)
+
+	go func() {
+		defer close(lineCh)
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			lineCh <- scanner.Text()
+		}
+	}()
+
+	return parseCal(lineCh)
+}
+
+func FromUrl(url_ string) (*Calendar, *utils.SlogError) {
+	validUrl, err := url.ParseRequestURI(url_)
+	if err != nil {
+		return nil, &utils.SlogError{Msg: err.Error()}
+	}
+
+	req, err := http.NewRequest("GET", validUrl.String(), nil)
+	if err != nil {
+		return nil, &utils.SlogError{Msg: err.Error()}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, &utils.SlogError{Msg: err.Error()}
+	}
+	defer resp.Body.Close()
+
+	lineCh := make(chan string)
+
+	go func() {
+		defer close(lineCh)
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			lineCh <- scanner.Text()
+		}
+	}()
+
+	return parseCal(lineCh)
+}
+
+func parseCal(lineCh chan string) (*Calendar, *utils.SlogError) {
+	cal := NewCalendar()
 	var mode, lastLine string
 	var lineCount, eventCount int
 
 	newEvent := NewEvent()
 
-	for scanner.Scan() {
+	for line := range lineCh {
 		lineCount++
-		line := scanner.Text()
 		if strings.HasPrefix(line, " ") {
 			line = lastLine + strings.TrimPrefix(line, " ")
 			lastLine = line
@@ -192,8 +238,8 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 					cal.SetName(value)
 				case "X-WR-CALDESC":
 					cal.SetDescription(value)
-				case "X-WR-TIMEZONE":
-					cal.SetTimezone(value)
+				// case "X-WR-TIMEZONE":
+				// 	cal.SetTimezone(value)
 				default:
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
@@ -285,7 +331,7 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 				default:
 					switch {
 					case strings.HasPrefix(key, "DT"):
-						parsedDatetime, err := parseDate(value)
+						parsedDatetime, err := parseDate(line)
 						if err != nil {
 							return nil, &utils.SlogError{
 								Msg:  err.Error(),
@@ -309,7 +355,7 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 						}
 						continue
 					case strings.HasPrefix(key, "EXDATE"):
-						parsedDatetime, err := parseDate(value)
+						parsedDatetime, err := parseDate(line)
 						if err != nil {
 							return nil, &utils.SlogError{
 								Msg:  err.Error(),
@@ -323,7 +369,7 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 							}
 						}
 					case strings.HasPrefix(key, "RDATE"):
-						parsedDatetime, err := parseDate(value)
+						parsedDatetime, err := parseDate(line)
 						if err != nil {
 							return nil, &utils.SlogError{
 								Msg:  err.Error(),
@@ -337,7 +383,7 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 							}
 						}
 					case strings.HasPrefix(key, "RECURRENCE-ID"):
-						parsedDatetime, err := parseDate(value)
+						parsedDatetime, err := parseDate(line)
 						if err != nil {
 							return nil, &utils.SlogError{
 								Msg:  err.Error(),
