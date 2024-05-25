@@ -196,15 +196,16 @@ func (e *Event) SetOrganizer(organizer string) {
 	e.hasModified()
 	e.organizer = organizer
 }
-}
-
-func (e *Event) SetRRule(rrule_ string) error {
-	e.hasModified()
-	result, err := rrule.StrToRRule(rrule_)
-	if err != nil {
-		return err
+func (e *Event) SetRRule(rrule_ *rrule.RRule) error {
+	if rrule_ == nil {
+		return fmt.Errorf("rrule is nil")
 	}
-	e.rrule = result
+	e.hasModified()
+	e.rrule = rrule_
+	return nil
+}
+	e.hasModified()
+	}
 	return nil
 }
 
