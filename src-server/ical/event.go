@@ -10,12 +10,30 @@ import (
 	"github.com/xyedo/rrule"
 )
 
+type EventStatus string
+
+const (
+	EventStatusConfirmed EventStatus = "CONFIRMED"
+	EventStatusTentative EventStatus = "TENTATIVE"
+	EventStatusCancelled EventStatus = "CANCELLED"
+)
+
+type EventTransparency string
+
+const (
+	EventTransparencyOpaque      EventTransparency = "OPAQUE"
+	EventTransparencyTransparent EventTransparency = "TRANSPARENT"
+)
+
 type Event struct {
 	id          string // required
 	summary     string // required
 	description string
 	location    string
 	url         string
+
+	status       EventStatus
+	transparency EventTransparency
 
 	startDate time.Time // required
 	endDate   time.Time // required
@@ -73,6 +91,12 @@ func (e *Event) GetLocation() string {
 }
 func (e *Event) GetUrl() string {
 	return e.url
+}
+func (e *Event) GetStatus() EventStatus {
+	return e.status
+}
+func (e *Event) GetTransparency() EventTransparency {
+	return e.transparency
 }
 func (e *Event) GetStartDate() time.Time {
 	return e.startDate
@@ -133,6 +157,14 @@ func (e *Event) SetUrl(url_ string) error {
 	e.hasModified()
 	e.url = url_
 	return nil
+}
+func (e *Event) SetStatus(status EventStatus) {
+	e.hasModified()
+	e.status = status
+}
+func (e *Event) SetTransparency(transparency EventTransparency) {
+	e.hasModified()
+	e.transparency = transparency
 }
 func (e *Event) SetStartDate(startDate time.Time) error {
 	if !e.endDate.IsZero() && startDate.After(e.endDate) {
