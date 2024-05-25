@@ -181,12 +181,6 @@ func (e *Event) SetEndDate(endDate time.Time) error {
 	e.hasModified()
 }
 
-func (e *Event) ClearStartEndDate() {
-	e.hasModified()
-	e.startDate = time.Time{}
-	e.endDate = time.Time{}
-}
-
 func (e *Event) SetAttendee(attendee []string) {
 	e.hasModified()
 	e.attendee = attendee
