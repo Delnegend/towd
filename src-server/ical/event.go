@@ -204,21 +204,64 @@ func (e *Event) SetRRule(rrule_ *rrule.RRule) error {
 	e.rrule = rrule_
 	return nil
 }
+func (e *Event) AddExDate(exdate time.Time) error {
+	if e.rrule == nil {
+		return fmt.Errorf(errEventNotRecursive)
+	}
 	e.hasModified()
+	e.exdate = append(e.exdate, exdate)
+	return nil
+}
+func (e *Event) RemoveExDate(exdate time.Time) error {
+	if e.rrule == nil {
+		return fmt.Errorf(errEventNotRecursive)
+	}
+	for i, d := range e.exdate {
+		if d == exdate {
+			e.hasModified()
+			e.exdate = append(e.exdate[:i], e.exdate[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("exdate not found")
+}
+func (e *Event) ClearExDate() error {
+	if e.rrule == nil {
+		return fmt.Errorf(errEventNotRecursive)
+	}
+	e.hasModified()
+	e.exdate = make([]time.Time, 0)
+	return nil
+}
+func (e *Event) AddRDate(rdate time.Time) error {
+	if e.rrule == nil {
+		return fmt.Errorf(errEventNotRecursive)
+	}
+	e.hasModified()
+	e.rdate = append(e.rdate, rdate)
+	return nil
+}
+func (e *Event) RemoveRDate(rdate time.Time) error {
+	if e.rrule == nil {
+		return fmt.Errorf(errEventNotRecursive)
+	}
+	for i, d := range e.rdate {
+		if d == rdate {
+			e.hasModified()
+			e.rdate = append(e.rdate[:i], e.rdate[i+1:]...)
+			return nil
+		}
 	}
 	return nil
 }
-
-func (e *Event) SetExDate(exdate []time.Time) {
+func (e *Event) ClearRDate() error {
+	if e.rrule == nil {
+		return fmt.Errorf(errEventNotRecursive)
+	}
 	e.hasModified()
-	e.exdate = exdate
+	e.rdate = make([]time.Time, 0)
+	return nil
 }
-
-func (e *Event) SetRDate(rdate []time.Time) {
-	e.hasModified()
-	e.rdate = rdate
-}
-
 func (e *Event) SetRecurrenceID(recurrenceID time.Time) {
 	e.hasModified()
 	e.recurrenceID = recurrenceID
