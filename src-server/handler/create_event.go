@@ -97,22 +97,12 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 		// parse date
 		parsedStartDate, err := appState.When.Parse(startDate, time.Now())
 		if err != nil {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Can't parse start date",
-				},
-			})
+			utils.InteractRespHiddenReply(s, i, "Can't parse start date")
 			return
 		}
 		parsedEndDate, err := appState.When.Parse(endDate, time.Now())
 		if err != nil {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Can't parse end date",
-				},
-			})
+			utils.InteractRespHiddenReply(s, i, "Can't parse end date")
 			return
 		}
 		eventModel.StartDate = parsedStartDate.Time
@@ -120,12 +110,7 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 
 		// validate date
 		if eventModel.StartDate.After(eventModel.EndDate) {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Start date is after end date",
-				},
-			})
+			utils.InteractRespHiddenReply(s, i, "Start date is after end date")
 			return
 		}
 
@@ -180,52 +165,30 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 		})
 
 		// yes handler
-		appState.MsgComponentHandler[yesCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		appState.AppCmdHandler[yesCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			item, ok := appState.EventQueue[uuid.MustParse(i.MessageComponentData().CustomID[4:])]
 			if !ok {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: "Event not found",
-					},
-				})
+				utils.InteractRespHiddenReply(s, i, "Event expired")
 				return
 			}
 			event := item.Data.(model.Event)
 
 			if _, err := appState.BunDb.NewInsert().Model(&event).Exec(context.Background()); err != nil {
 				slog.Error("cannot insert event", "error", err)
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: fmt.Sprintf("Cannot insert event: `%s`", err.Error()),
-					},
-				})
+				utils.InteractRespHiddenReply(s, i, fmt.Sprintf("Cannot create event: `%s`", err.Error()))
 				return
 			}
-
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Event created!",
-				},
-			})
-			delete(appState.MsgComponentHandler, yesCustomId)
-			delete(appState.MsgComponentHandler, cancelCustomId)
+			utils.InteractRespHiddenReply(s, i, "Event created!")
+			delete(appState.AppCmdHandler, yesCustomId)
+			delete(appState.AppCmdHandler, cancelCustomId)
 		}
 
 		// no handler
-		appState.MsgComponentHandler[cancelCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		appState.AppCmdHandler[cancelCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			delete(appState.EventQueue, uuid.MustParse(i.MessageComponentData().CustomID[7:]))
-
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Cancelled event creation",
-				},
-			})
-			delete(appState.MsgComponentHandler, yesCustomId)
-			delete(appState.MsgComponentHandler, cancelCustomId)
+			utils.InteractRespHiddenReply(s, i, "Cancelled event creation")
+			delete(appState.AppCmdHandler, yesCustomId)
+			delete(appState.AppCmdHandler, cancelCustomId)
 		}
 	}
 }
