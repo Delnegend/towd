@@ -2,6 +2,7 @@ package ical
 
 import (
 	"bufio"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -523,11 +524,38 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 func (cal *Calendar) Marshal() (string, *utils.SlogError) {
 	var sb strings.Builder
 
-	sb.WriteString("BEGIN:VCALENDAR\n")
-	sb.WriteString("PRODID:" + cal.id + "\n")
-	sb.WriteString("VERSION:" + cal.version + "\n")
-	sb.WriteString("X-WR-CALNAME:" + cal.name + "\n")
-	sb.WriteString("X-WR-CALDESC:" + cal.description + "\n")
+	if _, err := sb.WriteString("BEGIN:VCALENDAR\n"); err != nil {
+		return "", &utils.SlogError{
+			Msg:  "can't write BEGIN:VCALENDAR",
+			Args: []interface{}{"err", err},
+		}
+	}
+	if _, err := sb.WriteString("PRODID:" + cal.id + "\n"); err != nil {
+		return "", &utils.SlogError{
+			Msg:  fmt.Sprintf("can't write PRODID: %s", cal.id),
+			Args: []interface{}{"err", err},
+		}
+	}
+	if _, err := sb.WriteString("VERSION:" + cal.version + "\n"); err != nil {
+		return "", &utils.SlogError{
+			Msg:  fmt.Sprintf("can't write VERSION: %s", cal.version),
+			Args: []interface{}{"err", err},
+		}
+	}
+	if _, err := sb.WriteString("X-WR-CALNAME:" + cal.name + "\n"); err != nil {
+		return "", &utils.SlogError{
+			Msg:  fmt.Sprintf("can't write X-WR-CALNAME: %s", cal.name),
+			Args: []interface{}{"err", err},
+		}
+	}
+	if cal.description != "" {
+		if _, err := sb.WriteString("X-WR-CALDESC:" + cal.description + "\n"); err != nil {
+			return "", &utils.SlogError{
+				Msg:  fmt.Sprintf("can't write X-WR-CALDESC: %s", cal.description),
+				Args: []interface{}{"err", err},
+			}
+		}
+	}
 
 	for _, event := range cal.events {
 		eventStr, err := event.Marshal()
@@ -545,7 +573,12 @@ func (cal *Calendar) Marshal() (string, *utils.SlogError) {
 		}
 	}
 
-	sb.WriteString("END:VCALENDAR\n")
+	if _, err := sb.WriteString("END:VCALENDAR\n"); err != nil {
+		return "", &utils.SlogError{
+			Msg:  "can't write END:VCALENDAR",
+			Args: []interface{}{"err", err},
+		}
+	}
 
 	return sb.String(), nil
 }
