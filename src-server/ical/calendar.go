@@ -328,7 +328,6 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 							Args: []interface{}{"line", lineCount, "content", line},
 						}
 					}
-				case "ATTENDEE": // TODO: properly handle above
 				case "CREATED":
 					parsedDatetime, err := time.Parse("20060102T150405Z", value)
 					if err != nil {
