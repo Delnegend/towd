@@ -6,7 +6,9 @@ import (
 )
 
 var (
-	errEventNotRecursive = "this event is not recurring"
+	errEventNotRecursive        = "this event is not recurring"
+	errWrongAlarmTriggerFormat  = "alarm trigger must be in the format of `-PTxxM` or `-PTxxH`"
+	errWrongAlarmDurationFormat = "alarm duration must be in the format of `PTxxM` or `PTxxH`"
 )
 
 func errNestedBlock(blockName string, lineCount int, content string) *utils.SlogError {
