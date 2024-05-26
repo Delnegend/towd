@@ -264,6 +264,12 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				if value != "VALARM" {
 					return nil, errUnexpectedEnd(lineCount, line)
 				}
+				if err := newEvent.AddAlarm(newAlarm); err != nil {
+					return nil, &utils.SlogError{
+						Msg:  "alarm validation failed",
+						Args: []interface{}{"line", lineCount, "content", line, "err", err},
+					}
+				}
 				mode = "event"
 			}
 		default:
@@ -436,11 +442,69 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
 						}
+			case "alarm": // in VEVENT block
+				switch key {
+				case "UID":
+					if value != "" {
+						newAlarm.uid = value
+						continue
 					}
-
+					slog.Warn("empty alarm UID", "line", lineCount, "content", line)
+				case "ACTION":
+					switch value {
+					case "AUDIO":
+						newAlarm.SetAction(AlarmActionAudio)
+					case "DISPLAY":
+						newAlarm.SetAction(AlarmActionDisplay)
+					case "EMAIL":
+						newAlarm.SetAction(AlarmActionEmail)
+					case "PROCEDURE":
+						newAlarm.SetAction(AlarmActionProcedure)
+					default:
+						return nil, &utils.SlogError{
+							Msg:  "unhandled alarm action",
+							Args: []interface{}{"line", lineCount, "content", line},
+						}
+					}
+				case "TRIGGER":
+					if err := newAlarm.SetTrigger(value); err != nil {
+						return nil, &utils.SlogError{
+							Msg:  "can't set alarm trigger",
+							Args: []interface{}{"line", lineCount, "content", line, "err", err},
+						}
+					}
+				case "DURATION":
+					if err := newAlarm.SetDuration(value); err != nil {
+						return nil, &utils.SlogError{
+							Msg:  "can't set alarm duration",
+							Args: []interface{}{"line", lineCount, "content", line, "err", err},
+						}
+					}
+				case "REPEAT":
+					parsedInt, err := strconv.Atoi(value)
+					if err != nil {
+						return nil, &utils.SlogError{
+							Msg:  "can't parse alarm repeat",
+							Args: []interface{}{"line", lineCount, "content", line, "err", err},
+						}
+					}
+					newAlarm.SetRepeat(parsedInt)
+				case "DESCRIPTION":
+					newAlarm.SetDescription(value)
+				case "SUMMARY":
+					newAlarm.SetSummary(value)
+				case "ATTENDEE":
+					attendee := Attendee{}
+					if err := attendee.Unmarshal(value); err != nil {
+						return nil, &utils.SlogError{
+							Msg:  "can't unmarshal attendee",
+							Args: []interface{}{"line", lineCount, "content", line, "err", err},
+						}
+					}
+					newAlarm.AddAttendee(attendee)
+				default:
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
-			case "alarm": // in alarm block
 			default:
 				slog.Warn("unhandled line", "line", lineCount, "content", line)
 			}
