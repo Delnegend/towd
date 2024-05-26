@@ -30,10 +30,6 @@ type AppState struct {
 	AppCmdInfo map[string]*discordgo.ApplicationCommand
 	// handling commands from Discord WSAPI
 	AppCmdHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
-	// same as above but for msg components (buttons, dropdowns, etc)
-	MsgComponentHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
-	// same as above but for modal (text input)
-	ModalHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
 
 	// calendar event/task queue; since the new temporary handler function and their parent live in the same function scope, we don't need a map to hold them; but for timing out the event, we store them here and remove them both from this map and MsgComponentHandler above
 	EventQueue map[uuid.UUID]MsgComponentInfo
@@ -45,8 +41,6 @@ func NewAppState() *AppState {
 	// init maps
 	as.AppCmdInfo = make(map[string]*discordgo.ApplicationCommand)
 	as.AppCmdHandler = make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate))
-	as.MsgComponentHandler = make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate))
-	as.ModalHandler = make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate))
 
 	as.EventQueue = make(map[uuid.UUID]MsgComponentInfo)
 
@@ -55,7 +49,7 @@ func NewAppState() *AppState {
 			for eventID, eventInfo := range as.EventQueue {
 				if time.Since(eventInfo.DateAdded) > 5*time.Minute {
 					delete(as.EventQueue, eventID)
-					delete(as.MsgComponentHandler, eventID.String())
+					delete(as.AppCmdHandler, eventID.String())
 					slog.Info("event removed from queue", "event", eventInfo)
 				}
 			}
