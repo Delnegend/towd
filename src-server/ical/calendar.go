@@ -251,13 +251,12 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				eventCount++
 				mode = ""
 
-				if err := newEvent.Validate(); err != nil {
+				if err := cal.AddEvent(newEvent); err != nil {
 					return nil, &utils.SlogError{
 						Msg:  "event validation failed",
 						Args: []interface{}{"line", lineCount, "content", line, "err", err},
 					}
 				}
-				cal.AddEvent(newEvent)
 				newEvent = NewEvent()
 			case "alarm":
 				if value != "VALARM" {
