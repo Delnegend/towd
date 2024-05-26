@@ -111,9 +111,39 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 		}
 	}()
 
-		if strings.HasPrefix(line, "ATTACH") ||
-			strings.HasPrefix(line, "ATTENDEE") ||
-			strings.HasPrefix(line, "X-GOOGLE-CONFERENCE") {
+	newEvent := NewEvent()
+	newAlarm := NewAlarm()
+
+	for line := range mergedLineCh {
+		switch {
+		case strings.HasPrefix(line, "ATTACH"):
+			val := strings.TrimPrefix(line, "ATTACH;")
+			switch mode {
+			case "event":
+				newEvent.SetAttachment(val)
+				continue
+			case "alarm":
+				newAlarm.SetAttachment(val)
+				continue
+			}
+			continue
+		case strings.HasPrefix(line, "ATTENDEE"):
+			attendee := Attendee{}
+			if err := attendee.Unmarshal(line); err != nil {
+				return nil, &utils.SlogError{
+					Msg:  "can't unmarshal attendee",
+					Args: []interface{}{"line", lineCount, "content", line, "err", err},
+				}
+			}
+			switch mode {
+			case "event":
+				newEvent.AddAttendee(attendee)
+			case "alarm":
+				newAlarm.AddAttendee(attendee)
+			}
+			continue
+		case strings.HasPrefix(line, "ORGANIZER"):
+			newEvent.SetOrganizer(strings.TrimPrefix(line, "ORGANIZER;"))
 			continue
 		}
 
