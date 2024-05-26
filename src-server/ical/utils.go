@@ -15,7 +15,7 @@ import (
 func parseDate(rawText string) (*time.Time, error) {
 	slice := strings.Split(rawText, ":")
 	if len(slice) < 2 {
-		return nil, fmt.Errorf("must be splitable by ':'")
+		return nil, fmt.Errorf("must be splitable by ':', got %s", rawText)
 	}
 
 	// parse UTC time
@@ -62,4 +62,34 @@ func parseDate(rawText string) (*time.Time, error) {
 	}
 
 	return &result, nil
+}
+
+// Create a new iCalendar-compatible CalAddress.
+//
+// The name and email must not contain any of the following characters:
+// `:`, `;`, `,`, `\n`, `\r`, `\t`.
+//
+// Use empty string for email to create a CalAddress without email.
+func NewCalAddr(name string, email string) (AttendeeCalAdrr, error) {
+	prohibitChars := []string{":", ";", ",", "\n", "\r", "\t"}
+	for _, c := range prohibitChars {
+		if strings.Contains(name, c) || strings.Contains(email, c) {
+			return "", fmt.Errorf("name and email must not contain %s", c)
+		}
+	}
+	if name == "" || email == "" {
+		return "", fmt.Errorf("name must not be empty")
+	}
+	return AttendeeCalAdrr(fmt.Sprintf("CN=%s:mailto:%s", name, email)), nil
+}
+
+func timeToStr(time_ time.Time) (string, error) {
+	if time_.IsZero() {
+		return "", fmt.Errorf("time is zero")
+	}
+	hour, min, sec := time_.Clock()
+	if hour == 0 && min == 0 && sec == 0 {
+		return time_.Format("20060102"), nil
+	}
+	return time_.Format("20060102T150405Z"), nil
 }
