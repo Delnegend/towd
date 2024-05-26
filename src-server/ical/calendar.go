@@ -289,14 +289,6 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				default:
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
-			case "timezone":
-				switch key {
-				case "TZID":
-				default:
-					slog.Warn("unhandled line", "line", lineCount, "content", line)
-				}
-			case "standard": // in timezone block
-			case "daylight": // in timezone block
 			case "event":
 				switch key {
 				case "UID":
