@@ -347,58 +347,135 @@ func (e *Event) Marshal() (string, error) {
 	if err := e.Validate(); err != nil {
 		return "", err
 	}
-
 	if e.isModified {
 		e.isModified = false
 		e.sequence++
 	}
 
-	result := make([]string, 0)
+	var sb strings.Builder
 
-	result = append(result, "BEGIN:VEVENT")
-	result = append(result, "UID:"+e.id)
-	result = append(result, "SUMMARY:"+e.summary)
+	if _, err := sb.WriteString("BEGIN:VEVENT\n"); err != nil {
+		return "", err
+	}
+	if _, err := sb.WriteString("UID:" + e.id + "\n"); err != nil {
+		return "", err
+	}
+	if _, err := sb.WriteString("SUMMARY:" + e.summary + "\n"); err != nil {
+		return "", err
+	}
+
 	if e.description != "" {
-		result = append(result, "DESCRIPTION:"+e.description)
+		if _, err := sb.WriteString(fmt.Sprintf("DESCRIPTION:%s\n", e.description)); err != nil {
+			return "", err
+		}
 	}
 	if e.location != "" {
-		result = append(result, "LOCATION:"+e.location)
+		if _, err := sb.WriteString(fmt.Sprintf("LOCATION:%s\n", e.location)); err != nil {
+			return "", err
+		}
 	}
 	if e.url != "" {
-		result = append(result, "URL:"+e.url)
+		if _, err := sb.WriteString(fmt.Sprintf("URL:%s\n", e.url)); err != nil {
+			return "", err
+		}
 	}
 
-	var timeFormat string
-	if e.wholeDay {
-		timeFormat = "20060102"
-	} else {
-		timeFormat = "20060102T150405Z"
+	startDateStr, err := timeToStr(e.startDate)
+	if err != nil {
+		return "", err
+	}
+	if _, err := sb.WriteString(fmt.Sprintf("DTSTART:%s\n", startDateStr)); err != nil {
+		return "", err
+	}
+	endDateStr, err := timeToStr(e.endDate)
+	if err != nil {
+		return "", err
+	}
+	if _, err := sb.WriteString(fmt.Sprintf("DTEND:%s\n", endDateStr)); err != nil {
+		return "", err
 	}
 
-	result = append(result, "DTSTART:"+e.startDate.Format(timeFormat))
-	result = append(result, "DTEND:"+e.endDate.Format(timeFormat))
+	if len(e.attendee) > 0 {
+		for _, attendee := range e.attendee {
+			attendeeStr, err := attendee.Marshal()
+			if err != nil {
+				return "", err
+			}
+			if _, err := sb.WriteString(attendeeStr); err != nil {
+				return "", err
+			}
+		}
+	}
+	if e.organizer != "" {
+		if _, err := sb.WriteString(fmt.Sprintf("ORGANIZER:%s\n", e.organizer)); err != nil {
+			return "", err
+		}
+	}
 
-	result = append(result, "CREATED:"+e.createdAt.Format("20060102T150405Z"))
+	if _, err := sb.WriteString(fmt.Sprintf("CREATED:%s\n", e.createdAt.Format("20060102T150405Z"))); err != nil {
+		return "", err
+	}
 	if !e.updatedAt.IsZero() {
-		result = append(result, "LAST-MODIFIED:"+e.updatedAt.Format("20060102T150405Z"))
+		if _, err := sb.WriteString(fmt.Sprintf("LAST-MODIFIED:%s\n", e.updatedAt.Format("20060102T150405Z"))); err != nil {
+			return "", err
+		}
 	}
+
 	if e.sequence >= 0 {
-		result = append(result, fmt.Sprintf("SEQUENCE:%d", e.sequence))
+		if _, err := sb.WriteString(fmt.Sprintf("SEQUENCE:%d\n", e.sequence)); err != nil {
+			return "", err
+		}
 	}
+	for _, alarm := range e.alarm {
+		alarmStr, err := alarm.Marshal()
+		if err != nil {
+			return "", err
+		}
+		if _, err := sb.WriteString(alarmStr); err != nil {
+			return "", err
+		}
+	}
+
 	if e.rrule != nil {
-		result = append(result, "RRULE:"+e.rrule.String())
+		if _, err := sb.WriteString(fmt.Sprintf("RRULE:%s\n", e.rrule.String())); err != nil {
+			return "", err
+		}
 	}
 	for _, exdate := range e.exdate {
-		result = append(result, "EXDATE:"+exdate.Format(timeFormat))
+		exDateStr, err := timeToStr(exdate)
+		if err != nil {
+			return "", err
+		}
+		if _, err := sb.WriteString(fmt.Sprintf("EXDATE:%s\n", exDateStr)); err != nil {
+			return "", err
+		}
 	}
 	for _, rdate := range e.rdate {
-		result = append(result, "RDATE:"+rdate.Format(timeFormat))
+		rdateStr, err := timeToStr(rdate)
+		if err != nil {
+			return "", nil
+		}
+		if _, err := sb.WriteString(fmt.Sprintf("RDATE:%s\n", rdateStr)); err != nil {
+			return "", err
+		}
 	}
-	if !e.recurrenceID.IsZero() {
-		result = append(result, "RECURRENCE-ID:"+e.recurrenceID.Format(timeFormat))
-	}
-	result = append(result, fmt.Sprintf("DTSTAMP:%s", time.Now().Format("20060102T150405Z")))
-	result = append(result, "END:VEVENT")
 
-	return strings.Join(result, "\n"), nil
+	if !e.recurrenceID.IsZero() {
+		recurrenceIDStr, err := timeToStr(e.recurrenceID)
+		if err != nil {
+			return "", err
+		}
+		if _, err := sb.WriteString(fmt.Sprintf("RECURRENCE-ID:%s\n", recurrenceIDStr)); err != nil {
+			return "", err
+		}
+	}
+
+	if _, err := sb.WriteString(fmt.Sprintf("DTSTAMP:%s\n", time.Now().Format("20060102T150405Z"))); err != nil {
+		return "", err
+	}
+	if _, err := sb.WriteString("END:VEVENT\n"); err != nil {
+		return "", err
+	}
+
+	return sb.String(), nil
 }
