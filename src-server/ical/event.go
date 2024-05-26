@@ -44,6 +44,8 @@ type Event struct {
 	createdAt time.Time // required
 	updatedAt time.Time
 	sequence  int
+	alarm     []Alarm
+	attach    string
 
 	rrule        *rrule.RRule
 	exdate       []time.Time
@@ -117,6 +119,12 @@ func (e *Event) GetUpdatedAt() time.Time {
 }
 func (e *Event) GetSequence() int {
 	return e.sequence
+}
+func (e *Event) GetAlarm() []Alarm {
+	return e.alarm
+}
+func (e *Event) GetAttach() string {
+	return e.attach
 }
 func (e *Event) GetRRule() *rrule.RRule {
 	return e.rrule
@@ -202,6 +210,37 @@ func (e *Event) SetOrganizer(organizer string) {
 	e.hasModified()
 	e.organizer = organizer
 }
+
+// Validate the alarm and add it to the event
+func (e *Event) AddAlarm(alarm Alarm) error {
+	if err := alarm.Validate(); err != nil {
+		return err
+	}
+	e.hasModified()
+	if e.alarm == nil {
+		e.alarm = make([]Alarm, 0)
+	}
+	e.alarm = append(e.alarm, alarm)
+	return nil
+}
+func (e *Event) RemoveAlarm(alarmUID string) error {
+	if e.alarm == nil {
+		return fmt.Errorf("alarm is empty")
+	}
+	e.hasModified()
+	for i, a := range e.alarm {
+		if a.uid == alarmUID {
+			e.alarm = append(e.alarm[:i], e.alarm[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("alarm not found")
+}
+func (e *Event) SetAttachment(attach string) {
+	e.hasModified()
+	e.attach = attach
+}
+
 func (e *Event) SetRRule(rrule_ *rrule.RRule) error {
 	if rrule_ == nil {
 		return fmt.Errorf("rrule is nil")
