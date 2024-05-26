@@ -38,7 +38,7 @@ type Event struct {
 	endDate   time.Time // required
 	wholeDay  bool
 
-	attendee  []string
+	attendee  []Attendee
 	organizer string // required
 
 	createdAt time.Time // required
@@ -63,7 +63,7 @@ func NewEvent() Event {
 		wholeDay:   false,
 		isModified: false,
 
-		attendee: make([]string, 0),
+		attendee: make([]Attendee, 0),
 		exdate:   make([]time.Time, 0),
 		rdate:    make([]time.Time, 0),
 	}
@@ -103,7 +103,7 @@ func (e *Event) GetStartDate() time.Time {
 func (e *Event) GetEndDate() time.Time {
 	return e.endDate
 }
-func (e *Event) GetAttendee() []string {
+func (e *Event) GetAttendee() []Attendee {
 	return e.attendee
 }
 func (e *Event) GetOrganizer() string {
@@ -177,14 +177,21 @@ func (e *Event) SetEndDate(endDate time.Time) error {
 	e.endDate = endDate
 	return nil
 }
-func (e *Event) AddAttendee(attendee string) {
+
+func (e *Event) AddAttendee(attendee Attendee) {
 	e.hasModified()
+	if e.attendee == nil {
+		e.attendee = make([]Attendee, 0)
+	}
 	e.attendee = append(e.attendee, attendee)
 }
-func (e *Event) RemoveAttendee(attendee string) error {
+func (e *Event) RemoveAttendee(attendeeCn AttendeeCalAdrr) error {
+	if e.attendee == nil {
+		return fmt.Errorf("attendee is empty")
+	}
 	e.hasModified()
 	for i, a := range e.attendee {
-		if a != attendee {
+		if a.GetCN() == attendeeCn {
 			e.attendee = append(e.attendee[:i], e.attendee[i+1:]...)
 			return nil
 		}
