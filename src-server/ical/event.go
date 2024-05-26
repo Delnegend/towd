@@ -10,17 +10,16 @@ import (
 	"github.com/xyedo/rrule"
 )
 
-type EventStatus string
+type (
+	EventStatus       string
+	EventTransparency string
+)
 
 const (
 	EventStatusConfirmed EventStatus = "CONFIRMED"
 	EventStatusTentative EventStatus = "TENTATIVE"
 	EventStatusCancelled EventStatus = "CANCELLED"
-)
 
-type EventTransparency string
-
-const (
 	EventTransparencyOpaque      EventTransparency = "OPAQUE"
 	EventTransparencyTransparent EventTransparency = "TRANSPARENT"
 )
