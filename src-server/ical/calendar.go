@@ -30,7 +30,7 @@ func NewCalendar() Calendar {
 	}
 }
 
-func FromFile(path string) (*Calendar, *utils.SlogError) {
+func UnmarshalFile(path string) (*Calendar, *utils.SlogError) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, &utils.SlogError{
@@ -51,10 +51,10 @@ func FromFile(path string) (*Calendar, *utils.SlogError) {
 		}
 	}()
 
-	return parseCal(lineCh)
+	return unmarshalCh(lineCh)
 }
 
-func FromUrl(url_ string) (*Calendar, *utils.SlogError) {
+func UnmarshalUrl(url_ string) (*Calendar, *utils.SlogError) {
 	validUrl, err := url.ParseRequestURI(url_)
 	if err != nil {
 		return nil, &utils.SlogError{Msg: err.Error()}
@@ -82,10 +82,10 @@ func FromUrl(url_ string) (*Calendar, *utils.SlogError) {
 		}
 	}()
 
-	return parseCal(lineCh)
+	return unmarshalCh(lineCh)
 }
 
-func parseCal(lineCh chan string) (*Calendar, *utils.SlogError) {
+func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 	cal := NewCalendar()
 	var mode, lastLine string
 	var lineCount, eventCount int
