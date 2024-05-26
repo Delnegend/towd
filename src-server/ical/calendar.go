@@ -250,7 +250,9 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				}
 				eventCount++
 				mode = ""
-
+				if newEvent.summary == "" {
+					newEvent.summary = "(no title)"
+				}
 				if err := cal.AddEvent(newEvent); err != nil {
 					return nil, &utils.SlogError{
 						Msg:  "event validation failed",
