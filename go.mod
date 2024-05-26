@@ -1,6 +1,6 @@
 module towd
 
-go 1.22.0
+go 1.22.3
 
 require (
 	github.com/bwmarrin/discordgo v0.28.1
