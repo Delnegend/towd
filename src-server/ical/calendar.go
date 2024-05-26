@@ -147,8 +147,8 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 			continue
 		}
 
-		if len(slice) < 2 {
 		slice := strings.SplitN(line, ":", 2)
+		if len(slice) != 2 {
 			return nil, &utils.SlogError{
 				Msg:  "invalid line format",
 				Args: []interface{}{"line", lineCount, "content", line},
