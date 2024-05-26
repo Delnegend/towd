@@ -607,6 +607,11 @@ func (c *Calendar) SetVersion(version string) {
 
 // #endregion
 
-func (c *Calendar) AddEvent(event Event) {
+// Validate the event and add it to the calendar
+func (c *Calendar) AddEvent(event Event) error {
+	if err := event.Validate(); err != nil {
+		return err
+	}
 	c.events = append(c.events, event)
+	return nil
 }
