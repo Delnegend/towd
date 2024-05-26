@@ -87,20 +87,29 @@ func UnmarshalUrl(url_ string) (*Calendar, *utils.SlogError) {
 
 func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 	cal := NewCalendar()
-	var mode, lastLine string
-	var lineCount, eventCount int
+	var mode string
+	lineCount := -1
+	eventCount := 0
 
-	newEvent := NewEvent()
+	// "lookahead" to merge lines that are split
+	mergedLineCh := make(chan string)
+	go func() {
+		defer close(mergedLineCh)
 
-	for line := range lineCh {
-		lineCount++
-		if strings.HasPrefix(line, " ") {
-			line = lastLine + strings.TrimPrefix(line, " ")
-			lastLine = line
-			continue
-		} else {
-			lastLine = line
+		var lastLine string
+		for currentLine := range lineCh {
+			switch strings.HasPrefix(currentLine, " ") {
+			case true:
+				currentLine = lastLine + strings.TrimPrefix(currentLine, " ")
+			case false:
+				if lastLine != "" {
+					mergedLineCh <- lastLine
+				}
+			}
+			lineCount++
+			lastLine = currentLine
 		}
+	}()
 
 		if strings.HasPrefix(line, "ATTACH") ||
 			strings.HasPrefix(line, "ATTENDEE") ||
