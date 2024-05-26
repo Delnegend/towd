@@ -520,6 +520,61 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 	return &cal, nil
 }
 
+func (cal *Calendar) Marshal() (string, *utils.SlogError) {
+	var sb strings.Builder
+
+	sb.WriteString("BEGIN:VCALENDAR\n")
+	sb.WriteString("PRODID:" + cal.id + "\n")
+	sb.WriteString("VERSION:" + cal.version + "\n")
+	sb.WriteString("X-WR-CALNAME:" + cal.name + "\n")
+	sb.WriteString("X-WR-CALDESC:" + cal.description + "\n")
+
+	for _, event := range cal.events {
+		eventStr, err := event.Marshal()
+		if err != nil {
+			return "", &utils.SlogError{
+				Msg:  "can't marshal event",
+				Args: []interface{}{"eventID", event.id, "err", err},
+			}
+		}
+		if _, err := sb.WriteString(eventStr); err != nil {
+			return "", &utils.SlogError{
+				Msg:  "can't write event to buffer",
+				Args: []interface{}{"eventID", event.id, "err", err},
+			}
+		}
+	}
+
+	sb.WriteString("END:VCALENDAR\n")
+
+	return sb.String(), nil
+}
+
+func (cal *Calendar) MarshalToFile(path string) *utils.SlogError {
+	file, err := os.Create(path)
+	if err != nil {
+		return &utils.SlogError{
+			Msg:  "can't create file",
+			Args: []interface{}{"path", path, "err", err},
+		}
+	}
+	defer file.Close()
+
+	calStr, err2 := cal.Marshal()
+	if err2 != nil {
+		return err2
+	}
+
+	if _, err := file.WriteString(calStr); err != nil {
+		return &utils.SlogError{
+			Msg:  "can't write calendar to file",
+			Args: []interface{}{"path", path, "err", err},
+		}
+	}
+
+	return nil
+}
+
 // #region Getters
 func (c *Calendar) GetId() string {
 	return c.id
