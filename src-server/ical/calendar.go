@@ -365,6 +365,15 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 						}
 					}
 					newEvent.SetRRule(parsedRrule)
+				case "X-GOOGLE-CONFERENCE":
+					if newEvent.url == "" {
+						if err := newEvent.SetUrl(value); err != nil {
+							return nil, &utils.SlogError{
+								Msg:  err.Error(),
+								Args: []interface{}{"line", lineCount, "content", line},
+							}
+						}
+					}
 				default:
 					switch {
 					case strings.HasPrefix(key, "DT"):
