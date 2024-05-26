@@ -442,6 +442,10 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
 						}
+					default:
+						slog.Warn("unhandled line", "line", lineCount, "content", line)
+					}
+				}
 			case "alarm": // in VEVENT block
 				switch key {
 				case "UID":
