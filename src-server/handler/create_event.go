@@ -116,10 +116,7 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 
 		slog.Debug("received event creation request", "event", eventModel)
 
-		appState.EventQueue[eventModel.ID] = utils.MsgComponentInfo{
-			DateAdded: time.Now(),
-			Data:      eventModel,
-		}
+		appState.AddEventToQueue(eventModel.ID, eventModel)
 
 		// custom IDs
 		yesCustomId := "yes-" + eventModel.ID.String()
@@ -166,7 +163,8 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 
 		// yes handler
 		appState.AppCmdHandler[yesCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			item, ok := appState.EventQueue[uuid.MustParse(i.MessageComponentData().CustomID[4:])]
+			eventID := uuid.MustParse(i.MessageComponentData().CustomID[4:])
+			item, ok := appState.GetEventFromQueue(eventID)
 			if !ok {
 				utils.InteractRespHiddenReply(s, i, "Event expired")
 				return
@@ -185,7 +183,8 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 
 		// no handler
 		appState.AppCmdHandler[cancelCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			delete(appState.EventQueue, uuid.MustParse(i.MessageComponentData().CustomID[7:]))
+			eventID := uuid.MustParse(i.MessageComponentData().CustomID[7:])
+			appState.DeleteEventFromQueue(eventID)
 			utils.InteractRespHiddenReply(s, i, "Cancelled event creation")
 			delete(appState.AppCmdHandler, yesCustomId)
 			delete(appState.AppCmdHandler, cancelCustomId)

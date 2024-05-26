@@ -19,6 +19,11 @@ import (
 	"github.com/uptrace/bun/extra/bundebug"
 )
 
+type MsgComponentInfo struct {
+	DateAdded time.Time
+	Data      interface{}
+}
+
 type AppState struct {
 	Config    *Config
 	RawDb     *sql.DB
@@ -32,7 +37,7 @@ type AppState struct {
 	AppCmdHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
 
 	// calendar event/task queue; since the new temporary handler function and their parent live in the same function scope, we don't need a map to hold them; but for timing out the event, we store them here and remove them both from this map and MsgComponentHandler above
-	EventQueue map[uuid.UUID]MsgComponentInfo
+	eventQueue map[uuid.UUID]MsgComponentInfo
 }
 
 func NewAppState() *AppState {
@@ -42,13 +47,13 @@ func NewAppState() *AppState {
 	as.AppCmdInfo = make(map[string]*discordgo.ApplicationCommand)
 	as.AppCmdHandler = make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate))
 
-	as.EventQueue = make(map[uuid.UUID]MsgComponentInfo)
+	as.eventQueue = make(map[uuid.UUID]MsgComponentInfo)
 
 	go func() {
 		for {
-			for eventID, eventInfo := range as.EventQueue {
+			for eventID, eventInfo := range as.eventQueue {
 				if time.Since(eventInfo.DateAdded) > 5*time.Minute {
-					delete(as.EventQueue, eventID)
+					delete(as.eventQueue, eventID)
 					delete(as.AppCmdHandler, eventID.String())
 					slog.Info("event removed from queue", "event", eventInfo)
 				}
@@ -85,4 +90,20 @@ func NewAppState() *AppState {
 	}
 
 	return as
+}
+
+func (as *AppState) AddEventToQueue(eventID uuid.UUID, data interface{}) {
+	as.eventQueue[eventID] = MsgComponentInfo{
+		DateAdded: time.Now(),
+		Data:      data,
+	}
+}
+
+func (as *AppState) GetEventFromQueue(eventID uuid.UUID) (MsgComponentInfo, bool) {
+	eventInfo, ok := as.eventQueue[eventID]
+	return eventInfo, ok
+}
+
+func (as *AppState) DeleteEventFromQueue(eventID uuid.UUID) {
+	delete(as.eventQueue, eventID)
 }
