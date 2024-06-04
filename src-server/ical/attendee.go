@@ -183,7 +183,7 @@ func (a *Attendee) Unmarshal(data string) error {
 			if value == "" {
 				return fmt.Errorf("CN is required")
 			}
-			a.cn = AttendeeCalAdrr(value)
+			a.cn = AttendeeCommonName(value)
 		case "ROLE":
 			switch value {
 			case "CHAIR":
