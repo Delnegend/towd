@@ -207,10 +207,52 @@ func (a *Attendee) Unmarshal(data string) error {
 			}
 			a.cn = AttendeeCalAdrr(value)
 		case "ROLE":
-			a.role = AttendeeRole(value)
+			switch value {
+			case "CHAIR":
+				a.role = AttendeeRoleChair
+			case "REQ-PARTICIPANT":
+				a.role = AttendeeRoleReq
+			case "OPT-PARTICIPANT":
+				a.role = AttendeeRoleOpt
+			case "NON-PARTICIPANT":
+				a.role = AttendeeRoleNon
+			default:
+				return fmt.Errorf("invalid role: %s", value)
+			}
 		case "RSVP":
 			a.rsvp = value == "TRUE"
 		case "CUTYPE":
+			switch value {
+			case "INDIVIDUAL":
+				a.cuType = AttendeeCutypeIndividual
+			case "GROUP":
+				a.cuType = AttendeeCutypeGroup
+			case "RESOURCE":
+				a.cuType = AttendeeCutypeResource
+			case "ROOM":
+				a.cuType = AttendeeCutypeRoom
+			case "UNKNOWN":
+				a.cuType = AttendeeCutypeUnknown
+			default:
+				return fmt.Errorf("invalid CUTYPE: %s", value)
+			}
+		case "PARTSTAT":
+			switch value {
+			case "NEEDS-ACTION":
+				a.partStat = AttendeePartStatNeedsAction
+			case "ACCEPTED":
+				a.partStat = AttendeePartStatAccepted
+			case "DECLINED":
+				a.partStat = AttendeePartStatDeclined
+			case "TENTATIVE":
+				a.partStat = AttendeePartStatTentative
+			case "CANCELLED":
+				a.partStat = AttendeePartStatCancelled
+			case "X-NAME":
+				a.partStat = AttendeePartStatXName
+			default:
+				return fmt.Errorf("invalid PARTSTAT: %s", value)
+			}
 		case "MEMBER":
 			a.member = append(a.member, AttendeeCommonName(value))
 		case "DELEGATED-TO":
