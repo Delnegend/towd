@@ -9,6 +9,7 @@ import (
 type (
 	AttendeeRole              string
 	AttendeeCustomertype      string
+	AttendeeParticipantStatus string
 	AttendeeCommonName        string
 )
 
