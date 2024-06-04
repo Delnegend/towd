@@ -448,7 +448,11 @@ func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 						newAlarm.uid = value
 						continue
 					}
-					slog.Warn("empty alarm UID", "line", lineCount, "content", line)
+				case "X-WR-ALARMUID":
+					if value != "" && newAlarm.uid == "" {
+						newAlarm.uid = value
+						continue
+					}
 				case "ACTION":
 					switch value {
 					case "AUDIO":
