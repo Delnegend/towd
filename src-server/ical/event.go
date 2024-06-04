@@ -358,6 +358,34 @@ func (e *Event) Validate() error {
 	return nil
 }
 
+// split a string into lines of 75 characters
+// and prepend a space to each line except the first
+func split75(s string, write func(s string) (int, error)) error {
+	slice := make([]string, 0)
+
+	// split every 75 characters
+	for i := 0; i < len(s); i += 75 {
+		begin := i
+		end := i + 75
+		if end > len(s) {
+			end = len(s)
+		}
+		slice = append(slice, s[begin:end])
+	}
+
+	// prepend a space to each line except the first
+	for i, s := range slice {
+		if i > 0 {
+			write(" ")
+		}
+		if _, err := write(s + "\n"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (e *Event) Marshal() (string, error) {
 	if err := e.Validate(); err != nil {
 		return "", err
