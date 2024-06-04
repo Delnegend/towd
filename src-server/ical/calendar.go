@@ -619,6 +619,9 @@ func (c *Calendar) GetDescription() string {
 func (c *Calendar) GetUrl() string {
 	return c.url
 }
+func (c *Calendar) GetEvents() []Event {
+	return c.events
+}
 
 // #endregion
 
