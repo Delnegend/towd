@@ -595,6 +595,7 @@ func (c *Calendar) GetEvents() []Event {
 // #region Setters
 func (c *Calendar) SetId(id string) {
 	c.id = id
+}
 func (c *Calendar) SetName(name string) {
 	c.name = name
 }
