@@ -169,55 +169,30 @@ func (a *Alarm) Marshal() (string, error) {
 	}
 
 	var sb strings.Builder
-	if _, err := sb.WriteString("BEGIN:VALARM\n"); err != nil {
-		return "", err
-	}
-	if _, err := sb.WriteString(fmt.Sprintf("UID:%s\n", a.uid)); err != nil {
-		return "", err
-	}
-	if _, err := sb.WriteString(fmt.Sprintf("ACTION:%s\n", a.action)); err != nil {
-		return "", err
-	}
-	if _, err := sb.WriteString(fmt.Sprintf("TRIGGER;VALUE=DATE-TIME:%s\n", a.trigger)); err != nil {
-		return "", err
-	}
+	sb.WriteString(fmt.Sprintf("BEGIN:VALARM\nUID:%s\nACTION:%s\nTRIGGER;VALUE=DATE-TIME:%s\n", a.uid, a.action, a.trigger))
 	if a.duration != "" {
-		if _, err := sb.WriteString(fmt.Sprintf("DURATION:%s\n", a.duration)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf("DURATION:%s\n", a.duration))
 	}
 	if a.repeat != 0 {
-		if _, err := sb.WriteString(fmt.Sprintf("REPEAT:%d\n", a.repeat)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf("REPEAT:%d\n", a.repeat))
 	}
 	if a.attach != "" {
-		if _, err := sb.WriteString(fmt.Sprintf("ATTACH;%s\n", a.attach)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf("ATTACH;%s\n", a.attach))
 	}
 	if a.description != "" {
-		if _, err := sb.WriteString("DESCRIPTION:" + a.description + "\n"); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf("DESCRIPTION:%s\n", a.description))
 	}
 	if a.summary != "" {
-		if _, err := sb.WriteString("SUMMARY:" + a.summary + "\n"); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf("SUMMARY:%s\n", a.summary))
 	}
 	for _, attendee := range a.attendee {
 		attendeeStr, err := attendee.Marshal()
 		if err != nil {
 			return "", err
 		}
-		if _, err := sb.WriteString(attendeeStr); err != nil {
-			return "", err
-		}
+		sb.WriteString(attendeeStr)
 	}
-	if _, err := sb.WriteString("END:VALARM\n"); err != nil {
-		return "", err
-	}
+	sb.WriteString("END:VALARM\n")
 
 	return sb.String(), nil
 }
