@@ -17,9 +17,9 @@ import (
 
 type Calendar struct {
 	id          string
+	prodId      string
 	name        string
 	description string
-	version     string
 	url         string
 	events      []Event
 }
@@ -277,15 +277,11 @@ func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 			case "calendar":
 				switch key {
 				case "PRODID":
-					cal.id = value
-				case "VERSION":
-					cal.SetVersion(value)
+					cal.prodId = value
 				case "X-WR-CALNAME":
 					cal.SetName(value)
 				case "X-WR-CALDESC":
 					cal.SetDescription(value)
-				// case "X-WR-TIMEZONE":
-				// 	cal.SetTimezone(value)
 				default:
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
@@ -611,14 +607,14 @@ func (cal *Calendar) MarshalToFile(path string) *slogError {
 func (c *Calendar) GetId() string {
 	return c.id
 }
+func (c *Calendar) GetProdID() string {
+	return c.prodId
+}
 func (c *Calendar) GetName() string {
 	return c.name
 }
 func (c *Calendar) GetDescription() string {
 	return c.description
-}
-func (c *Calendar) GetVersion() string {
-	return c.version
 }
 func (c *Calendar) GetUrl() string {
 	return c.url
@@ -632,9 +628,6 @@ func (c *Calendar) SetName(name string) {
 }
 func (c *Calendar) SetDescription(description string) {
 	c.description = description
-}
-func (c *Calendar) SetVersion(version string) {
-	c.version = version
 }
 
 // #endregion
