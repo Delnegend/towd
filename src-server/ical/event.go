@@ -314,6 +314,21 @@ func (e *Event) SetRecurrenceID(recurrenceID time.Time) error {
 	return nil
 }
 
+// This is not meant for direct use
+func (e *Event) INTERNAL_SetCreatedAt(createdAt time.Time) {
+	e.createdAt = createdAt
+}
+
+// This is not meant for direct use
+func (e *Event) INTERNAL_SetUpdatedAt(updatedAt time.Time) {
+	e.updatedAt = updatedAt
+}
+
+// This is not meant for direct use
+func (e *Event) INTERNAL_SetSequence(sequence int) {
+	e.sequence = sequence
+}
+
 // #endregion
 
 func (e *Event) Validate() error {
