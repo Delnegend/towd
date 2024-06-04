@@ -92,8 +92,12 @@ func (a *Alarm) SetDuration(duration string) error {
 	a.duration = duration
 	return nil
 }
-func (a *Alarm) SetRepeat(repeat int) {
+func (a *Alarm) SetRepeat(repeat int) error {
+	if repeat < 0 {
+		return fmt.Errorf("repeat must be positive")
+	}
 	a.repeat = repeat
+	return nil
 }
 func (a *Alarm) SetAttachment(attachment string) {
 	a.attach = attachment
