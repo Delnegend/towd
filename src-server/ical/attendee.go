@@ -6,24 +6,23 @@ import (
 	"strings"
 )
 
-type AttendeeRole string
+type (
+	AttendeeRole              string
+	AttendeeCustomertype      string
 	AttendeeCommonName        string
+)
 
 var (
 	AttendeeRoleChair AttendeeRole = "CHAIR"           // organizer
 	AttendeeRoleReq   AttendeeRole = "REQ-PARTICIPANT" // required participant
 	AttendeeRoleOpt   AttendeeRole = "OPT-PARTICIPANT" // optional participant
 	AttendeeRoleNon   AttendeeRole = "NON-PARTICIPANT" // for information only
-)
 
-type AttendeeCutype string
-
-var (
-	AttendeeCutypeIndividual AttendeeCutype = "INDIVIDUAL" // individual
-	AttendeeCutypeGroup      AttendeeCutype = "GROUP"      // group
-	AttendeeCutypeResource   AttendeeCutype = "RESOURCE"   // resource
-	AttendeeCutypeRoom       AttendeeCutype = "ROOM"       // room
-	AttendeeCutypeUnknown    AttendeeCutype = "UNKNOWN"    // unknown
+	AttendeeCutypeIndividual AttendeeCustomertype = "INDIVIDUAL"
+	AttendeeCutypeGroup      AttendeeCustomertype = "GROUP"
+	AttendeeCutypeResource   AttendeeCustomertype = "RESOURCE"
+	AttendeeCutypeRoom       AttendeeCustomertype = "ROOM"
+	AttendeeCutypeUnknown    AttendeeCustomertype = "UNKNOWN"
 )
 
 type Attendee struct {
@@ -33,7 +32,7 @@ type Attendee struct {
 	// Répondez s'il vous plaît, French for "Please respond"
 	rsvp bool
 	// Calendar user type
-	cuType        AttendeeCutype
+	cuType        AttendeeCustomertype
 	member        []AttendeeCommonName
 	delegatedTo   []AttendeeCommonName
 	delegatedFrom []AttendeeCommonName
@@ -55,7 +54,7 @@ func (a *Attendee) GetRSVP() bool {
 	return a.rsvp
 }
 
-func (a *Attendee) GetCUType() AttendeeCutype {
+func (a *Attendee) GetCUType() AttendeeCustomertype {
 	return a.cuType
 }
 
@@ -94,7 +93,7 @@ func (a *Attendee) SetRSVP(rsvp bool) {
 	a.rsvp = rsvp
 }
 
-func (a *Attendee) SetCUType(cuType AttendeeCutype) {
+func (a *Attendee) SetCUType(cuType AttendeeCustomertype) {
 	a.cuType = cuType
 }
 
@@ -198,7 +197,6 @@ func (a *Attendee) Unmarshal(data string) error {
 		case "RSVP":
 			a.rsvp = value == "TRUE"
 		case "CUTYPE":
-			a.cuType = AttendeeCutype(value)
 		case "MEMBER":
 			a.member = append(a.member, AttendeeCommonName(value))
 		case "DELEGATED-TO":
