@@ -131,6 +131,8 @@ func (a *Alarm) RemoveAttendee(attendeeCn AttendeeCommonName) error {
 
 func (a *Alarm) Validate() error {
 	switch {
+	case a.uid == "":
+		return fmt.Errorf("uid is required")
 	case a.action == "":
 		return fmt.Errorf("action is required")
 	case a.trigger == "":
