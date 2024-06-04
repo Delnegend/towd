@@ -145,47 +145,25 @@ func (a *Attendee) Marshal() (string, error) {
 	}
 
 	var sb strings.Builder
-	if _, err := sb.WriteString("ATTENDEE;"); err != nil {
-		return "", err
-	}
-	if _, err := sb.WriteString(fmt.Sprintf("CN=%s;", a.cn)); err != nil {
-		return "", err
-	}
-	if _, err := sb.WriteString(fmt.Sprintf("ROLE=%s;", a.role)); err != nil {
-		return "", err
-	}
+	sb.WriteString(fmt.Sprintf("ATTENDEE;CN=%s;ROLE=%s", a.cn, a.role))
 	if a.rsvp {
-		if _, err := sb.WriteString("RSVP=TRUE;"); err != nil {
-			return "", err
-		}
+		sb.WriteString("RSVP=TRUE")
 	}
-	if _, err := sb.WriteString(fmt.Sprintf("CUTYPE=%s;", a.cuType)); err != nil {
-		return "", err
-	}
+	sb.WriteString(fmt.Sprintf(";PARTSTAT=%s", a.partStat))
 	for _, m := range a.member {
-		if _, err := sb.WriteString(fmt.Sprintf("MEMBER=%s;", m)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf(";MEMBER=%s", m))
 	}
 	for _, d := range a.delegatedTo {
-		if _, err := sb.WriteString(fmt.Sprintf("DELEGATED-TO=%s;", d)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf(";DELEGATED-TO=%s", d))
 	}
 	for _, d := range a.delegatedFrom {
-		if _, err := sb.WriteString(fmt.Sprintf("DELEGATED-FROM=%s;", d)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf(";DELEGATED-FROM=%s", d))
 	}
 	if a.sentBy != "" {
-		if _, err := sb.WriteString(fmt.Sprintf("SENT-BY=%s;", a.sentBy)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf(";SENT-BY=%s", a.sentBy))
 	}
 	if a.dir != "" {
-		if _, err := sb.WriteString(fmt.Sprintf("DIR=%s;", a.dir)); err != nil {
-			return "", err
-		}
+		sb.WriteString(fmt.Sprintf(";DIR=%s", a.dir))
 	}
 	return sb.String(), nil
 }
