@@ -522,37 +522,12 @@ func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 func (cal *Calendar) Marshal() (string, *slogError) {
 	var sb strings.Builder
 
-	if _, err := sb.WriteString("BEGIN:VCALENDAR\n"); err != nil {
-		return "", &utils.SlogError{
-			Msg:  "can't write BEGIN:VCALENDAR",
-			Args: []interface{}{"err", err},
-		}
-	}
-	if _, err := sb.WriteString("PRODID:" + cal.id + "\n"); err != nil {
-		return "", &utils.SlogError{
-			Msg:  fmt.Sprintf("can't write PRODID: %s", cal.id),
-			Args: []interface{}{"err", err},
-		}
-	}
-	if _, err := sb.WriteString("VERSION:" + cal.version + "\n"); err != nil {
-		return "", &utils.SlogError{
-			Msg:  fmt.Sprintf("can't write VERSION: %s", cal.version),
-			Args: []interface{}{"err", err},
-		}
-	}
-	if _, err := sb.WriteString("X-WR-CALNAME:" + cal.name + "\n"); err != nil {
-		return "", &utils.SlogError{
-			Msg:  fmt.Sprintf("can't write X-WR-CALNAME: %s", cal.name),
-			Args: []interface{}{"err", err},
-		}
-	}
+	sb.WriteString("BEGIN:VCALENDAR\n")
+	sb.WriteString(fmt.Sprintf("PRODID:%s\n", cal.prodId))
+	sb.WriteString("VERSION:2.0\n")
+	sb.WriteString(fmt.Sprintf("X-WR-CALNAME:%s\n", cal.name))
 	if cal.description != "" {
-		if _, err := sb.WriteString("X-WR-CALDESC:" + cal.description + "\n"); err != nil {
-			return "", &utils.SlogError{
-				Msg:  fmt.Sprintf("can't write X-WR-CALDESC: %s", cal.description),
-				Args: []interface{}{"err", err},
-			}
-		}
+		sb.WriteString(fmt.Sprintf("X-WR-CALDESC:%s\n", cal.description))
 	}
 
 	for _, event := range cal.events {
@@ -563,20 +538,9 @@ func (cal *Calendar) Marshal() (string, *slogError) {
 				Args: []interface{}{"eventID", event.id, "err", err},
 			}
 		}
-		if _, err := sb.WriteString(eventStr); err != nil {
-			return "", &utils.SlogError{
-				Msg:  "can't write event to buffer",
-				Args: []interface{}{"eventID", event.id, "err", err},
-			}
-		}
+		sb.WriteString(eventStr)
 	}
-
-	if _, err := sb.WriteString("END:VCALENDAR\n"); err != nil {
-		return "", &utils.SlogError{
-			Msg:  "can't write END:VCALENDAR",
-			Args: []interface{}{"err", err},
-		}
-	}
+	sb.WriteString("END:VCALENDAR\n")
 
 	return sb.String(), nil
 }
