@@ -533,7 +533,7 @@ func (cal *Calendar) Marshal() (string, *slogError) {
 	for _, event := range cal.events {
 		eventStr, err := event.Marshal()
 		if err != nil {
-			return "", &utils.SlogError{
+			return "", &slogError{
 				Msg:  "can't marshal event",
 				Args: []interface{}{"eventID", event.id, "err", err},
 			}
