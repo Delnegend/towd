@@ -78,7 +78,7 @@ func (e *Event) hasModified() {
 }
 
 // #region Getters
-func (e *Event) GetId() string {
+func (e *Event) GetID() string {
 	return e.id
 }
 func (e *Event) GetSummary() string {
@@ -90,7 +90,7 @@ func (e *Event) GetDescription() string {
 func (e *Event) GetLocation() string {
 	return e.location
 }
-func (e *Event) GetUrl() string {
+func (e *Event) GetURL() string {
 	return e.url
 }
 func (e *Event) GetStatus() EventStatus {
