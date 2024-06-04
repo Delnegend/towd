@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"towd/src-server/utils"
 
 	"github.com/google/uuid"
 	"github.com/xyedo/rrule"
@@ -31,10 +30,10 @@ func NewCalendar() Calendar {
 	}
 }
 
-func UnmarshalFile(path string) (*Calendar, *utils.SlogError) {
+func UnmarshalFile(path string) (*Calendar, *slogError) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, &utils.SlogError{
+		return nil, &slogError{
 			Msg:  "error opening file",
 			Args: []interface{}{"path", path, "err", err},
 		}
@@ -55,20 +54,20 @@ func UnmarshalFile(path string) (*Calendar, *utils.SlogError) {
 	return unmarshalCh(lineCh)
 }
 
-func UnmarshalUrl(url_ string) (*Calendar, *utils.SlogError) {
+func UnmarshalUrl(url_ string) (*Calendar, *slogError) {
 	validUrl, err := url.ParseRequestURI(url_)
 	if err != nil {
-		return nil, &utils.SlogError{Msg: err.Error()}
+		return nil, &slogError{Msg: err.Error()}
 	}
 
 	req, err := http.NewRequest("GET", validUrl.String(), nil)
 	if err != nil {
-		return nil, &utils.SlogError{Msg: err.Error()}
+		return nil, &slogError{Msg: err.Error()}
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, &utils.SlogError{Msg: err.Error()}
+		return nil, &slogError{Msg: err.Error()}
 	}
 	defer resp.Body.Close()
 
@@ -86,7 +85,7 @@ func UnmarshalUrl(url_ string) (*Calendar, *utils.SlogError) {
 	return unmarshalCh(lineCh)
 }
 
-func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
+func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 	cal := NewCalendar()
 	var mode string
 	lineCount := -1
@@ -131,7 +130,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 		case strings.HasPrefix(line, "ATTENDEE"):
 			attendee := Attendee{}
 			if err := attendee.Unmarshal(line); err != nil {
-				return nil, &utils.SlogError{
+				return nil, &slogError{
 					Msg:  "can't unmarshal attendee",
 					Args: []interface{}{"line", lineCount, "content", line, "err", err},
 				}
@@ -150,7 +149,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 
 		slice := strings.SplitN(line, ":", 2)
 		if len(slice) != 2 {
-			return nil, &utils.SlogError{
+			return nil, &slogError{
 				Msg:  "invalid line format",
 				Args: []interface{}{"line", lineCount, "content", line},
 			}
@@ -176,7 +175,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					return nil, errNestedBlock("STANDARD", lineCount, line)
 				}
 				if mode != "timezone" {
-					return nil, &utils.SlogError{
+					return nil, &slogError{
 						Msg:  "STANDARD block not in VTIMEZONE block",
 						Args: []interface{}{"line", lineCount, "content", line},
 					}
@@ -187,7 +186,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					return nil, errNestedBlock("DAYLIGHT", lineCount, line)
 				}
 				if mode != "timezone" {
-					return nil, &utils.SlogError{
+					return nil, &slogError{
 						Msg:  "DAYLIGHT block not in VTIMEZONE block",
 						Args: []interface{}{"line", lineCount, "content", line},
 					}
@@ -203,7 +202,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					return nil, errNestedBlock("VALARM", lineCount, line)
 				}
 				if mode != "event" {
-					return nil, &utils.SlogError{
+					return nil, &slogError{
 						Msg:  "VALARM block not in VEVENT block",
 						Args: []interface{}{"line", lineCount, "content", line},
 					}
@@ -213,7 +212,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				}
 			default:
 				if mode == "" {
-					return nil, &utils.SlogError{
+					return nil, &slogError{
 						Msg:  "expecting BEGIN block",
 						Args: []interface{}{"line", lineCount, "content", line},
 					}
@@ -255,7 +254,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					newEvent.summary = "(no title)"
 				}
 				if err := cal.AddEvent(newEvent); err != nil {
-					return nil, &utils.SlogError{
+					return nil, &slogError{
 						Msg:  "event validation failed",
 						Args: []interface{}{"line", lineCount, "content", line, "err", err},
 					}
@@ -266,7 +265,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					return nil, errUnexpectedEnd(lineCount, line)
 				}
 				if err := newEvent.AddAlarm(newAlarm); err != nil {
-					return nil, &utils.SlogError{
+					return nil, &slogError{
 						Msg:  "alarm validation failed",
 						Args: []interface{}{"line", lineCount, "content", line, "err", err},
 					}
@@ -302,7 +301,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					newEvent.SetLocation(value)
 				case "URL":
 					if err := newEvent.SetUrl(value); err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  err.Error(),
 							Args: []interface{}{"line", lineCount, "content", line},
 						}
@@ -324,7 +323,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					case string(EventTransparencyTransparent):
 						newEvent.SetTransparency(EventTransparencyTransparent)
 					default:
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "unhandled transparency",
 							Args: []interface{}{"line", lineCount, "content", line},
 						}
@@ -332,7 +331,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "CREATED":
 					parsedDatetime, err := time.Parse("20060102T150405Z", value)
 					if err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't parse created datetime",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -341,7 +340,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "LAST-MODIFIED":
 					parsedDatetime, err := time.Parse("20060102T150405Z", value)
 					if err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't parse last-modified datetime",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -351,7 +350,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "SEQUENCE":
 					parsedInt, err := strconv.Atoi(value)
 					if err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't parse sequence",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -360,7 +359,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "RRULE":
 					parsedRrule, err := rrule.StrToRRule(value)
 					if err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't parse rrule",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -369,7 +368,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "X-GOOGLE-CONFERENCE":
 					if newEvent.url == "" {
 						if err := newEvent.SetUrl(value); err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
@@ -380,7 +379,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					case strings.HasPrefix(key, "DT"):
 						parsedDatetime, err := parseDate(line)
 						if err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
@@ -395,7 +394,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 							newEvent.SetEndDate(*parsedDatetime)
 						case "STAMP":
 						default:
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  "unhandled DT field, expecting DTSTART, DTEND, or DTSTAMP",
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
@@ -404,13 +403,13 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					case strings.HasPrefix(key, "EXDATE"):
 						parsedDatetime, err := parseDate(line)
 						if err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
 						}
 						if err := newEvent.AddExDate(*parsedDatetime); err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
@@ -418,13 +417,13 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					case strings.HasPrefix(key, "RDATE"):
 						parsedDatetime, err := parseDate(line)
 						if err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
 						}
 						if err := newEvent.AddRDate(*parsedDatetime); err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
@@ -432,13 +431,13 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					case strings.HasPrefix(key, "RECURRENCE-ID"):
 						parsedDatetime, err := parseDate(line)
 						if err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
 						}
 						if err := newEvent.SetRecurrenceID(*parsedDatetime); err != nil {
-							return nil, &utils.SlogError{
+							return nil, &slogError{
 								Msg:  err.Error(),
 								Args: []interface{}{"line", lineCount, "content", line},
 							}
@@ -466,21 +465,21 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 					case "PROCEDURE":
 						newAlarm.SetAction(AlarmActionProcedure)
 					default:
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "unhandled alarm action",
 							Args: []interface{}{"line", lineCount, "content", line},
 						}
 					}
 				case "TRIGGER":
 					if err := newAlarm.SetTrigger(value); err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't set alarm trigger",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
 					}
 				case "DURATION":
 					if err := newAlarm.SetDuration(value); err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't set alarm duration",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -488,7 +487,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "REPEAT":
 					parsedInt, err := strconv.Atoi(value)
 					if err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't parse alarm repeat",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -501,7 +500,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 				case "ATTENDEE":
 					attendee := Attendee{}
 					if err := attendee.Unmarshal(value); err != nil {
-						return nil, &utils.SlogError{
+						return nil, &slogError{
 							Msg:  "can't unmarshal attendee",
 							Args: []interface{}{"line", lineCount, "content", line, "err", err},
 						}
@@ -521,7 +520,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *utils.SlogError) {
 	return &cal, nil
 }
 
-func (cal *Calendar) Marshal() (string, *utils.SlogError) {
+func (cal *Calendar) Marshal() (string, *slogError) {
 	var sb strings.Builder
 
 	if _, err := sb.WriteString("BEGIN:VCALENDAR\n"); err != nil {
@@ -583,10 +582,10 @@ func (cal *Calendar) Marshal() (string, *utils.SlogError) {
 	return sb.String(), nil
 }
 
-func (cal *Calendar) MarshalToFile(path string) *utils.SlogError {
+func (cal *Calendar) MarshalToFile(path string) *slogError {
 	file, err := os.Create(path)
 	if err != nil {
-		return &utils.SlogError{
+		return &slogError{
 			Msg:  "can't create file",
 			Args: []interface{}{"path", path, "err", err},
 		}
@@ -599,7 +598,7 @@ func (cal *Calendar) MarshalToFile(path string) *utils.SlogError {
 	}
 
 	if _, err := file.WriteString(calStr); err != nil {
-		return &utils.SlogError{
+		return &slogError{
 			Msg:  "can't write calendar to file",
 			Args: []interface{}{"path", path, "err", err},
 		}
