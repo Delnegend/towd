@@ -193,7 +193,7 @@ func (e *Event) AddAttendee(attendee Attendee) {
 	}
 	e.attendee = append(e.attendee, attendee)
 }
-func (e *Event) RemoveAttendee(attendeeCn AttendeeCalAdrr) error {
+func (e *Event) RemoveAttendee(attendeeCn AttendeeCommonName) error {
 	if e.attendee == nil {
 		return fmt.Errorf("attendee is empty")
 	}

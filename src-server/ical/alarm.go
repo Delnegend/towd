@@ -114,7 +114,7 @@ func (a *Alarm) AddAttendee(attendee Attendee) {
 	}
 	a.attendee = append(a.attendee, attendee)
 }
-func (a *Alarm) RemoveAttendee(attendeeCn AttendeeCalAdrr) error {
+func (a *Alarm) RemoveAttendee(attendeeCn AttendeeCommonName) error {
 	if a.attendee == nil {
 		return fmt.Errorf("attendee is empty")
 	}

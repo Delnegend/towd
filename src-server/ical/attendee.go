@@ -7,6 +7,7 @@ import (
 )
 
 type AttendeeRole string
+	AttendeeCommonName        string
 
 var (
 	AttendeeRoleChair AttendeeRole = "CHAIR"           // organizer
@@ -25,26 +26,24 @@ var (
 	AttendeeCutypeUnknown    AttendeeCutype = "UNKNOWN"    // unknown
 )
 
-type AttendeeCalAdrr string
-
 type Attendee struct {
 	// Common name
-	cn   AttendeeCalAdrr
+	cn   AttendeeCommonName
 	role AttendeeRole
 	// Répondez s'il vous plaît, French for "Please respond"
 	rsvp bool
 	// Calendar user type
 	cuType        AttendeeCutype
-	member        []AttendeeCalAdrr
-	delegatedTo   []AttendeeCalAdrr
-	delegatedFrom []AttendeeCalAdrr
-	sentBy        AttendeeCalAdrr
+	member        []AttendeeCommonName
+	delegatedTo   []AttendeeCommonName
+	delegatedFrom []AttendeeCommonName
+	sentBy        AttendeeCommonName
 	// points to the directory information corresponding to the attendee.
 	dir string
 }
 
 // #region Getters
-func (a *Attendee) GetCN() AttendeeCalAdrr {
+func (a *Attendee) GetCN() AttendeeCommonName {
 	return a.cn
 }
 
@@ -60,19 +59,19 @@ func (a *Attendee) GetCUType() AttendeeCutype {
 	return a.cuType
 }
 
-func (a *Attendee) GetMember() []AttendeeCalAdrr {
+func (a *Attendee) GetMember() []AttendeeCommonName {
 	return a.member
 }
 
-func (a *Attendee) GetDelegatedTo() []AttendeeCalAdrr {
+func (a *Attendee) GetDelegatedTo() []AttendeeCommonName {
 	return a.delegatedTo
 }
 
-func (a *Attendee) GetDelegatedFrom() []AttendeeCalAdrr {
+func (a *Attendee) GetDelegatedFrom() []AttendeeCommonName {
 	return a.delegatedFrom
 }
 
-func (a *Attendee) GetSentBy() AttendeeCalAdrr {
+func (a *Attendee) GetSentBy() AttendeeCommonName {
 	return a.sentBy
 }
 
@@ -83,7 +82,7 @@ func (a *Attendee) GetDir() string {
 // #endregion
 
 // #region Setters
-func (a *Attendee) SetCN(cn AttendeeCalAdrr) {
+func (a *Attendee) SetCN(cn AttendeeCommonName) {
 	a.cn = cn
 }
 
@@ -99,19 +98,19 @@ func (a *Attendee) SetCUType(cuType AttendeeCutype) {
 	a.cuType = cuType
 }
 
-func (a *Attendee) SetMember(member []AttendeeCalAdrr) {
+func (a *Attendee) SetMember(member []AttendeeCommonName) {
 	a.member = member
 }
 
-func (a *Attendee) SetDelegatedTo(delegatedTo []AttendeeCalAdrr) {
+func (a *Attendee) SetDelegatedTo(delegatedTo []AttendeeCommonName) {
 	a.delegatedTo = delegatedTo
 }
 
-func (a *Attendee) SetDelegatedFrom(delegatedFrom []AttendeeCalAdrr) {
+func (a *Attendee) SetDelegatedFrom(delegatedFrom []AttendeeCommonName) {
 	a.delegatedFrom = delegatedFrom
 }
 
-func (a *Attendee) SetSentBy(sentBy AttendeeCalAdrr) {
+func (a *Attendee) SetSentBy(sentBy AttendeeCommonName) {
 	a.sentBy = sentBy
 }
 
@@ -201,13 +200,13 @@ func (a *Attendee) Unmarshal(data string) error {
 		case "CUTYPE":
 			a.cuType = AttendeeCutype(value)
 		case "MEMBER":
-			a.member = append(a.member, AttendeeCalAdrr(value))
+			a.member = append(a.member, AttendeeCommonName(value))
 		case "DELEGATED-TO":
-			a.delegatedTo = append(a.delegatedTo, AttendeeCalAdrr(value))
+			a.delegatedTo = append(a.delegatedTo, AttendeeCommonName(value))
 		case "DELEGATED-FROM":
-			a.delegatedFrom = append(a.delegatedFrom, AttendeeCalAdrr(value))
+			a.delegatedFrom = append(a.delegatedFrom, AttendeeCommonName(value))
 		case "SENT-BY":
-			a.sentBy = AttendeeCalAdrr(value)
+			a.sentBy = AttendeeCommonName(value)
 		case "DIR":
 			a.dir = value
 		default:
