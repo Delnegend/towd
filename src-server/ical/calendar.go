@@ -604,7 +604,7 @@ func (cal *Calendar) MarshalToFile(path string) *slogError {
 }
 
 // #region Getters
-func (c *Calendar) GetId() string {
+func (c *Calendar) GetID() string {
 	return c.id
 }
 func (c *Calendar) GetProdID() string {
@@ -623,6 +623,8 @@ func (c *Calendar) GetUrl() string {
 // #endregion
 
 // #region Setters
+func (c *Calendar) SetId(id string) {
+	c.id = id
 func (c *Calendar) SetName(name string) {
 	c.name = name
 }
