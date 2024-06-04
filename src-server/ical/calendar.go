@@ -342,7 +342,6 @@ func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 						}
 					}
 					newEvent.updatedAt = parsedDatetime
-				case "ATTACH": // TODO: properly handle above
 				case "SEQUENCE":
 					parsedInt, err := strconv.Atoi(value)
 					if err != nil {
