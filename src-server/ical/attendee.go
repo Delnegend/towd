@@ -54,38 +54,30 @@ type Attendee struct {
 func (a *Attendee) GetCN() AttendeeCommonName {
 	return a.cn
 }
-
 func (a *Attendee) GetRole() AttendeeRole {
 	return a.role
 }
-
 func (a *Attendee) GetRSVP() bool {
 	return a.rsvp
 }
-
 func (a *Attendee) GetCUType() AttendeeCustomertype {
 	return a.cuType
 }
-
 func (a *Attendee) GetPartStat() AttendeeParticipantStatus {
 	return a.partStat
 }
 func (a *Attendee) GetMember() []AttendeeCommonName {
 	return a.member
 }
-
 func (a *Attendee) GetDelegatedTo() []AttendeeCommonName {
 	return a.delegatedTo
 }
-
 func (a *Attendee) GetDelegatedFrom() []AttendeeCommonName {
 	return a.delegatedFrom
 }
-
 func (a *Attendee) GetSentBy() AttendeeCommonName {
 	return a.sentBy
 }
-
 func (a *Attendee) GetDir() string {
 	return a.dir
 }
@@ -96,38 +88,30 @@ func (a *Attendee) GetDir() string {
 func (a *Attendee) SetCN(cn AttendeeCommonName) {
 	a.cn = cn
 }
-
 func (a *Attendee) SetRole(role AttendeeRole) {
 	a.role = role
 }
-
 func (a *Attendee) SetRSVP(rsvp bool) {
 	a.rsvp = rsvp
 }
-
 func (a *Attendee) SetCUType(cuType AttendeeCustomertype) {
 	a.cuType = cuType
 }
-
 func (a *Attendee) SetPartStat(partStat AttendeeParticipantStatus) {
 	a.partStat = partStat
 }
 func (a *Attendee) SetMember(member []AttendeeCommonName) {
 	a.member = member
 }
-
 func (a *Attendee) SetDelegatedTo(delegatedTo []AttendeeCommonName) {
 	a.delegatedTo = delegatedTo
 }
-
 func (a *Attendee) SetDelegatedFrom(delegatedFrom []AttendeeCommonName) {
 	a.delegatedFrom = delegatedFrom
 }
-
 func (a *Attendee) SetSentBy(sentBy AttendeeCommonName) {
 	a.sentBy = sentBy
 }
-
 func (a *Attendee) SetDir(dir string) {
 	a.dir = dir
 }
