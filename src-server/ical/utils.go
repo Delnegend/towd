@@ -39,7 +39,11 @@ func parseDate(rawText string) (*time.Time, error) {
 		for _, prop := range strings.Split(slice[0], ";") {
 			if strings.Contains(prop, "=") {
 				parts := strings.Split(prop, "=")
-				properties[parts[0]] = parts[1]
+				if len(parts) > 1 {
+					properties[parts[0]] = parts[1]
+				} else {
+					return nil, fmt.Errorf("invalid property: %s", prop)
+				}
 			}
 		}
 	}
