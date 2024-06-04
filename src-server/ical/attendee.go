@@ -23,6 +23,13 @@ var (
 	AttendeeCutypeResource   AttendeeCustomertype = "RESOURCE"
 	AttendeeCutypeRoom       AttendeeCustomertype = "ROOM"
 	AttendeeCutypeUnknown    AttendeeCustomertype = "UNKNOWN"
+
+	AttendeePartStatNeedsAction AttendeeParticipantStatus = "NEEDS-ACTION"
+	AttendeePartStatAccepted    AttendeeParticipantStatus = "ACCEPTED"
+	AttendeePartStatDeclined    AttendeeParticipantStatus = "DECLINED"
+	AttendeePartStatTentative   AttendeeParticipantStatus = "TENTATIVE"
+	AttendeePartStatCancelled   AttendeeParticipantStatus = "CANCELLED"
+	AttendeePartStatXName       AttendeeParticipantStatus = "X-NAME"
 )
 
 type Attendee struct {
@@ -33,6 +40,7 @@ type Attendee struct {
 	rsvp bool
 	// Calendar user type
 	cuType        AttendeeCustomertype
+	partStat      AttendeeParticipantStatus
 	member        []AttendeeCommonName
 	delegatedTo   []AttendeeCommonName
 	delegatedFrom []AttendeeCommonName
@@ -58,6 +66,9 @@ func (a *Attendee) GetCUType() AttendeeCustomertype {
 	return a.cuType
 }
 
+func (a *Attendee) GetPartStat() AttendeeParticipantStatus {
+	return a.partStat
+}
 func (a *Attendee) GetMember() []AttendeeCommonName {
 	return a.member
 }
@@ -97,6 +108,9 @@ func (a *Attendee) SetCUType(cuType AttendeeCustomertype) {
 	a.cuType = cuType
 }
 
+func (a *Attendee) SetPartStat(partStat AttendeeParticipantStatus) {
+	a.partStat = partStat
+}
 func (a *Attendee) SetMember(member []AttendeeCommonName) {
 	a.member = member
 }
