@@ -68,13 +68,13 @@ func parseDate(rawText string) (*time.Time, error) {
 	return &result, nil
 }
 
-// Create a new iCalendar-compatible CalAddress.
+// Create a new iCalendar-compatible common name.
 //
 // The name and email must not contain any of the following characters:
 // `:`, `;`, `,`, `\n`, `\r`, `\t`.
 //
-// Use empty string for email to create a CalAddress without email.
-func NewCalAddr(name string, email string) (AttendeeCalAdrr, error) {
+// Use empty string for email to create a Common Name without an email address.
+func NewCommonName(name string, email string) (AttendeeCommonName, error) {
 	prohibitChars := []string{":", ";", ",", "\n", "\r", "\t"}
 	for _, c := range prohibitChars {
 		if strings.Contains(name, c) || strings.Contains(email, c) {
@@ -84,7 +84,7 @@ func NewCalAddr(name string, email string) (AttendeeCalAdrr, error) {
 	if name == "" || email == "" {
 		return "", fmt.Errorf("name must not be empty")
 	}
-	return AttendeeCalAdrr(fmt.Sprintf("CN=%s:mailto:%s", name, email)), nil
+	return AttendeeCommonName(fmt.Sprintf("CN=%s:mailto:%s", name, email)), nil
 }
 
 func timeToStr(time_ time.Time) (string, error) {
