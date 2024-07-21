@@ -98,8 +98,6 @@ func FromIcalFile(path string) (*Calendar, *CustomError) {
 	lineCh := make(chan string)
 
 	go func() {
-		defer close(lineCh)
-
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			lineCh <- scanner.Text()
@@ -139,8 +137,6 @@ func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 	lineCh := make(chan string)
 
 	go func() {
-		defer close(lineCh)
-
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			lineCh <- scanner.Text()
@@ -153,6 +149,8 @@ func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 // The shared logic for parsing iCalendar files from a channel of strings, which
 // is used by FromIcalFile and FromIcalUrl.
 func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
+	defer close(lineCh)
+
 	cal := NewCalendar()
 	var mode string
 	lineCount := -1
