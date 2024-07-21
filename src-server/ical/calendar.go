@@ -84,8 +84,8 @@ func NewCalendar() Calendar {
 	}
 }
 
-func UnmarshalFile(path string) (*Calendar, *slogError) {
 // Unmarshal an iCalendar file into a Calendar{} struct.
+func FromIcalFile(path string) (*Calendar, *CustomError) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, &slogError{
@@ -109,8 +109,8 @@ func UnmarshalFile(path string) (*Calendar, *slogError) {
 	return unmarshalCh(lineCh)
 }
 
-func UnmarshalUrl(url_ string) (*Calendar, *slogError) {
 // Unmarshal an iCalendar URL into a Calendar{} struct.
+func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 	validUrl, err := url.ParseRequestURI(url_)
 	if err != nil {
 		return nil, &slogError{Msg: err.Error()}
@@ -141,9 +141,9 @@ func UnmarshalUrl(url_ string) (*Calendar, *slogError) {
 	return unmarshalCh(lineCh)
 }
 
-func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 // The shared logic for parsing iCalendar files from a channel of strings, which
 // is used by FromIcalFile and FromIcalUrl.
+func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 	cal := NewCalendar()
 	var mode string
 	lineCount := -1
