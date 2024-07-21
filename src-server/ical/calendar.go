@@ -67,12 +67,12 @@ import (
 
 // The main struct of the package
 type Calendar struct {
-	id          string
-	prodId      string
-	name        string
-	description string
-	url         string
-	events      []Event
+	id           string
+	prodID       string
+	name         string
+	description  string
+	masterEvents map[string]event.MasterEvent
+	childEvents  map[string]event.ChildEvent
 }
 
 // Initialize a new Calendar{} struct
