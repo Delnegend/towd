@@ -441,8 +441,8 @@ func (cal *Calendar) ToIcal() (string, *CustomError) {
 		sb.WriteString(fmt.Sprintf("X-WR-CALDESC:%s\n", cal.description))
 	}
 
-	for _, event := range cal.events {
-		eventStr, err := event.Marshal()
+	for _, event := range cal.masterEvents {
+		eventStr, err := event.ToIcal()
 		if err != nil {
 			return "", NewCustomError("can't marshal event", map[string]any{
 				"eventID": event.GetID(),
