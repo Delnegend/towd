@@ -182,8 +182,8 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 		}
 	}()
 
-	newEvent := NewEvent()
-	newAlarm := NewAlarm()
+	blankEvent := event.NewUndecidedEvent()
+	newAlarm := structured.NewAlarm()
 
 	for line := range mergedLineCh {
 		switch {
