@@ -88,10 +88,10 @@ func NewCalendar() Calendar {
 func FromIcalFile(path string) (*Calendar, *CustomError) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, &slogError{
-			Msg:  "error opening file",
-			Args: []interface{}{"path", path, "err", err},
-		}
+		return nil, NewCustomError("can't opening file", map[string]any{
+			"path": path,
+			"err":  err,
+		})
 	}
 	defer file.Close()
 
@@ -113,17 +113,26 @@ func FromIcalFile(path string) (*Calendar, *CustomError) {
 func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 	validUrl, err := url.ParseRequestURI(url_)
 	if err != nil {
-		return nil, &slogError{Msg: err.Error()}
+		return nil, NewCustomError("can't parse URL", map[string]any{
+			"url": url_,
+			"err": err,
+		})
 	}
 
 	req, err := http.NewRequest("GET", validUrl.String(), nil)
 	if err != nil {
-		return nil, &slogError{Msg: err.Error()}
+		return nil, NewCustomError("can't create HTTP request", map[string]any{
+			"url": url_,
+			"err": err,
+		})
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, &slogError{Msg: err.Error()}
+		return nil, NewCustomError("can't make HTTP request", map[string]any{
+			"url": url_,
+			"err": err,
+		})
 	}
 	defer resp.Body.Close()
 
@@ -188,9 +197,11 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 		case strings.HasPrefix(line, "ATTENDEE"):
 			attendee := Attendee{}
 			if err := attendee.Unmarshal(line); err != nil {
-				return nil, &slogError{
-					Msg:  "can't unmarshal attendee",
-					Args: []interface{}{"line", lineCount, "content", line, "err", err},
+					return nil, NewCustomError("can't add ical property to event", map[string]any{
+						"line":    lineCount,
+						"content": line,
+						"err":     err,
+					})
 				}
 			}
 			switch mode {
@@ -198,6 +209,10 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 				newEvent.AddAttendee(attendee)
 			case "alarm":
 				newAlarm.AddAttendee(attendee)
+				return nil, NewCustomError("unhandled line", map[string]any{
+					"line":    lineCount,
+					"content": line,
+				})
 			}
 			continue
 		case strings.HasPrefix(line, "ORGANIZER"):
@@ -207,10 +222,6 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 
 		slice := strings.SplitN(line, ":", 2)
 		if len(slice) != 2 {
-			return nil, &slogError{
-				Msg:  "invalid line format",
-				Args: []interface{}{"line", lineCount, "content", line},
-			}
 		}
 		key := slice[0]
 		value := slice[1]
@@ -220,23 +231,32 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 			switch value {
 			case "VCALENDAR":
 				if mode == "calendar" {
-					return nil, errNestedBlock("VCALENDAR", lineCount, line)
+					return nil, NewCustomError("nested VCALENDAR block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = "calendar"
 			case "VTIMEZONE":
 				if mode == "timezone" {
-					return nil, errNestedBlock("VTIMEZONE", lineCount, line)
+					return nil, NewCustomError("nested VTIMEZONE block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = "timezone"
 			case "STANDARD":
 				if mode == "standard" {
-					return nil, errNestedBlock("STANDARD", lineCount, line)
+					return nil, NewCustomError("nested STANDARD block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				if mode != "timezone" {
-					return nil, &slogError{
-						Msg:  "STANDARD block not in VTIMEZONE block",
-						Args: []interface{}{"line", lineCount, "content", line},
-					}
+					return nil, NewCustomError("STANDARD block not in VTIMEZONE block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = "standard"
 			case "DAYLIGHT":
@@ -244,15 +264,22 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 					return nil, errNestedBlock("DAYLIGHT", lineCount, line)
 				}
 				if mode != "timezone" {
-					return nil, &slogError{
-						Msg:  "DAYLIGHT block not in VTIMEZONE block",
-						Args: []interface{}{"line", lineCount, "content", line},
-					}
+					return nil, NewCustomError("nested DAYLIGHT block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
+					return nil, NewCustomError("DAYLIGHT block not in STANDARD block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = "daylight"
 			case "VEVENT":
 				if mode == "event" {
-					return nil, errNestedBlock("VEVENT", lineCount, line)
+					return nil, NewCustomError("nested VEVENT block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = "event"
 			case "VALARM":
@@ -260,20 +287,24 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 					return nil, errNestedBlock("VALARM", lineCount, line)
 				}
 				if mode != "event" {
-					return nil, &slogError{
-						Msg:  "VALARM block not in VEVENT block",
-						Args: []interface{}{"line", lineCount, "content", line},
-					}
 				}
 				if mode == "event" {
+					return nil, NewCustomError("nested VALARM block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 					mode = "alarm"
+					return nil, NewCustomError("VALARM block not in VEVENT block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 			default:
 				if mode == "" {
-					return nil, &slogError{
-						Msg:  "expecting BEGIN block",
-						Args: []interface{}{"line", lineCount, "content", line},
-					}
+					return nil, NewCustomError("expecting BEGIN block", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				slog.Debug("unhandled BEGIN block", "line", lineCount, "content", line)
 			}
@@ -282,29 +313,45 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 			case "calendar":
 				if value != "VCALENDAR" &&
 					value != "VEVENT" {
-					return nil, errUnexpectedEnd(lineCount, line)
+					// return nil, errUnexpectedEnd(lineCount, line)
+					return nil, NewCustomError("unexpected END:VCALENDAR", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = ""
 			case "timezone":
 				if value != "VTIMEZONE" &&
 					value != "STANDARD" &&
 					value != "DAYLIGHT" {
-					return nil, errUnexpectedEnd(lineCount, line)
+					return nil, NewCustomError("unexpected END:VTIMEZONE", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = ""
 			case "standard":
 				if value != "STANDARD" {
-					return nil, errUnexpectedEnd(lineCount, line)
+					return nil, NewCustomError("unexpected END:STANDARD", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = ""
 			case "daylight":
 				if value != "DAYLIGHT" {
-					return nil, errUnexpectedEnd(lineCount, line)
+					return nil, NewCustomError("unexpected END:DAYLIGHT", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = ""
 			case "event":
 				if value != "VEVENT" {
-					return nil, errUnexpectedEnd(lineCount, line)
+					return nil, NewCustomError("unexpected END:VEVENT", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				eventCount++
 				mode = ""
@@ -312,9 +359,6 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 					newEvent.summary = "(no title)"
 				}
 				if err := cal.AddEvent(newEvent); err != nil {
-					return nil, &slogError{
-						Msg:  "event validation failed",
-						Args: []interface{}{"line", lineCount, "content", line, "err", err},
 					}
 				}
 				newEvent = NewEvent()
@@ -323,10 +367,10 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 					return nil, errUnexpectedEnd(lineCount, line)
 				}
 				if err := newEvent.AddAlarm(newAlarm); err != nil {
-					return nil, &slogError{
-						Msg:  "alarm validation failed",
-						Args: []interface{}{"line", lineCount, "content", line, "err", err},
-					}
+					return nil, NewCustomError("unexpected END:VALARM", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
 				mode = "event"
 			}
@@ -592,10 +636,10 @@ func (cal *Calendar) Marshal() (string, *slogError) {
 	for _, event := range cal.events {
 		eventStr, err := event.Marshal()
 		if err != nil {
-			return "", &slogError{
-				Msg:  "can't marshal event",
-				Args: []interface{}{"eventID", event.id, "err", err},
-			}
+			return "", NewCustomError("can't marshal event", map[string]any{
+				"eventID": event.GetID(),
+				"err":     err,
+			})
 		}
 		sb.WriteString(eventStr)
 	}
