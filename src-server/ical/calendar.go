@@ -432,8 +432,8 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 	return &cal, nil
 }
 
-func (cal *Calendar) Marshal() (string, *slogError) {
 // Marshal a Calendar{} struct into an iCalendar string.
+func (cal *Calendar) ToIcal() (string, *CustomError) {
 	var sb strings.Builder
 
 	sb.WriteString("BEGIN:VCALENDAR\n")
