@@ -436,10 +436,7 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 func (cal *Calendar) ToIcal() (string, *CustomError) {
 	var sb strings.Builder
 
-	sb.WriteString("BEGIN:VCALENDAR\n")
-	sb.WriteString(fmt.Sprintf("PRODID:%s\n", cal.prodId))
-	sb.WriteString("VERSION:2.0\n")
-	sb.WriteString(fmt.Sprintf("X-WR-CALNAME:%s\n", cal.name))
+	sb.WriteString(fmt.Sprintf("BEGIN:VCALENDAR\nPRODID:%s\nVERSION:2.0\nX-WR-CALNAME:%s\n", cal.prodID, cal.name))
 	if cal.description != "" {
 		sb.WriteString(fmt.Sprintf("X-WR-CALDESC:%s\n", cal.description))
 	}
