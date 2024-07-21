@@ -159,7 +159,7 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 
 	cal := NewCalendar()
 	var mode string
-	lineCount := -1
+	lineCount := 0
 	eventCount := 0
 
 	// "lookahead" to merge lines that are split
