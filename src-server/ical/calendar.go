@@ -104,7 +104,7 @@ func FromIcalFile(path string) (*Calendar, *CustomError) {
 		}
 	}()
 
-	return unmarshalCh(lineCh)
+	return iCalParser(lineCh)
 }
 
 // Unmarshal an iCalendar URL into a Calendar{} struct.
@@ -143,7 +143,7 @@ func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 		}
 	}()
 
-	return unmarshalCh(lineCh)
+	return iCalParser(lineCh)
 }
 
 // The shared logic for parsing iCalendar files from a channel of strings, which
