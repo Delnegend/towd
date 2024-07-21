@@ -2,29 +2,32 @@ package ical
 
 import (
 	"fmt"
+	"strings"
 )
 
-var (
-	errEventNotRecursive        = "this event is not recurring"
-	errWrongAlarmTriggerFormat  = "alarm trigger must be in the format of `-PTxxM` or `-PTxxH`"
-	errWrongAlarmDurationFormat = "alarm duration must be in the format of `PTxxM` or `PTxxH`"
-)
-
-type slogError struct {
-	Msg  string
-	Args []interface{}
+type CustomError struct {
+	msg  string
+	args map[string]any
 }
 
-func errNestedBlock(blockName string, lineCount int, content string) *slogError {
-	return &slogError{
-		Msg:  fmt.Sprintf("nested %s block", blockName),
-		Args: []interface{}{"line", lineCount, "content", content},
+// Create a new custom error
+func NewCustomError(msg string, args map[string]any) *CustomError {
+	if args == nil {
+		args = make(map[string]any)
+	}
+	return &CustomError{
+		msg:  msg,
+		args: args,
 	}
 }
 
-func errUnexpectedEnd(lineCount int, content string) *slogError {
-	return &slogError{
-		Msg:  "unexpected END block",
-		Args: []interface{}{"line", lineCount, "content", content},
+// Get the error message
+func (e CustomError) Error() string {
+	var sb strings.Builder
+	sb.WriteString(e.msg)
+	sb.WriteString(" | ")
+	for key, value := range e.args {
+		sb.WriteString(fmt.Sprintf(" %s: %v", key, value))
 	}
+	return sb.String()
 }
