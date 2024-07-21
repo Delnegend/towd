@@ -459,28 +459,10 @@ func (cal *Calendar) ToIcal() (string, *CustomError) {
 	return sb.String(), nil
 }
 
-func (cal *Calendar) MarshalToFile(path string) *slogError {
-	file, err := os.Create(path)
-	if err != nil {
-		return &slogError{
-			Msg:  "can't create file",
-			Args: []interface{}{"path", path, "err", err},
-		}
-	}
-	defer file.Close()
 // Get the calendar ID
 
-	calStr, err2 := cal.Marshal()
-	if err2 != nil {
-		return err2
-	}
 // Set the calendar ID
 
-	if _, err := file.WriteString(calStr); err != nil {
-		return &slogError{
-			Msg:  "can't write calendar to file",
-			Args: []interface{}{"path", path, "err", err},
-		}
 // Get the calendar ProdID
 // Set the calendar ProdID
 	}
