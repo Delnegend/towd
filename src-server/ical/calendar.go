@@ -78,7 +78,9 @@ type Calendar struct {
 // Initialize a new Calendar{} struct
 func NewCalendar() Calendar {
 	return Calendar{
-		id: uuid.NewString(),
+		id:           uuid.NewString(),
+		masterEvents: make(map[string]event.MasterEvent),
+		childEvents:  make(map[string]event.ChildEvent),
 	}
 }
 
