@@ -151,6 +151,12 @@ func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 	defer close(lineCh)
 
+	ignoredFields := map[string]struct{}{
+		"X-APPLE-TRAVEL-ADVISORY-BEHAVIOR": {},
+		"ACKNOWLEDGED":                     {},
+		"X-APPLE-DEFAULT-ALARM":            {},
+	}
+
 	cal := NewCalendar()
 	var mode string
 	lineCount := -1
