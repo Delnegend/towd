@@ -1,3 +1,53 @@
+// The `ical` package parse and serialize iCalendar files.
+//
+// # References:
+// - RFC5545: https://datatracker.ietf.org/doc/html/rfc5545
+// - RFC6321: https://datatracker.ietf.org/doc/html/rfc6321
+//
+// # Notes:
+// - Not all properties are supported when parsing, instead stored in the custom
+//   property array for serialization back into iCalendar format if needed.
+// - VTIMEZONE and VALARM sections, including their sub-sections, are ignored.
+//   parsing local timezones are still supported. All datetimes are stored in UTC.
+//
+// - There are 3 types of events: MasterEvent, ChildEvent and UndecidedEvent.
+//   - MasterEvent: a "normal" event.
+//   - ChildEvent: modify a recurring MasterEvent.
+//   - UndecidedEvent: a placeholder for a future Master/ChildEvent.
+// - Calendar{} only holds MasterEvent and ChildEvent, read-only and guaranteed
+//   to be valid.
+//
+// # Example usage:
+//
+// ## Working with a Calendar struct
+//
+// Parse from a file
+//	calendar, _ := ical.FromIcalFile("path/to/input/calendar.ics")
+//
+// Parse from an URL
+//	calendar, _ := ical.FromIcalUrl("https://example.com/calendar.ics")
+//
+// Marshal to a string -> file
+//	output, _ := calendar.ToIcal()
+//	_ := os.WriteFile("path/to/output/calendar.ics", []byte(output), 0644)
+//
+// Create a new Calendar struct
+//	calendar := ical.NewCalendar()
+//
+// ## Working with MasterEvent, ChildEvent and UndecidedEvent
+//
+// Create a new UndecidedEvent
+//	undecidedEvent := ical.NewUndecidedEvent()
+//
+// Turn into a Child/MasterEvent
+//	event, _ := undecidedEvent.DecideEventType()
+//
+// Add a ChildEvent to a MasterEvent
+//	masterEvent.AddChildEvent(event)
+//
+// Add a MasterEvent to a Calendar
+//	calendar.AddMasterEvent(event)
+
 package ical
 
 import (
