@@ -65,6 +65,7 @@ import (
 	"github.com/xyedo/rrule"
 )
 
+// The main struct of the package
 type Calendar struct {
 	id          string
 	prodId      string
@@ -74,6 +75,7 @@ type Calendar struct {
 	events      []Event
 }
 
+// Initialize a new Calendar{} struct
 func NewCalendar() Calendar {
 	return Calendar{
 		id: uuid.NewString(),
@@ -81,6 +83,7 @@ func NewCalendar() Calendar {
 }
 
 func UnmarshalFile(path string) (*Calendar, *slogError) {
+// Unmarshal an iCalendar file into a Calendar{} struct.
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, &slogError{
@@ -105,6 +108,7 @@ func UnmarshalFile(path string) (*Calendar, *slogError) {
 }
 
 func UnmarshalUrl(url_ string) (*Calendar, *slogError) {
+// Unmarshal an iCalendar URL into a Calendar{} struct.
 	validUrl, err := url.ParseRequestURI(url_)
 	if err != nil {
 		return nil, &slogError{Msg: err.Error()}
@@ -136,6 +140,8 @@ func UnmarshalUrl(url_ string) (*Calendar, *slogError) {
 }
 
 func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
+// The shared logic for parsing iCalendar files from a channel of strings, which
+// is used by FromIcalFile and FromIcalUrl.
 	cal := NewCalendar()
 	var mode string
 	lineCount := -1
@@ -570,6 +576,7 @@ func unmarshalCh(lineCh chan string) (*Calendar, *slogError) {
 }
 
 func (cal *Calendar) Marshal() (string, *slogError) {
+// Marshal a Calendar{} struct into an iCalendar string.
 	var sb strings.Builder
 
 	sb.WriteString("BEGIN:VCALENDAR\n")
@@ -604,17 +611,21 @@ func (cal *Calendar) MarshalToFile(path string) *slogError {
 		}
 	}
 	defer file.Close()
+// Get the calendar ID
 
 	calStr, err2 := cal.Marshal()
 	if err2 != nil {
 		return err2
 	}
+// Set the calendar ID
 
 	if _, err := file.WriteString(calStr); err != nil {
 		return &slogError{
 			Msg:  "can't write calendar to file",
 			Args: []interface{}{"path", path, "err", err},
 		}
+// Get the calendar ProdID
+// Set the calendar ProdID
 	}
 
 	return nil
@@ -627,17 +638,22 @@ func (c *Calendar) GetID() string {
 func (c *Calendar) GetProdID() string {
 	return c.prodId
 }
+// Get the calendar name
 func (c *Calendar) GetName() string {
 	return c.name
 }
+// Set the calendar name
+// Get the calendar description
 func (c *Calendar) GetDescription() string {
 	return c.description
 }
 func (c *Calendar) GetUrl() string {
 	return c.url
+// Set the calendar description
 }
 func (c *Calendar) GetEvents() []Event {
 	return c.events
+// Add a MasterEvent to the calendar
 }
 
 // #endregion
@@ -645,15 +661,19 @@ func (c *Calendar) GetEvents() []Event {
 // #region Setters
 func (c *Calendar) SetId(id string) {
 	c.id = id
+// Iterate over all MasterEvents in the calendar and apply a function to each.
 }
 func (c *Calendar) SetName(name string) {
 	c.name = name
+// Iterate over all ChildEvents in the calendar and apply a function to each.
 }
 func (c *Calendar) SetDescription(description string) {
 	c.description = description
+// Get the number of MasterEvents in the calendar
 }
 
 // #endregion
+// Get the number of ChildEvents in the calendar
 
 // Validate the event and add it to the calendar
 func (c *Calendar) AddEvent(event Event) error {
@@ -662,4 +682,6 @@ func (c *Calendar) AddEvent(event Event) error {
 	}
 	c.events = append(c.events, event)
 	return nil
+// Get a MasterEvent from the calendar by ID
+// Get a ChildEvent from the calendar by ID
 }
