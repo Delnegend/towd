@@ -186,49 +186,32 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 	newAlarm := structured.NewAlarm()
 
 	for line := range mergedLineCh {
-		switch {
-		case strings.HasPrefix(line, "ATTACH"):
-			val := strings.TrimPrefix(line, "ATTACH;")
+		slice := strings.SplitN(line, ":", 2)
+		if len(slice) != 2 {
 			switch mode {
 			case "event":
-				newEvent.SetAttachment(val)
-				continue
-			case "alarm":
-				newAlarm.SetAttachment(val)
-				continue
-			}
-			continue
-		case strings.HasPrefix(line, "ATTENDEE"):
-			attendee := Attendee{}
-			if err := attendee.Unmarshal(line); err != nil {
+				if err := blankEvent.AddIcalProperty(line); err != nil {
 					return nil, NewCustomError("can't add ical property to event", map[string]any{
 						"line":    lineCount,
 						"content": line,
 						"err":     err,
 					})
 				}
-			}
-			switch mode {
-			case "event":
-				newEvent.AddAttendee(attendee)
 			case "alarm":
-				newAlarm.AddAttendee(attendee)
+				newAlarm.AddIcalProperty(line)
+			default:
 				return nil, NewCustomError("unhandled line", map[string]any{
 					"line":    lineCount,
 					"content": line,
 				})
 			}
-			continue
-		case strings.HasPrefix(line, "ORGANIZER"):
-			newEvent.SetOrganizer(strings.TrimPrefix(line, "ORGANIZER;"))
-			continue
 		}
+		key := strings.ToUpper(strings.TrimSpace(slice[0]))
+		value := strings.TrimSpace(slice[1])
 
-		slice := strings.SplitN(line, ":", 2)
-		if len(slice) != 2 {
+		if _, ok := ignoredFields[key]; ok {
+			continue
 		}
-		key := slice[0]
-		value := slice[1]
 
 		switch key {
 		case "BEGIN":
@@ -264,20 +247,20 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 				}
 				mode = "standard"
 			case "DAYLIGHT":
-				if mode == "daylight" {
-					return nil, errNestedBlock("DAYLIGHT", lineCount, line)
-				}
-				if mode != "timezone" {
+				switch {
+				case mode == "standard":
+					mode = "daylight"
+				case mode == "daylight":
 					return nil, NewCustomError("nested DAYLIGHT block", map[string]any{
 						"line":    lineCount,
 						"content": line,
 					})
+				default:
 					return nil, NewCustomError("DAYLIGHT block not in STANDARD block", map[string]any{
 						"line":    lineCount,
 						"content": line,
 					})
 				}
-				mode = "daylight"
 			case "VEVENT":
 				if mode == "event" {
 					return nil, NewCustomError("nested VEVENT block", map[string]any{
@@ -287,17 +270,15 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 				}
 				mode = "event"
 			case "VALARM":
-				if mode == "alarm" {
-					return nil, errNestedBlock("VALARM", lineCount, line)
-				}
-				if mode != "event" {
-				}
-				if mode == "event" {
+				switch {
+				case mode == "alarm":
 					return nil, NewCustomError("nested VALARM block", map[string]any{
 						"line":    lineCount,
 						"content": line,
 					})
+				case mode == "event":
 					mode = "alarm"
+				default:
 					return nil, NewCustomError("VALARM block not in VEVENT block", map[string]any{
 						"line":    lineCount,
 						"content": line,
@@ -359,31 +340,54 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 				}
 				eventCount++
 				mode = ""
-				if newEvent.summary == "" {
-					newEvent.summary = "(no title)"
+				if blankEvent.GetSummary() == "" {
+					blankEvent.SetSummary("(no title)")
 				}
-				if err := cal.AddEvent(newEvent); err != nil {
+				resultEvent, err := blankEvent.DecideEventType()
+				if err != nil {
+					return nil, NewCustomError("can't decide event type", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
+				}
+				switch resultEvent := resultEvent.(type) {
+				case event.MasterEvent:
+					if _, ok := cal.masterEvents[blankEvent.GetID()]; ok {
+						return nil, NewCustomError("duplicate event id", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
 					}
+					cal.masterEvents[blankEvent.GetID()] = resultEvent
+				case event.ChildEvent:
+					cal.childEvents[blankEvent.GetID()] = resultEvent
+				default:
+					return nil, NewCustomError("can't decide event type", map[string]any{
+						"line":    lineCount,
+						"content": line,
+					})
 				}
-				newEvent = NewEvent()
+				blankEvent = event.NewUndecidedEvent()
+
 			case "alarm":
 				if value != "VALARM" {
-					return nil, errUnexpectedEnd(lineCount, line)
-				}
-				if err := newEvent.AddAlarm(newAlarm); err != nil {
 					return nil, NewCustomError("unexpected END:VALARM", map[string]any{
 						"line":    lineCount,
 						"content": line,
 					})
 				}
+				blankEvent.AddAlarm(newAlarm)
 				mode = "event"
+				newAlarm = structured.NewAlarm()
 			}
 		default:
 			switch mode {
+			case "timezone", "standard", "daylight":
 			case "calendar":
 				switch key {
+				case "VERSION", "CALSCALE", "METHOD", "X-WR-TIMEZONE":
 				case "PRODID":
-					cal.prodId = value
+					cal.prodID = value
 				case "X-WR-CALNAME":
 					cal.SetName(value)
 				case "X-WR-CALDESC":
@@ -392,228 +396,15 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
 			case "event":
-				switch key {
-				case "UID":
-					newEvent.id = value
-				case "SUMMARY":
-					newEvent.SetSummary(value)
-				case "DESCRIPTION":
-					newEvent.SetDescription(value)
-				case "LOCATION":
-					newEvent.SetLocation(value)
-				case "URL":
-					if err := newEvent.SetUrl(value); err != nil {
-						return nil, &slogError{
-							Msg:  err.Error(),
-							Args: []interface{}{"line", lineCount, "content", line},
-						}
-					}
-				case "STATUS":
-					switch value {
-					case string(EventStatusConfirmed):
-						newEvent.SetStatus(EventStatusConfirmed)
-					case string(EventStatusCancelled):
-						newEvent.SetStatus(EventStatusCancelled)
-					case string(EventStatusTentative):
-						newEvent.SetStatus(EventStatusCancelled)
-					default:
-					}
-				case "TRANSP":
-					switch value {
-					case string(EventTransparencyOpaque):
-						newEvent.SetTransparency(EventTransparencyOpaque)
-					case string(EventTransparencyTransparent):
-						newEvent.SetTransparency(EventTransparencyTransparent)
-					default:
-						return nil, &slogError{
-							Msg:  "unhandled transparency",
-							Args: []interface{}{"line", lineCount, "content", line},
-						}
-					}
-				case "CREATED":
-					parsedDatetime, err := time.Parse("20060102T150405Z", value)
-					if err != nil {
-						return nil, &slogError{
-							Msg:  "can't parse created datetime",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-					newEvent.createdAt = parsedDatetime
-				case "LAST-MODIFIED":
-					parsedDatetime, err := time.Parse("20060102T150405Z", value)
-					if err != nil {
-						return nil, &slogError{
-							Msg:  "can't parse last-modified datetime",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-					newEvent.updatedAt = parsedDatetime
-				case "SEQUENCE":
-					parsedInt, err := strconv.Atoi(value)
-					if err != nil {
-						return nil, &slogError{
-							Msg:  "can't parse sequence",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-					newEvent.sequence = parsedInt
-				case "RRULE":
-					parsedRrule, err := rrule.StrToRRule(value)
-					if err != nil {
-						return nil, &slogError{
-							Msg:  "can't parse rrule",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-					newEvent.SetRRule(parsedRrule)
-				case "X-GOOGLE-CONFERENCE":
-					if newEvent.url == "" {
-						if err := newEvent.SetUrl(value); err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-					}
-				default:
-					switch {
-					case strings.HasPrefix(key, "DT"):
-						parsedDatetime, err := parseDate(line)
-						if err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-
-						// set the datetime according to the DT field
-						field := strings.Split(key, ";")[0]
-						switch strings.TrimPrefix(field, "DT") {
-						case "START":
-							newEvent.SetStartDate(*parsedDatetime)
-						case "END":
-							newEvent.SetEndDate(*parsedDatetime)
-						case "STAMP":
-						default:
-							return nil, &slogError{
-								Msg:  "unhandled DT field, expecting DTSTART, DTEND, or DTSTAMP",
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-						continue
-					case strings.HasPrefix(key, "EXDATE"):
-						parsedDatetime, err := parseDate(line)
-						if err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-						if err := newEvent.AddExDate(*parsedDatetime); err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-					case strings.HasPrefix(key, "RDATE"):
-						parsedDatetime, err := parseDate(line)
-						if err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-						if err := newEvent.AddRDate(*parsedDatetime); err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-					case strings.HasPrefix(key, "RECURRENCE-ID"):
-						parsedDatetime, err := parseDate(line)
-						if err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-						if err := newEvent.SetRecurrenceID(*parsedDatetime); err != nil {
-							return nil, &slogError{
-								Msg:  err.Error(),
-								Args: []interface{}{"line", lineCount, "content", line},
-							}
-						}
-					default:
-						slog.Warn("unhandled line", "line", lineCount, "content", line)
-					}
+				if err := blankEvent.AddIcalProperty(line); err != nil {
+					return nil, NewCustomError("can't add ical property to event", map[string]any{
+						"line":    lineCount,
+						"content": line,
+						"err":     err,
+					})
 				}
-			case "alarm": // in VEVENT block
-				switch key {
-				case "UID":
-					if value != "" {
-						newAlarm.uid = value
-						continue
-					}
-				case "X-WR-ALARMUID":
-					if value != "" && newAlarm.uid == "" {
-						newAlarm.uid = value
-						continue
-					}
-				case "ACTION":
-					switch value {
-					case "AUDIO":
-						newAlarm.SetAction(AlarmActionAudio)
-					case "DISPLAY":
-						newAlarm.SetAction(AlarmActionDisplay)
-					case "EMAIL":
-						newAlarm.SetAction(AlarmActionEmail)
-					case "PROCEDURE":
-						newAlarm.SetAction(AlarmActionProcedure)
-					default:
-						return nil, &slogError{
-							Msg:  "unhandled alarm action",
-							Args: []interface{}{"line", lineCount, "content", line},
-						}
-					}
-				case "TRIGGER":
-					if err := newAlarm.SetTrigger(value); err != nil {
-						return nil, &slogError{
-							Msg:  "can't set alarm trigger",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-				case "DURATION":
-					if err := newAlarm.SetDuration(value); err != nil {
-						return nil, &slogError{
-							Msg:  "can't set alarm duration",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-				case "REPEAT":
-					parsedInt, err := strconv.Atoi(value)
-					if err != nil {
-						return nil, &slogError{
-							Msg:  "can't parse alarm repeat",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-					newAlarm.SetRepeat(parsedInt)
-				case "DESCRIPTION":
-					newAlarm.SetDescription(value)
-				case "SUMMARY":
-					newAlarm.SetSummary(value)
-				case "ATTENDEE":
-					attendee := Attendee{}
-					if err := attendee.Unmarshal(value); err != nil {
-						return nil, &slogError{
-							Msg:  "can't unmarshal attendee",
-							Args: []interface{}{"line", lineCount, "content", line, "err", err},
-						}
-					}
-					newAlarm.AddAttendee(attendee)
-				default:
-					slog.Warn("unhandled line", "line", lineCount, "content", line)
-				}
+			case "alarm":
+				newAlarm.AddIcalProperty(line)
 			default:
 				slog.Warn("unhandled line", "line", lineCount, "content", line)
 			}
