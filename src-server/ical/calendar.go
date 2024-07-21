@@ -460,67 +460,109 @@ func (cal *Calendar) ToIcal() (string, *CustomError) {
 }
 
 // Get the calendar ID
-
-// Set the calendar ID
-
-// Get the calendar ProdID
-// Set the calendar ProdID
-	}
-
-	return nil
-}
-
-// #region Getters
 func (c *Calendar) GetID() string {
 	return c.id
 }
-func (c *Calendar) GetProdID() string {
-	return c.prodId
+
+// Set the calendar ID
+func (c *Calendar) SetID(id string) {
+	c.id = id
 }
+
+// Get the calendar ProdID
+func (c *Calendar) GetProdID() string {
+	return c.prodID
+}
+
+// Set the calendar ProdID
+func (c *Calendar) SetProdID(prodID string) error {
+	rgx := regexp.MustCompile(`^-//\w+//\w+//\w+$`)
+	if !rgx.MatchString(prodID) {
+		return fmt.Errorf("prodID must match RFC5545 format (-//ORG/ORGUNIT/APPNAME)")
+	}
+
+	c.prodID = prodID
+	return nil
+}
+
 // Get the calendar name
 func (c *Calendar) GetName() string {
 	return c.name
 }
+
 // Set the calendar name
+func (c *Calendar) SetName(name string) {
+	c.name = name
+}
+
 // Get the calendar description
 func (c *Calendar) GetDescription() string {
 	return c.description
 }
-func (c *Calendar) GetUrl() string {
-	return c.url
+
 // Set the calendar description
+func (c *Calendar) SetDescription(desc string) {
+	c.description = desc
 }
-func (c *Calendar) GetEvents() []Event {
-	return c.events
+
 // Add a MasterEvent to the calendar
-}
-
-// #endregion
-
-// #region Setters
-func (c *Calendar) SetId(id string) {
-	c.id = id
-// Iterate over all MasterEvents in the calendar and apply a function to each.
-}
-func (c *Calendar) SetName(name string) {
-	c.name = name
-// Iterate over all ChildEvents in the calendar and apply a function to each.
-}
-func (c *Calendar) SetDescription(description string) {
-	c.description = description
-// Get the number of MasterEvents in the calendar
-}
-
-// #endregion
-// Get the number of ChildEvents in the calendar
-
-// Validate the event and add it to the calendar
-func (c *Calendar) AddEvent(event Event) error {
-	if err := event.Validate(); err != nil {
-		return err
+func (c *Calendar) AddMasterEvent(id string, e event.MasterEvent) error {
+	if _, ok := c.masterEvents[id]; ok {
+		return fmt.Errorf("event with id %s already exists", id)
 	}
-	c.events = append(c.events, event)
+	c.masterEvents[id] = e
+	e.IterateChildEvents(func(id string, e *event.ChildEvent) {
+		c.childEvents[id] = *e
+	})
 	return nil
+}
+
+func (c *Calendar) RemoveMasterEvent(id string) error {
+	if _, ok := c.masterEvents[id]; !ok {
+		return fmt.Errorf("event with id %s does not exist", id)
+	}
+	delete(c.masterEvents, id)
+	return nil
+}
+
+// Iterate over all MasterEvents in the calendar and apply a function to each.
+func (c *Calendar) IterateMasterEvents(f func(id string, event event.MasterEvent) error) error {
+	for id, event := range c.masterEvents {
+		if err := f(id, event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Iterate over all ChildEvents in the calendar and apply a function to each.
+func (c *Calendar) IterateChildEvents(f func(id string, event event.ChildEvent) error) error {
+	for id, event := range c.childEvents {
+		if err := f(id, event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Get the number of MasterEvents in the calendar
+func (c *Calendar) GetMasterEventCount() int {
+	return len(c.masterEvents)
+}
+
+// Get the number of ChildEvents in the calendar
+func (c *Calendar) GetChildEventCount() int {
+	return len(c.childEvents)
+}
+
 // Get a MasterEvent from the calendar by ID
+func (c *Calendar) GetMasterEvent(id string) (event.MasterEvent, bool) {
+	event, ok := c.masterEvents[id]
+	return event, ok
+}
+
 // Get a ChildEvent from the calendar by ID
+func (c *Calendar) GetChildEvent(id string) (event.ChildEvent, bool) {
+	event, ok := c.childEvents[id]
+	return event, ok
 }
