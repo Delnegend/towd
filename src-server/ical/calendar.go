@@ -57,12 +57,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
+	"regexp"
 	"strings"
-	"time"
+	"towd/src-server/ical/event"
+	"towd/src-server/ical/structured"
 
 	"github.com/google/uuid"
-	"github.com/xyedo/rrule"
 )
 
 // The main struct of the package
