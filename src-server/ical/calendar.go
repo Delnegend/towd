@@ -157,6 +157,8 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 		"X-APPLE-TRAVEL-ADVISORY-BEHAVIOR": {},
 		"ACKNOWLEDGED":                     {},
 		"X-APPLE-DEFAULT-ALARM":            {},
+		"VERSION":                          {},
+		"CALSCALE":                         {},
 		"METHOD":                           {},
 		"X-WR-TIMEZONE":                    {},
 	}
