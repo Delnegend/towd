@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
 	"towd/src-server/handler"
 	"towd/src-server/utils"
 
@@ -18,8 +17,7 @@ import (
 
 func init() {
 	if err := godotenv.Load(); err != nil {
-		fmt.Println("Error loading .env file")
-		panic(err)
+		slog.Info(err.Error())
 	}
 	slog.SetDefault(slog.New(
 		tint.NewHandler(os.Stderr, &tint.Options{
@@ -30,92 +28,86 @@ func init() {
 }
 
 func main() {
-	appState := utils.NewAppState()
+	as := utils.NewAppState()
 
-	handler.Ping(appState)
-	handler.Events(appState)
-	handler.CreateEvent(appState)
+	// handler.CreateEvent(as)
+	handler.Events(as)
+	handler.ImportCalendar(as)
+	handler.Ping(as)
+	handler.Test(as)
 
-	// init discord session
-	var err error
-	appState.DgSession, err = discordgo.New("Bot " + appState.Config.DiscordBotToken())
+	// create a new Discord App client session
+	dgSession, err := discordgo.New("Bot " + as.Config.GetDiscordAppToken())
 	if err != nil {
 		slog.Error("error creating Discord session", "error", err)
-		return
+		os.Exit(1)
 	}
-	appState.DgSession.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		slog.Info("logged in as", "username", s.State.User.Username, "discriminator", s.State.User.Discriminator)
-	})
 
-	// assign handlers to the instance
-	appState.DgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// tell discordgo how to handle interactions from Discord
+	dgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		execute := func(id string) {
+			if handler, ok := as.GetAppCmdHandler(id); ok {
+				if err := handler(s, i); err != nil {
+					slog.Error("handler error", "command", id, "error", err.Error())
+				}
+				return
+			}
+			if i == nil || i.Interaction == nil {
+				return
+			}
+			if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Flags:   discordgo.MessageFlagsEphemeral,
+					Content: "Expired interaction",
+				},
+			}); err != nil {
+				slog.Error("can't respond", "error", err.Error())
+			}
+			username := func(i *discordgo.InteractionCreate) string {
+				if i == nil || i.User == nil {
+					return "unknown"
+				}
+				return i.User.Username
+			}(i)
+			slog.Debug("someone used an expired interaction", "username", username, "custom_id", id)
+		}
+
 		switch i.Type {
-		// all the slash commands
-		case discordgo.InteractionApplicationCommand:
+		case discordgo.InteractionApplicationCommand: // slash commands
 			cmdData := i.ApplicationCommandData()
-			if handler, ok := appState.AppCmdHandler[cmdData.Name]; ok {
-				handler(s, i)
-				return
-			}
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Flags:   discordgo.MessageFlagsEphemeral,
-					Content: "WIP command",
-				},
-			})
-			slog.Warn("no handler for command", "name", cmdData.Name, "options", cmdData.Options)
-
-		// interactive elements like buttons, dropdowns, etc
-		case discordgo.InteractionMessageComponent:
+			execute(cmdData.Name)
+		case discordgo.InteractionMessageComponent: // buttons, dropdowns, etc
 			componentData := i.MessageComponentData()
-			if handler, ok := appState.MsgComponentHandler[componentData.CustomID]; ok {
-				handler(s, i)
-				return
-			}
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Flags:   discordgo.MessageFlagsEphemeral,
-					Content: "Action expired",
-				},
-			})
-			slog.Debug("someone used an expired action", "username", i.User.Username, "custom_id", componentData.CustomID)
-
-		// modal (text input)
-		case discordgo.InteractionModalSubmit:
+			execute(componentData.CustomID)
+		case discordgo.InteractionModalSubmit: // modal a.k.a. text input
 			modalData := i.ModalSubmitData()
-			if handler, ok := appState.ModalHandler[modalData.CustomID]; ok {
-				handler(s, i)
-				return
-			}
-			s.ChannelMessageSendComplex(i.ChannelID, &discordgo.MessageSend{
-				Content: "Action expired",
-				Flags:   discordgo.MessageFlagsEphemeral,
-			})
-			slog.Debug("someone submitted an expired modal", "username", i.User.Username, "custom_id", modalData.CustomID)
+			execute(modalData.CustomID)
+		default:
+			slog.Error("unknown interaction type", "type", i.Type)
 		}
 	})
 
-	if appState.DgSession.Open() != nil {
+	if dgSession.Open() != nil {
 		fmt.Println("error opening connection,", err)
 		return
 	}
-	defer appState.DgSession.Close()
+	defer dgSession.Close()
 
-	// send commands info to Discord backend
-	for k, v := range appState.AppCmdInfo {
-		if _, err := appState.DgSession.ApplicationCommandCreate(
-			appState.DgSession.State.User.ID,
-			appState.Config.DiscordGuildID(),
+	// tell Discord what commands we have
+	as.IterateAppCmdInfo(func(k string, v *discordgo.ApplicationCommand) {
+		if _, err := dgSession.ApplicationCommandCreate(
+			dgSession.State.User.ID,
+			as.Config.GetDiscordGuildID(),
 			v); err != nil {
 			slog.Error("cannot create command", "name", k, "error", err)
 			return
 		}
-	}
+	})
 
-	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	slog.Info("number of guilds", "guilds", len(dgSession.State.Guilds))
+	slog.Info("app is now running.  Press CTRL-C to exit.")
+
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
