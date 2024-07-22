@@ -98,9 +98,12 @@ func FromIcalFile(path string) (*Calendar, *CustomError) {
 	lineCh := make(chan string)
 
 	go func() {
+		defer close(lineCh)
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			lineCh <- scanner.Text()
+			if lineCh != nil {
+				lineCh <- scanner.Text()
+			}
 		}
 	}()
 
@@ -137,6 +140,7 @@ func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 	lineCh := make(chan string)
 
 	go func() {
+		defer close(lineCh)
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			lineCh <- scanner.Text()
@@ -148,13 +152,13 @@ func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
 
 // The shared logic for parsing iCalendar files from a channel of strings, which
 // is used by FromIcalFile and FromIcalUrl.
-func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
-	defer close(lineCh)
-
+func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 	ignoredFields := map[string]struct{}{
 		"X-APPLE-TRAVEL-ADVISORY-BEHAVIOR": {},
 		"ACKNOWLEDGED":                     {},
 		"X-APPLE-DEFAULT-ALARM":            {},
+		"METHOD":                           {},
+		"X-WR-TIMEZONE":                    {},
 	}
 
 	cal := NewCalendar()
@@ -162,253 +166,260 @@ func iCalParser(lineCh chan string) (*Calendar, *CustomError) {
 	lineCount := 0
 	eventCount := 0
 
-	// "lookahead" to merge lines that are split
-	mergedLineCh := make(chan string)
-	go func() {
-		defer close(mergedLineCh)
-
-		var lastLine string
-		for currentLine := range lineCh {
-			switch strings.HasPrefix(currentLine, " ") {
-			case true:
-				currentLine = lastLine + strings.TrimPrefix(currentLine, " ")
-			case false:
-				if lastLine != "" {
-					mergedLineCh <- lastLine
-				}
-			}
-			lineCount++
-			lastLine = currentLine
-		}
-	}()
+	errCh := make(chan *CustomError)
 
 	blankEvent := event.NewUndecidedEvent()
 	newAlarm := structured.NewAlarm()
-
-	for line := range mergedLineCh {
-		slice := strings.SplitN(line, ":", 2)
-		if len(slice) != 2 {
-			switch mode {
-			case "event":
-				if err := blankEvent.AddIcalProperty(line); err != nil {
-					return nil, NewCustomError("can't add ical property to event", map[string]any{
-						"line":    lineCount,
-						"content": line,
-						"err":     err,
-					})
-				}
-			case "alarm":
-				newAlarm.AddIcalProperty(line)
-			default:
-				return nil, NewCustomError("unhandled line", map[string]any{
-					"line":    lineCount,
-					"content": line,
-				})
+	var line string
+	go func() {
+		for rawLine := range lineCh {
+			lineCount++
+			if strings.HasPrefix(rawLine, " ") {
+				line += strings.TrimSpace(rawLine)
+				continue
+			} else {
+				line = rawLine
 			}
-		}
-		key := strings.ToUpper(strings.TrimSpace(slice[0]))
-		value := strings.TrimSpace(slice[1])
 
-		if _, ok := ignoredFields[key]; ok {
-			continue
-		}
-
-		switch key {
-		case "BEGIN":
-			switch value {
-			case "VCALENDAR":
-				if mode == "calendar" {
-					return nil, NewCustomError("nested VCALENDAR block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = "calendar"
-			case "VTIMEZONE":
-				if mode == "timezone" {
-					return nil, NewCustomError("nested VTIMEZONE block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = "timezone"
-			case "STANDARD":
-				if mode == "standard" {
-					return nil, NewCustomError("nested STANDARD block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				if mode != "timezone" {
-					return nil, NewCustomError("STANDARD block not in VTIMEZONE block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = "standard"
-			case "DAYLIGHT":
-				switch {
-				case mode == "standard":
-					mode = "daylight"
-				case mode == "daylight":
-					return nil, NewCustomError("nested DAYLIGHT block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
+			slice := strings.SplitN(line, ":", 2)
+			if len(slice) < 2 {
+				switch mode {
+				case "event":
+					if err := blankEvent.AddIcalProperty(line); err != nil {
+						errCh <- NewCustomError("can't add ical property to event", map[string]any{
+							"line":    lineCount,
+							"content": line,
+							"err":     err,
+						})
+					}
+				case "alarm":
+					newAlarm.AddIcalProperty(line)
 				default:
-					return nil, NewCustomError("DAYLIGHT block not in STANDARD block", map[string]any{
+					errCh <- NewCustomError("unhandled line", map[string]any{
 						"line":    lineCount,
 						"content": line,
 					})
 				}
-			case "VEVENT":
-				if mode == "event" {
-					return nil, NewCustomError("nested VEVENT block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = "event"
-			case "VALARM":
-				switch {
-				case mode == "alarm":
-					return nil, NewCustomError("nested VALARM block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				case mode == "event":
-					mode = "alarm"
-				default:
-					return nil, NewCustomError("VALARM block not in VEVENT block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-			default:
-				if mode == "" {
-					return nil, NewCustomError("expecting BEGIN block", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				slog.Debug("unhandled BEGIN block", "line", lineCount, "content", line)
+				continue
 			}
-		case "END":
-			switch mode {
-			case "calendar":
-				if value != "VCALENDAR" &&
-					value != "VEVENT" {
-					// return nil, errUnexpectedEnd(lineCount, line)
-					return nil, NewCustomError("unexpected END:VCALENDAR", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = ""
-			case "timezone":
-				if value != "VTIMEZONE" &&
-					value != "STANDARD" &&
-					value != "DAYLIGHT" {
-					return nil, NewCustomError("unexpected END:VTIMEZONE", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = ""
-			case "standard":
-				if value != "STANDARD" {
-					return nil, NewCustomError("unexpected END:STANDARD", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = ""
-			case "daylight":
-				if value != "DAYLIGHT" {
-					return nil, NewCustomError("unexpected END:DAYLIGHT", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				mode = ""
-			case "event":
-				if value != "VEVENT" {
-					return nil, NewCustomError("unexpected END:VEVENT", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				eventCount++
-				mode = ""
-				if blankEvent.GetSummary() == "" {
-					blankEvent.SetSummary("(no title)")
-				}
-				resultEvent, err := blankEvent.DecideEventType()
-				if err != nil {
-					return nil, NewCustomError("can't decide event type", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				switch resultEvent := resultEvent.(type) {
-				case event.MasterEvent:
-					if _, ok := cal.masterEvents[blankEvent.GetID()]; ok {
-						return nil, NewCustomError("duplicate event id", map[string]any{
+			key := strings.ToUpper(strings.TrimSpace(slice[0]))
+			value := strings.TrimSpace(slice[1])
+
+			if _, ok := ignoredFields[key]; ok {
+				continue
+			}
+
+			switch key {
+			case "BEGIN":
+				switch value {
+				case "VCALENDAR":
+					if mode == "calendar" {
+						errCh <- NewCustomError("nested VCALENDAR block", map[string]any{
 							"line":    lineCount,
 							"content": line,
 						})
+						continue
 					}
-					cal.masterEvents[blankEvent.GetID()] = resultEvent
-				case event.ChildEvent:
-					cal.childEvents[blankEvent.GetID()] = resultEvent
+					mode = "calendar"
+				case "VTIMEZONE":
+					if mode == "timezone" {
+						errCh <- NewCustomError("nested VTIMEZONE block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					mode = "timezone"
+				case "STANDARD":
+					if mode == "standard" {
+						errCh <- NewCustomError("nested STANDARD block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					if mode != "timezone" {
+						errCh <- NewCustomError("STANDARD block not in VTIMEZONE block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+							"mode":    mode,
+						})
+						continue
+					}
+					mode = "standard"
+				case "DAYLIGHT":
+					switch {
+					case mode == "timezone":
+						mode = "daylight"
+					case mode == "daylight":
+						errCh <- NewCustomError("nested DAYLIGHT block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					default:
+						errCh <- NewCustomError("DAYLIGHT block not in STANDARD block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+				case "VEVENT":
+					if mode == "event" {
+						slog.Warn("nested VEVENT block", "line", lineCount, "content", line)
+					}
+					mode = "event"
+				case "VALARM":
+					switch {
+					case mode == "event":
+						mode = "alarm"
+					case mode == "alarm":
+						errCh <- NewCustomError("nested VALARM block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					default:
+						errCh <- NewCustomError("VALARM block not in VEVENT block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
 				default:
-					return nil, NewCustomError("can't decide event type", map[string]any{
+					if mode == "" {
+						errCh <- NewCustomError("expecting BEGIN block", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+				}
+			case "END":
+				switch mode {
+				case "calendar":
+					errCh <- nil
+					continue
+				case "timezone":
+					if value != "VTIMEZONE" &&
+						value != "STANDARD" &&
+						value != "DAYLIGHT" {
+						errCh <- NewCustomError("unexpected END:VTIMEZONE", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					mode = "event"
+				case "standard":
+					if value != "STANDARD" {
+						errCh <- NewCustomError("unexpected END:STANDARD", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					mode = "timezone"
+				case "daylight":
+					if value != "DAYLIGHT" {
+						errCh <- NewCustomError("unexpected END:DAYLIGHT", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					mode = "timezone"
+				case "event":
+					mode = "calendar"
+					if value != "VEVENT" {
+						errCh <- NewCustomError("unexpected END:VEVENT", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					eventCount++
+					if blankEvent.GetSummary() == "" {
+						blankEvent.SetSummary("(no title)")
+					}
+					resultEvent, err := blankEvent.DecideEventType()
+					if err != nil {
+						errCh <- NewCustomError("can't decide event type", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					switch resultEvent := resultEvent.(type) {
+					case event.MasterEvent:
+						if _, ok := cal.masterEvents[blankEvent.GetID()]; ok {
+							errCh <- NewCustomError("duplicate event id", map[string]any{
+								"line":    lineCount,
+								"content": line,
+							})
+							continue
+						}
+						cal.masterEvents[blankEvent.GetID()] = resultEvent
+					case event.ChildEvent:
+						cal.childEvents[blankEvent.GetID()] = resultEvent
+					default:
+						errCh <- NewCustomError("can't decide event type", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					blankEvent = event.NewUndecidedEvent()
+				case "alarm":
+					if value != "VALARM" {
+						errCh <- NewCustomError("unexpected END:VALARM", map[string]any{
+							"line":    lineCount,
+							"content": line,
+						})
+						continue
+					}
+					blankEvent.AddAlarm(newAlarm)
+					newAlarm = structured.NewAlarm()
+					mode = "event"
+				default:
+					errCh <- NewCustomError("unexpected END", map[string]any{
 						"line":    lineCount,
 						"content": line,
+						"mode":    mode,
 					})
+					continue
 				}
-				blankEvent = event.NewUndecidedEvent()
-
-			case "alarm":
-				if value != "VALARM" {
-					return nil, NewCustomError("unexpected END:VALARM", map[string]any{
-						"line":    lineCount,
-						"content": line,
-					})
-				}
-				blankEvent.AddAlarm(newAlarm)
-				mode = "event"
-				newAlarm = structured.NewAlarm()
-			}
-		default:
-			switch mode {
-			case "timezone", "standard", "daylight":
-			case "calendar":
-				switch key {
-				case "VERSION", "CALSCALE", "METHOD", "X-WR-TIMEZONE":
-				case "PRODID":
-					cal.prodID = value
-				case "X-WR-CALNAME":
-					cal.SetName(value)
-				case "X-WR-CALDESC":
-					cal.SetDescription(value)
+			default:
+				switch mode {
+				case "timezone", "standard", "daylight":
+				case "calendar":
+					switch key {
+					case "PRODID":
+						cal.prodID = value
+					case "X-WR-CALNAME":
+						cal.SetName(value)
+					case "X-WR-CALDESC":
+						cal.SetDescription(value)
+					default:
+						slog.Warn("unhandled line", "line", lineCount, "content", line)
+					}
+				case "event":
+					if err := blankEvent.AddIcalProperty(line); err != nil {
+						errCh <- NewCustomError("can't add ical property to event", map[string]any{
+							"line":    lineCount,
+							"content": line,
+							"err":     err,
+						})
+						continue
+					}
+				case "alarm":
+					newAlarm.AddIcalProperty(line)
 				default:
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
-			case "event":
-				if err := blankEvent.AddIcalProperty(line); err != nil {
-					return nil, NewCustomError("can't add ical property to event", map[string]any{
-						"line":    lineCount,
-						"content": line,
-						"err":     err,
-					})
-				}
-			case "alarm":
-				newAlarm.AddIcalProperty(line)
-			default:
-				slog.Warn("unhandled line", "line", lineCount, "content", line)
 			}
 		}
+	}()
 	}
 
 	validChildEvents := make(map[string]event.ChildEvent)
