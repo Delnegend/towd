@@ -422,6 +422,10 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 			}
 		}
 	}()
+
+	err := <-errCh
+	if err != nil {
+		return nil, err
 	}
 
 	validChildEvents := make(map[string]event.ChildEvent)
