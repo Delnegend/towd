@@ -13,7 +13,7 @@ type Config struct {
 	jwtExpire time.Duration
 
 	discordGuildID      string
-	discordBotToken     string
+	discordAppToken     string
 	discordClientId     string
 	discordClientSecret string
 
@@ -21,69 +21,96 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	secret := os.Getenv("SECRET")
-	if secret == "" {
-		slog.Warn("SECRET is not set")
-		secret = "secret"
-	}
-
-	discordGuildID := os.Getenv("DISCORD_GUILD_ID")
-	if discordGuildID == "" {
-		slog.Error("DISCORD_GUILD_ID is not set")
-		os.Exit(1)
-	}
-
-	discordBotToken := os.Getenv("DISCORD_APP_TOKEN")
-	if discordBotToken == "" {
-		slog.Error("DISCORD_APP_TOKEN is not set")
-		os.Exit(1)
-	}
-
-	discordClientId := os.Getenv("DISCORD_CLIENT_ID")
-	if discordClientId == "" {
-		slog.Error("DISCORD_CLIENT_ID is not set")
-		os.Exit(1)
-	}
-
-	discordClientSecret := os.Getenv("DISCORD_CLIENT_SECRET")
-	if discordClientSecret == "" {
-		slog.Error("DISCORD_CLIENT_SECRET is not set")
-		os.Exit(1)
-	}
-
-	discordUseRelativeTime := os.Getenv("DISCORD_USE_RELATIVE_TIME")
-	if discordUseRelativeTime == "" {
-		discordUseRelativeTime = "false"
-	}
-
-	timezoneStr := os.Getenv("TIMEZONE")
-	var loc *time.Location
-	var err error
-	if timezoneStr != "" {
-		loc, err = time.LoadLocation(timezoneStr)
-		if err != nil {
-			slog.Error("invalid timezone", "timezone", timezoneStr, "error", err)
-			os.Exit(1)
-		}
-	} else {
-		slog.Warn("TIMEZONE is not set, using local timezone", "timezone", time.Local)
-	}
-
 	return &Config{
-		port:   port,
-		secret: secret,
+		port: func() string {
+			port := os.Getenv("PORT")
+			if port == "" {
+				port = "8080"
+			}
+			slog.Debug("env", "PORT", port)
+			return port
+		}(),
 
-		discordGuildID:      discordGuildID,
-		discordBotToken:     discordBotToken,
-		discordClientId:     discordClientId,
-		discordClientSecret: discordClientSecret,
+		jwtSecret: func() string {
+			secret := os.Getenv("JWT_SECRET")
+			if secret == "" {
+				slog.Warn("SECRET is not set")
+				secret = "secret"
+			}
+			return secret
+		}(),
+		jwtExpire: func() time.Duration {
+			jwtExpire := os.Getenv("JWT_EXPIRE")
+			if jwtExpire == "" {
+				slog.Warn("JWT_EXPIRE is not set")
+				jwtExpire = "168h" // 1 week
+			}
+			duration, err := time.ParseDuration(jwtExpire)
+			if err != nil {
+				slog.Error("invalid JWT_EXPIRE", "error", err)
+				os.Exit(1)
+			}
+			slog.Debug("JWT_EXPIRE", "duration", duration)
+			return duration
+		}(),
 
-		location: loc,
+		discordGuildID: func() string {
+			discordGuildID := os.Getenv("DISCORD_GUILD_ID")
+			if discordGuildID == "" {
+				slog.Error("DISCORD_GUILD_ID is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "DISCORD_GUILD_ID", discordGuildID)
+			return discordGuildID
+		}(),
+		discordAppToken: func() string {
+			discordAppToken := os.Getenv("DISCORD_APP_TOKEN")
+			if discordAppToken == "" {
+				slog.Error("DISCORD_APP_TOKEN is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "DISCORD_APP_TOKEN", discordAppToken)
+			return discordAppToken
+		}(),
+		discordClientId: func() string {
+			discordClientId := os.Getenv("DISCORD_CLIENT_ID")
+			if discordClientId == "" {
+				slog.Error("DISCORD_CLIENT_ID is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "DISCORD_CLIENT_ID", discordClientId)
+			return discordClientId
+		}(),
+		discordClientSecret: func() string {
+			discordClientSecret := os.Getenv("DISCORD_CLIENT_SECRET")
+			if discordClientSecret == "" {
+				slog.Error("DISCORD_CLIENT_SECRET is not set")
+				os.Exit(1)
+			}
+			return discordClientSecret
+		}(),
+
+		location: func() *time.Location {
+			timezoneStr := os.Getenv("TIMEZONE")
+			var loc *time.Location
+			var err error
+			switch timezoneStr {
+			case "":
+				slog.Warn("TIMEZONE is not set, using local timezone", "timezone", time.Local)
+				loc = time.Local
+			case "UTC":
+				slog.Warn("TIMEZONE is set to UTC, using UTC timezone", "timezone", time.UTC)
+				loc = time.UTC
+			default:
+				loc, err = time.LoadLocation(timezoneStr)
+				if err != nil {
+					slog.Error("invalid timezone", "timezone", timezoneStr, "error", err)
+					os.Exit(1)
+				}
+			}
+			slog.Debug("env", "TIMEZONE", timezoneStr)
+			return loc
+		}(),
 	}
 }
 
@@ -92,9 +119,14 @@ func (c *Config) GetPort() string {
 	return c.port
 }
 
-// Get SECRET env, default to "secret"
-func (c *Config) GetSecret() string {
-	return c.secret
+// Get JWT_SECRET env
+func (c *Config) GetJWTSecret() string {
+	return c.jwtSecret
+}
+
+// Get JWT_EXPIRE env
+func (c *Config) GetJWTExpire() time.Duration {
+	return c.jwtExpire
 }
 
 // Get DISCORD_GUILD_ID env
@@ -104,7 +136,7 @@ func (c *Config) GetDiscordGuildID() string {
 
 // Get DISCORD_APP_TOKEN env
 func (c *Config) GetDiscordAppToken() string {
-	return c.discordBotToken
+	return c.discordAppToken
 }
 
 // Get DISCORD_CLIENT_ID env
