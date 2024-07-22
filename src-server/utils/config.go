@@ -7,8 +7,10 @@ import (
 )
 
 type Config struct {
-	port   string
-	secret string
+	port string
+
+	jwtSecret string
+	jwtExpire time.Duration
 
 	discordGuildID      string
 	discordBotToken     string

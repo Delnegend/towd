@@ -2,7 +2,6 @@ package event
 
 import (
 	"fmt"
-	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -202,7 +201,6 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 
 	slice := strings.SplitN(property, ":", 2)
 	if len(slice) != 2 {
-		slog.Debug("custom event property", "property", property)
 		return nil
 	}
 	key := strings.ToUpper(strings.TrimSpace(slice[0]))
@@ -248,7 +246,6 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		}
 		e.rruleSet = rruleSet
 	default:
-		slog.Debug("custom event property", "key", key, "value", val)
 		e.customProperties = append(e.customProperties, property)
 	}
 	return nil

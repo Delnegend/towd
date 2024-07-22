@@ -2,7 +2,6 @@ package structured
 
 import (
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -130,7 +129,6 @@ func (a *Alarm) validate() error {
 func (a *Alarm) AddIcalProperty(property string) {
 	slice := strings.SplitN(property, ":", 2)
 	if len(slice) != 2 {
-		slog.Debug("custom alarm property", "property", property)
 		a.CustomProperties = append(a.CustomProperties, property)
 		return
 	}
@@ -160,7 +158,6 @@ func (a *Alarm) AddIcalProperty(property string) {
 	case "TRIGGER":
 		a.trigger = value
 	default:
-		slog.Debug("custom alarm property", "key", key, "value", value)
 		a.CustomProperties = append(a.CustomProperties, property)
 	}
 }
