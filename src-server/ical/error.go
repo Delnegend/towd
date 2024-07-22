@@ -31,3 +31,15 @@ func (e CustomError) Error() string {
 	}
 	return sb.String()
 }
+
+func (e CustomError) GetMsg() string {
+	return e.msg
+}
+
+func (e CustomError) GetArgs() []any {
+	temp := make([]any, 0)
+	for k, v := range e.args {
+		temp = append(temp, k, v)
+	}
+	return temp
+}
