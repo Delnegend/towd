@@ -2,20 +2,25 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
+	"sync"
 	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 )
 
-func CreateEvent(appState *utils.AppState) {
-	appState.AppCmdHandler["create-event"] = createEventHandler(appState)
-	appState.AppCmdInfo["create-event"] = &discordgo.ApplicationCommand{
-		Name:        "create-event",
+func CreateEvent(as *utils.AppState) {
+	id := "create-event"
+	as.AddAppCmdHandler(id, createEventHandler(as))
+	as.AddAppCmdInfo(id, &discordgo.ApplicationCommand{
+		Name:        id,
 		Description: "Create a calendar event.",
 		Options: []*discordgo.ApplicationCommandOption{
 			{
@@ -27,13 +32,13 @@ func CreateEvent(appState *utils.AppState) {
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "start",
-				Description: "Starting time of the event",
+				Description: "When the event starts",
 				Required:    true,
 			},
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "end",
-				Description: "Ending time of the event",
+				Description: "When the event ends",
 				Required:    true,
 			},
 			{
@@ -49,99 +54,224 @@ func CreateEvent(appState *utils.AppState) {
 				Required:    false,
 			},
 			{
-				Type:        discordgo.ApplicationCommandOptionUser,
+				Type:        discordgo.ApplicationCommandOptionString,
 				Name:        "invitees",
-				Description: "Users to invite to the event",
+				Description: "Invitees of the event, each separated by comma",
 				Required:    false,
 			},
 		},
-	}
+	})
 }
 
-func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	return func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		// prepare the options
-		options := i.ApplicationCommandData().Options
-		optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
-		for _, opt := range options {
-			optionMap[opt.Name] = opt
-		}
+func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		// #region | send a model
+		eventID := uuid.New().String()
+		customID := "create-event-" + eventID
 
-		// new model, init vars
-		eventModel := model.Event{
-			ID: uuid.New(),
-		}
-		var startDate, endDate string
-		var invitees *discordgo.User
-
-		// get vars from options
-		if opt, ok := optionMap["title"]; ok {
-			eventModel.Title = opt.StringValue()
-		}
-		if opt, ok := optionMap["details"]; ok {
-			eventModel.Details = opt.StringValue()
-		}
-		if opt, ok := optionMap["start"]; ok {
-			startDate = opt.StringValue()
-		}
-		if opt, ok := optionMap["end"]; ok {
-			endDate = opt.StringValue()
-		}
-		if opt, ok := optionMap["location"]; ok {
-			eventModel.Location = opt.StringValue()
-		}
-		if opt, ok := optionMap["invitees"]; ok {
-			invitees = opt.UserValue(s)
-		}
-
-		// parse date
-		parsedStartDate, err := appState.When.Parse(startDate, time.Now())
-		if err != nil {
-			utils.InteractRespHiddenReply(s, i, "Can't parse start date")
-			return
-		}
-		parsedEndDate, err := appState.When.Parse(endDate, time.Now())
-		if err != nil {
-			utils.InteractRespHiddenReply(s, i, "Can't parse end date")
-			return
-		}
-		eventModel.StartDate = parsedStartDate.Time
-		eventModel.EndDate = parsedEndDate.Time
-
-		// validate date
-		if eventModel.StartDate.After(eventModel.EndDate) {
-			utils.InteractRespHiddenReply(s, i, "Start date is after end date")
-			return
-		}
-
-		slog.Debug("received event creation request", "event", eventModel)
-
-		appState.AddEventToQueue(eventModel.ID, eventModel)
-
-		// custom IDs
-		yesCustomId := "yes-" + eventModel.ID.String()
-		cancelCustomId := "cancel-" + eventModel.ID.String()
-
-		// ask to confirm
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseModal,
+			Data: &discordgo.InteractionResponseData{
+				CustomID: customID,
+				Title:    "Create Event",
+				Components: []discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID: "title",
+								Label:    "Title",
+								Style:    discordgo.TextInputShort,
+								Required: true,
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID: "description",
+								Label:    "Description",
+								Style:    discordgo.TextInputParagraph,
+								Required: false,
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID: "start",
+								Label:    "Start date",
+								Style:    discordgo.TextInputShort,
+								Required: true,
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID: "end",
+								Label:    "End date",
+								Style:    discordgo.TextInputShort,
+								Required: true,
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID: "event-location",
+								Label:    "Location",
+								Style:    discordgo.TextInputShort,
+								Required: false,
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID: "url",
+								Label:    "URL",
+								Style:    discordgo.TextInputShort,
+								Required: false,
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID:    "invitees",
+								Label:       "Invitees",
+								Style:       discordgo.TextInputShort,
+								Required:    false,
+								Placeholder: "separate by comma",
+							},
+						},
+					},
+				},
+			},
+		})
+		dataMap := make(map[string]string, 0)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		as.AddAppCmdHandler(customID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+			defer wg.Done()
+			for _, opt := range i.ModalSubmitData().Components {
+				actionRow, ok := opt.(*discordgo.ActionsRow)
+				if !ok {
+					continue
+				}
+				if len(actionRow.Components) != 1 {
+					continue
+				}
+				textInput, ok := actionRow.Components[0].(*discordgo.TextInput)
+				if !ok {
+					continue
+				}
+				value := textInput.Value
+				dataMap[textInput.CustomID] = value
+			}
+			return nil
+		})
+		defer as.RemoveAppCmdHandler(customID)
+		wg.Wait()
+		// #endregion
+
+		// #region | parse and collect data
+		eModel := new(model.MasterEvent)
+		eModel.ID = eventID
+		eModel.Organizer = i.Member.User.Username
+		invitees := make([]string, 0)
+		for k, v := range dataMap {
+			switch k {
+			case "title":
+				eModel.Summary = v
+			case "description":
+				eModel.Description = v
+			case "start":
+				if result, err := as.When.Parse(v, time.Now()); err != nil {
+					msg := fmt.Sprintf("Can't parse start date\n```\n%s\n```", err.Error())
+					if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+						Content: &msg,
+					}); err != nil {
+						slog.Error("can't respond", "handler", "create-event", "content", "parse-date-error", "error", err)
+					}
+					return nil
+				} else {
+					eModel.StartDate = result.Time.UTC().Unix()
+				}
+			case "end":
+				if result, err := as.When.Parse(v, time.Now()); err != nil {
+					msg := fmt.Sprintf("Can't parse end date\n```\n%s\n```", err.Error())
+					if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+						Content: &msg,
+					}); err != nil {
+						slog.Error("can't respond", "handler", "create-event", "content", "parse-date-error", "error", err)
+					}
+					return nil
+				} else {
+					eModel.EndDate = result.Time.UTC().Unix()
+				}
+			case "location":
+				eModel.Location = v
+			case "url":
+				eModel.URL = v
+			case "invitees":
+				rawString := v
+				for _, invitee := range strings.Split(rawString, ",") {
+					invitees = append(invitees, strings.TrimSpace(invitee))
+				}
+			}
+		}
+		// #endregion
+
+		// #region | ask to confirm
+		yesCustomId := "yes-" + eModel.ID
+		cancelCustomId := "cancel-" + eModel.ID
+		confirmCh := make(chan struct{})
+		cancelCh := make(chan struct{})
+		defer close(confirmCh)
+		defer close(cancelCh)
+
+		// prepare the embed message to ask for confirmation
+		fields := []*discordgo.MessageEmbedField{
+			{
+				Name:   "Start Date",
+				Value:  fmt.Sprintf("<t:%d:f>", eModel.StartDate),
+				Inline: true,
+			},
+			{
+				Name:   "End Date",
+				Value:  fmt.Sprintf("<t:%d:f>", eModel.EndDate),
+				Inline: true,
+			},
+		}
+		if eModel.Location != "" {
+			fields = append(fields, &discordgo.MessageEmbedField{
+				Name:  "Location",
+				Value: eModel.Location,
+			})
+		}
+		if len(invitees) > 0 {
+			fields = append(fields, &discordgo.MessageEmbedField{
+				Name:  "Invitees",
+				Value: strings.Join(invitees, ", "),
+			})
+		}
+
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: func() string {
-					content := fmt.Sprintf("- Title: *%s*", eventModel.Title)
-					if eventModel.Details != "" {
-						content += fmt.Sprintf("\n- Details: *%s*", eventModel.Details)
-					}
-					content += fmt.Sprintf("\n- Start: <t:%d:F>", parsedStartDate.Time.Unix())
-					content += fmt.Sprintf("\n- End: <t:%d:F>", parsedEndDate.Time.Unix())
-					if eventModel.Location != "" {
-						content += fmt.Sprintf("\n- Location: *%s*", eventModel.Location)
-					}
-					if invitees != nil {
-						content += fmt.Sprintf("\n- Invitees: *%s*", invitees.Username)
-					}
-					content += "\n\nIs this correct?"
-					return content
-				}(),
+				Content: "Is this correct?",
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						Title:       eModel.Summary,
+						Description: eModel.Description,
+						URL:         eModel.URL,
+						Fields:      fields,
+						Author: &discordgo.MessageEmbedAuthor{
+							Name: eModel.Organizer,
+						},
+					},
+				},
 				Components: []discordgo.MessageComponent{
 					discordgo.ActionsRow{
 						Components: []discordgo.MessageComponent{
@@ -159,35 +289,74 @@ func createEventHandler(appState *utils.AppState) func(s *discordgo.Session, i *
 					},
 				},
 			},
+		}); err != nil {
+			slog.Error("can't respond", "handler", "create-event", "content", "confirm-event", "error", err)
+		}
+		var buttonInteraction *discordgo.Interaction
+		as.AddAppCmdHandler(yesCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+			buttonInteraction = i.Interaction
+			confirmCh <- struct{}{}
+			return nil
 		})
+		as.AddAppCmdHandler(cancelCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+			buttonInteraction = i.Interaction
+			cancelCh <- struct{}{}
+			return nil
+		})
+		defer as.RemoveAppCmdHandler(yesCustomId)
+		defer as.RemoveAppCmdHandler(cancelCustomId)
 
-		// yes handler
-		appState.AppCmdHandler[yesCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			eventID := uuid.MustParse(i.MessageComponentData().CustomID[4:])
-			item, ok := appState.GetEventFromQueue(eventID)
-			if !ok {
-				utils.InteractRespHiddenReply(s, i, "Event expired")
-				return
-			}
-			event := item.Data.(model.Event)
+		var resultErr error
+		select {
+		case <-cancelCh:
+			resultErr = fmt.Errorf("event creation canceled")
+		case <-confirmCh:
+			// upsert to db
+			if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+				// main model
+				if err := eModel.Upsert(ctx, tx); err != nil {
+					return fmt.Errorf("createEventHandler: %w", err)
+				}
 
-			if _, err := appState.BunDb.NewInsert().Model(&event).Exec(context.Background()); err != nil {
-				slog.Error("cannot insert event", "error", err)
-				utils.InteractRespHiddenReply(s, i, fmt.Sprintf("Cannot create event: `%s`", err.Error()))
-				return
+				// attendee models
+				attendeeModels := make([]model.Attendee, len(invitees))
+				for i, invitee := range invitees {
+					attendeeModels[i] = model.Attendee{
+						EventID: eModel.ID,
+						Data:    invitee,
+					}
+				}
+				if _, err := tx.NewInsert().
+					Model(&attendeeModels).
+					Exec(ctx); err != nil {
+					return fmt.Errorf("can't insert invitees: %w", err)
+				}
+				return nil
+			}); err != nil {
+				resultErr = fmt.Errorf("createEventHandler: %w", err)
 			}
-			utils.InteractRespHiddenReply(s, i, "Event created!")
-			delete(appState.AppCmdHandler, yesCustomId)
-			delete(appState.AppCmdHandler, cancelCustomId)
+		case <-time.After(time.Minute * 2):
+			s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation.")
 		}
 
-		// no handler
-		appState.AppCmdHandler[cancelCustomId] = func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			eventID := uuid.MustParse(i.MessageComponentData().CustomID[7:])
-			appState.DeleteEventFromQueue(eventID)
-			utils.InteractRespHiddenReply(s, i, "Cancelled event creation")
-			delete(appState.AppCmdHandler, yesCustomId)
-			delete(appState.AppCmdHandler, cancelCustomId)
+		var msg string
+		if resultErr != nil {
+			msg = fmt.Sprintf("Event was not created\n```%s```", resultErr.Error())
+		} else {
+			msg = "Event created."
 		}
+		if err := s.InteractionRespond(buttonInteraction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: msg,
+			},
+		}); err != nil {
+			slog.Error("can't respond", "handler", "create-event", "content", "create-event-error", "error", err)
+		}
+
+		if resultErr != nil {
+			return fmt.Errorf("createEventHandler: %w", resultErr)
+		}
+		return nil
 	}
 }
