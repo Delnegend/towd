@@ -162,11 +162,10 @@ func (c *Config) GetDiscordClientSecret() string {
 }
 
 // Get TIMEZONE env
-func (c *Config) GetLocation() (*time.Location, error) {
-	if c.location == nil {
-		return time.Local, nil
-	}
-	return c.location, nil
+func (c *Config) GetLocation() *time.Location {
+	return c.location
+}
+
 // Get GROQ_API_KEY env
 func (c *Config) GetGroqApiKey() string {
 	return c.groqApiKey
