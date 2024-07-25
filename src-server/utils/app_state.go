@@ -45,7 +45,7 @@ func NewAppState() *AppState {
 		Config: config,
 
 		BunDB: func() *bun.DB {
-			rawDB, err := sql.Open(sqliteshim.ShimName, "./sqlite.db?mode=rwc")
+			rawDB, err := sql.Open(sqliteshim.ShimName, "./db.sqlite?mode=rwc")
 			if err != nil {
 				slog.Error("cannot open sqlite database", "error", err)
 				os.Exit(1)
