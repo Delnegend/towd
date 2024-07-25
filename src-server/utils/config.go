@@ -18,6 +18,8 @@ type Config struct {
 	discordClientSecret string
 
 	location *time.Location
+
+	groqApiKey string
 }
 
 func NewConfig() *Config {
@@ -111,6 +113,16 @@ func NewConfig() *Config {
 			slog.Debug("env", "TIMEZONE", timezoneStr)
 			return loc
 		}(),
+
+		groqApiKey: func() string {
+			groqApiKey := os.Getenv("GROQ_API_KEY")
+			if groqApiKey == "" {
+				slog.Error("GROQ_API_KEY is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "GROQ_API_KEY", groqApiKey[0:3]+"...")
+			return groqApiKey
+		}(),
 	}
 }
 
@@ -155,4 +167,7 @@ func (c *Config) GetLocation() (*time.Location, error) {
 		return time.Local, nil
 	}
 	return c.location, nil
+// Get GROQ_API_KEY env
+func (c *Config) GetGroqApiKey() string {
+	return c.groqApiKey
 }
