@@ -1,0 +1,21 @@
+services:
+    towd
+        image: delnegend/towd:latest
+        container_name: towd
+        build:
+            context: .
+            dockerfile: Dockerfile
+        pull_policy: never
+        restart: unless-stopped
+        ports:
+            - 8080:8080
+        volumes:
+            - ./data:/data
+        environment:
+            PORT: 8080
+            JWT_SECRET: secret
+            JWT_EXPIRE: 168h
+            DISCORD_GUILD_ID:
+            DISCORD_APP_TOKEN:
+            TIMEZONE:
+            GROQ_API_KEY:
