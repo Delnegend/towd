@@ -41,7 +41,7 @@ func main() {
 	// create a new Discord App client session
 	dgSession, err := discordgo.New("Bot " + as.Config.GetDiscordAppToken())
 	if err != nil {
-		slog.Error("error creating Discord session", "error", err)
+		slog.Error("can't create Discord session", "error", err)
 		os.Exit(1)
 	}
 
