@@ -45,7 +45,14 @@ func NewAppState() *AppState {
 		Config: config,
 
 		BunDB: func() *bun.DB {
-			rawDB, err := sql.Open(sqliteshim.ShimName, "./db.sqlite?mode=rwc")
+			if _, err := os.Stat("./data"); os.IsNotExist(err) {
+				if err := os.Mkdir("./data", 0755); err != nil {
+					slog.Error("cannot create data directory", "error", err)
+					os.Exit(1)
+				}
+			}
+
+			rawDB, err := sql.Open(sqliteshim.ShimName, "./data/db.sqlite?mode=rwc")
 			if err != nil {
 				slog.Error("cannot open sqlite database", "error", err)
 				os.Exit(1)
