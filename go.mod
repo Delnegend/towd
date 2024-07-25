@@ -25,7 +25,6 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20240304020402-f0dba7c97c2b // indirect
 	modernc.org/libc v1.50.5 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
@@ -43,4 +42,5 @@ require (
 	github.com/uptrace/bun/driver/sqliteshim v1.2.1
 	github.com/xyedo/rrule v1.2.2
 	golang.org/x/crypto v0.22.0
+	golang.org/x/text v0.15.0
 )
