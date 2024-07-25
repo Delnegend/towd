@@ -30,11 +30,13 @@ func init() {
 func main() {
 	as := utils.NewAppState()
 
-	// handler.CreateEvent(as)
+	handler.CreateEventLLM(as)
+	handler.CreateEvent(as)
+	handler.DeleteEvent(as)
 	handler.Events(as)
 	handler.ImportCalendar(as)
+	handler.ModifyEvent(as)
 	handler.Ping(as)
-	handler.Test(as)
 
 	// create a new Discord App client session
 	dgSession, err := discordgo.New("Bot " + as.Config.GetDiscordAppToken())
