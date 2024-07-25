@@ -71,7 +71,7 @@ func NewConfig() *Config {
 				slog.Error("DISCORD_APP_TOKEN is not set")
 				os.Exit(1)
 			}
-			slog.Debug("env", "DISCORD_APP_TOKEN", discordAppToken)
+			slog.Debug("env", "DISCORD_APP_TOKEN", discordAppToken[0:3]+"...")
 			return discordAppToken
 		}(),
 		discordClientId: func() string {
