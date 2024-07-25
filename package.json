@@ -1,0 +1,38 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint:biome": "biome check --write src",
+    "lint:prettier": "prettier -w --use-tabs --tab-width 4 src/**/*.{vue,ts}",
+    "lint": "bun lint:prettier && bun lint:biome"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-vue-next": "^0.395.0",
+    "radix-vue": "^1.9.1",
+    "shadcn-nuxt": "^0.10.4",
+    "tailwind-merge": "^2.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vue": "^3.4.32",
+    "vue-router": "^4.4.0"
+  },
+  "packageManager": "pnpm@9.3.0+sha1.d4f1da7af76dbdb4ab1a08f6b5add602ffad6fd4",
+  "devDependencies": {
+    "@biomejs/biome": "1.8.1",
+    "@iconify-json/radix-icons": "^1.1.14",
+    "@iconify/vue": "^4.1.2",
+    "@nuxtjs/color-mode": "^3.4.2",
+    "@nuxtjs/tailwindcss": "^6.12.1",
+    "nuxt": "^3.12.3",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.5",
+    "typescript": "^5.5.3"
+  }
+}
