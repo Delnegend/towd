@@ -439,8 +439,15 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 }
 
 // Marshal a Calendar{} struct into an iCalendar string.
-func (cal *Calendar) ToIcal() (string, *CustomError) {
-	var sb strings.Builder
+func (cal *Calendar) ToIcal(w func(string)) error {
+	writer := func(s string) {
+		var slices []string
+		for i := 0; i < len(s); i += 75 {
+			end := min(i+75, len(s))
+			slices = append(slices, s[i:end])
+		}
+		w(strings.Join(slices, "\n "))
+	}
 
 	sb.WriteString(fmt.Sprintf("BEGIN:VCALENDAR\nPRODID:%s\nVERSION:2.0\nX-WR-CALNAME:%s\n", cal.prodID, cal.name))
 	if cal.description != "" {
@@ -459,7 +466,7 @@ func (cal *Calendar) ToIcal() (string, *CustomError) {
 	}
 	sb.WriteString("END:VCALENDAR\n")
 
-	return sb.String(), nil
+	return nil
 }
 
 // Get the calendar ID
