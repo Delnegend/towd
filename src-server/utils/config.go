@@ -52,7 +52,7 @@ func NewConfig() *Config {
 				slog.Error("invalid JWT_EXPIRE", "error", err)
 				os.Exit(1)
 			}
-			slog.Debug("JWT_EXPIRE", "duration", duration)
+			slog.Debug("env", "JWT_EXPIRE", jwtExpire, "duration", duration)
 			return duration
 		}(),
 
