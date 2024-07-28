@@ -21,8 +21,8 @@ func NewCustomError(msg string, args map[string]any) *CustomError {
 	}
 }
 
-// Get the error message
 func (e CustomError) Error() string {
+// Conver the custom error to string
 	var sb strings.Builder
 	sb.WriteString(e.msg)
 	sb.WriteString(" | ")
