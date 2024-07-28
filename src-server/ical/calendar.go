@@ -71,16 +71,19 @@ type Calendar struct {
 	prodID       string
 	name         string
 	description  string
-	masterEvents map[string]event.MasterEvent
-	childEvents  map[string]event.ChildEvent
+	masterEvents map[string]*event.MasterEvent
+
+	// this field only serve ONE PURPOSE: temporary storage for child events
+	// that are not yet added to a master event. This is to prevent adding
+	// child events to a master event that is not yet parsed.
+	childEvents []*event.ChildEvent
 }
 
 // Initialize a new Calendar{} struct
 func NewCalendar() Calendar {
 	return Calendar{
 		id:           uuid.NewString(),
-		masterEvents: make(map[string]event.MasterEvent),
-		childEvents:  make(map[string]event.ChildEvent),
+		masterEvents: make(map[string]*event.MasterEvent),
 	}
 }
 
