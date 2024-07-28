@@ -30,6 +30,11 @@ func init() {
 func main() {
 	as := utils.NewAppState()
 
+	if err := model.CreateSchema(as.BunDB); err != nil {
+		slog.Error("can't create database schema", "error", err)
+		os.Exit(1)
+	}
+
 	handler.CreateEventLLM(as)
 	handler.CreateEvent(as)
 	handler.DeleteEvent(as)
