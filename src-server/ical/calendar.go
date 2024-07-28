@@ -517,9 +517,6 @@ func (c *Calendar) AddMasterEvent(id string, e *event.MasterEvent) error {
 		return fmt.Errorf("event with id %s already exists", id)
 	}
 	c.masterEvents[id] = e
-	e.IterateChildEvents(func(id string, e *event.ChildEvent) {
-		c.childEvents[id] = *e
-	})
 	return nil
 }
 
