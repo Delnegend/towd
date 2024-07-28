@@ -64,7 +64,7 @@ func main() {
 					Content: "Expired interaction",
 				},
 			}); err != nil {
-				slog.Error("can't respond", "error", err.Error())
+				slog.Warn("can't respond", "error", err.Error())
 			}
 			username := func(i *discordgo.InteractionCreate) string {
 				if i == nil || i.User == nil {
