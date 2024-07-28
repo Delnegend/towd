@@ -84,3 +84,31 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 
 	return nil
 }
+
+func (c *Calendar) Upsert(ctx context.Context, db bun.IDB) error {
+	if db == nil {
+		return fmt.Errorf("Calendar.Upsert: db is nil")
+	}
+
+	// vaidate
+	switch {
+	case c.ID == "":
+		return fmt.Errorf("Calendar.Upsert: calendar id is blank")
+	case c.Name == "":
+		return fmt.Errorf("Calendar.Upsert: calendar name is blank")
+	}
+
+	// upsert
+	if _, err := db.NewInsert().
+		Model(c).
+		On("CONFLICT (id) DO UPDATE").
+		Set("prod_id = EXCLUDED.prod_id").
+		Set("name = EXCLUDED.name").
+		Set("description = EXCLUDED.description").
+		Set("url = EXCLUDED.url").
+		Exec(ctx); err != nil {
+		return fmt.Errorf("Calendar.Upsert: can't upsert calendar: %w", err)
+	}
+
+	return nil
+}
