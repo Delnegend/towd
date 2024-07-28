@@ -86,10 +86,7 @@ func (e *MasterEvent) ToUndecidedEvent() UndecidedEvent {
 
 // Convert the MasterEvent into an iCalendar string. This method is intended to
 // be used internally only. Check the usage in the master.go file.
-func (e *MasterEvent) ToIcal() (string, error) {
-	var sb strings.Builder
-	writer := utils.Split75wrapper(sb.WriteString)
-
+func (e *MasterEvent) ToIcal(writer func(string)) {
 	// basic properties
 	writer("BEGIN:VEVENT\n")
 	if err := e.EventInfo.toIcal(writer); err != nil {
