@@ -24,6 +24,7 @@ RUN bun i --frozen-lockfile && bun generate
 FROM alpine:latest
 
 WORKDIR /app
+ENV STATIC_WEB_CLIENT_DIR=/app/public
 COPY --from=server-builder /app/main /app/main
 COPY --from=client-builder /app/.output/public /app/public
 
