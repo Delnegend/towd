@@ -421,23 +421,19 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 		return nil, err
 	}
 
-	validChildEvents := make(map[string]event.ChildEvent)
-	for _, childEvent := range cal.childEvents {
-		if _, ok := cal.masterEvents[childEvent.GetID()]; ok {
-			validChildEvents[childEvent.GetID()] = childEvent
-			continue
-		}
-	}
-	cal.childEvents = validChildEvents
+	// add child events to master events
 	for _, childEvent := range cal.childEvents {
 		if masterEvent, ok := cal.masterEvents[childEvent.GetID()]; ok {
-			if err := masterEvent.AddChildEvent(&childEvent); err != nil {
+			if err := masterEvent.AddChildEvent(childEvent); err != nil {
 				slog.Warn("can't add child event to master event", "childEventID", childEvent.GetID(), "err", err)
 				continue
 			}
+		} else {
+			slog.Warn("master event not found for child event", "masterEventID", childEvent.GetID())
 			continue
 		}
 	}
+	cal.childEvents = nil
 
 	return &cal, nil
 }
