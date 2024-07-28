@@ -2,6 +2,7 @@ package structured
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -181,9 +182,10 @@ func (a *Alarm) AddIcalProperty(property string) {
 //	    ToIcal(&sb); err != nil {
 //	    log.Fatal(err)
 //	}
-func (a *Alarm) ToIcal(writer func(string) (int, error)) error {
+func (a *Alarm) ToIcal(writer func(string)) {
 	if err := a.validate(); err != nil {
-		return err
+		slog.Warn("Alarm.ToIcal", "err", err)
+		return
 	}
 
 	writer(fmt.Sprintf("BEGIN:VALARM\nUID:%s\nACTION:%s\nTRIGGER;VALUE=DATE-TIME:%s\n", a.uid, a.action, a.trigger))
@@ -208,6 +210,4 @@ func (a *Alarm) ToIcal(writer func(string) (int, error)) error {
 		}
 	}
 	writer("END:VALARM\n")
-
-	return nil
 }
