@@ -195,19 +195,19 @@ func (a *Alarm) ToIcal(writer func(string)) {
 		writer("TRIGGER;VALUE=DATE-TIME:" + a.trigger + "\n")
 	}
 	if a.duration != "" {
-		writer(fmt.Sprintf("DURATION:%s\n", a.duration))
+		writer("DURATION:" + a.duration + "\n")
 	}
 	if a.repeat != 0 {
-		writer(fmt.Sprintf("REPEAT:%d\n", a.repeat))
+		writer("REPEAT:" + strconv.Itoa(a.repeat) + "\n")
 	}
 	if a.attach != "" {
-		writer(fmt.Sprintf("ATTACH;%s\n", a.attach))
+		writer("ATTACH;" + a.attach + "\n")
 	}
 	if a.description != "" {
-		writer(fmt.Sprintf("DESCRIPTION:%s\n", a.description))
+		writer("DESCRIPTION:" + a.description + "\n")
 	}
 	if a.summary != "" {
-		writer(fmt.Sprintf("SUMMARY:%s\n", a.summary))
+		writer("SUMMARY:" + a.summary + "\n")
 	}
 	for _, attendee := range a.attendee {
 		if err := attendee.ToIcal(writer); err != nil {
