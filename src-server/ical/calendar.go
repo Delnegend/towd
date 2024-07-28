@@ -178,13 +178,21 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 		newAlarm := structured.NewAlarm()
 
 		var line string
+		isFirstLine := true
+	scoped:
 		for rawLine := range lineCh {
 			lineCount++
-			if strings.HasPrefix(rawLine, " ") {
-				line += strings.TrimSpace(rawLine)
-				continue
-			} else {
+			switch {
+			case isFirstLine:
+				isFirstLine = false
 				line = rawLine
+				continue
+			case strings.HasPrefix(rawLine, " "):
+				line += rawLine
+				continue
+			case rawLine == "END:VCALENDAR":
+				errCh <- nil
+				break scoped
 			}
 
 			slice := strings.SplitN(line, ":", 2)
@@ -206,12 +214,14 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						"content": line,
 					})
 				}
+				line = rawLine
 				continue
 			}
 			key := strings.ToUpper(strings.TrimSpace(slice[0]))
 			value := strings.TrimSpace(slice[1])
 
 			if _, ok := ignoredFields[key]; ok {
+				line = rawLine
 				continue
 			}
 
@@ -424,6 +434,7 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 					slog.Warn("unhandled line", "line", lineCount, "content", line)
 				}
 			}
+			line = rawLine
 		}
 	}()
 
