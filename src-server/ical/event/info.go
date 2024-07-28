@@ -185,7 +185,7 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 
 	// custom properties
 	for _, customProperty := range e.customProperties {
-		writer(customProperty)
+		writer(customProperty + "\n")
 	}
 
 	return nil
