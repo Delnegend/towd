@@ -144,32 +144,34 @@ func (a *Attendee) ToIcal(writer func(string)) {
 		return
 	}
 
-	writer(fmt.Sprintf("ATTENDEE;CN=%s", a.cn))
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("ATTENDEE;CN=%s", a.cn))
 	if a.cuType != "" {
-		writer(fmt.Sprintf(";CUTYPE=%s", a.cuType))
+		sb.WriteString(";CUTYPE=" + string(a.cuType))
 	}
 	if a.role != "" {
-		writer(fmt.Sprintf(";ROLE=%s", a.role))
+		sb.WriteString(";ROLE=" + string(a.role))
 	}
 	if a.partStat != "" {
-		writer(fmt.Sprintf(";PARTSTAT=%s", a.partStat))
+		sb.WriteString(";PARTSTAT=" + string(a.partStat))
 	}
 	if a.rsvp {
-		writer(";RSVP=TRUE")
+		sb.WriteString(";RSVP=TRUE")
 	}
 	for _, m := range a.member {
-		writer(fmt.Sprintf(";MEMBER=%s", m))
+		sb.WriteString(";MEMBER=" + string(m))
 	}
 	for _, d := range a.delegatedTo {
-		writer(fmt.Sprintf(";DELEGATED-TO=%s", d))
+		sb.WriteString(";DELEGATED-TO=" + string(d))
 	}
 	for _, d := range a.delegatedFrom {
-		writer(fmt.Sprintf(";DELEGATED-FROM=%s", d))
+		sb.WriteString(";DELEGATED-FROM=" + string(d))
 	}
 	if a.sentBy != "" {
-		writer(fmt.Sprintf(";SENT-BY=%s", a.sentBy))
+		sb.WriteString(";SENT-BY=" + string(a.sentBy))
 	}
-	writer("\n")
+	sb.WriteString("\n")
+	writer(sb.String())
 }
 
 // Parse an iCalendar string into an Attendee{} struct. Example usage:
