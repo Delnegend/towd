@@ -17,9 +17,10 @@ import (
 
 type AppState struct {
 	Config *Config
-	BunDB  *bun.DB
 
-	When *when.Parser
+	BunDB     *bun.DB
+	DgSession *discordgo.Session
+	When      *when.Parser
 
 	// will be send to Discord
 	appCmdInfo      map[string]*discordgo.ApplicationCommand
@@ -53,7 +54,14 @@ func NewAppState() *AppState {
 			}
 			return bun.NewDB(rawDB, sqlitedialect.New())
 		}(),
-
+		DgSession: func() *discordgo.Session {
+			dgSession, err := discordgo.New("Bot " + config.GetDiscordAppToken())
+			if err != nil {
+				slog.Error("can't create Discord session", "error", err)
+				os.Exit(1)
+			}
+			return dgSession
+		}(),
 		When: func() *when.Parser {
 			w := when.New(nil)
 			w.Add(en.All...)
