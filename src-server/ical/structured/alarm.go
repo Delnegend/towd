@@ -188,7 +188,12 @@ func (a *Alarm) ToIcal(writer func(string)) {
 		return
 	}
 
-	writer(fmt.Sprintf("BEGIN:VALARM\nUID:%s\nACTION:%s\nTRIGGER;VALUE=DATE-TIME:%s\n", a.uid, a.action, a.trigger))
+	writer("BEGIN:VALARM\n")
+	writer("UID:" + a.uid + "\n")
+	writer("ACTION:" + string(a.action) + "\n")
+	if a.trigger != "" {
+		writer("TRIGGER;VALUE=DATE-TIME:" + a.trigger + "\n")
+	}
 	if a.duration != "" {
 		writer(fmt.Sprintf("DURATION:%s\n", a.duration))
 	}
