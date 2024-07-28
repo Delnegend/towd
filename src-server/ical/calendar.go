@@ -167,7 +167,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 	}
 
 	cal := NewCalendar()
-	var mode string
 	lineCount := 0
 	eventCount := 0
 
