@@ -173,10 +173,12 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 
 	errCh := make(chan *CustomError)
 
-	blankEvent := event.NewUndecidedEvent()
-	newAlarm := structured.NewAlarm()
-	var line string
 	go func() {
+		var mode string
+		undecidedEvent := event.NewUndecidedEvent()
+		newAlarm := structured.NewAlarm()
+
+		var line string
 		for rawLine := range lineCh {
 			lineCount++
 			if strings.HasPrefix(rawLine, " ") {
@@ -190,7 +192,7 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 			if len(slice) < 2 {
 				switch mode {
 				case "event":
-					if err := blankEvent.AddIcalProperty(line); err != nil {
+					if err := undecidedEvent.AddIcalProperty(line); err != nil {
 						errCh <- NewCustomError("can't add ical property to event", map[string]any{
 							"line":    lineCount,
 							"content": line,
@@ -344,10 +346,10 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						continue
 					}
 					eventCount++
-					if blankEvent.GetSummary() == "" {
-						blankEvent.SetSummary("(no title)")
+					if undecidedEvent.GetSummary() == "" {
+						undecidedEvent.SetSummary("(no title)")
 					}
-					resultEvent, err := blankEvent.DecideEventType()
+					resultEvent, err := undecidedEvent.DecideEventType()
 					if err != nil {
 						errCh <- NewCustomError("can't decide event type", map[string]any{
 							"line":    lineCount,
@@ -355,18 +357,18 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						})
 						continue
 					}
-					switch resultEvent := resultEvent.(type) {
+					switch decidedEvent := resultEvent.(type) {
 					case event.MasterEvent:
-						if _, ok := cal.masterEvents[blankEvent.GetID()]; ok {
+						if _, ok := cal.masterEvents[undecidedEvent.GetID()]; ok {
 							errCh <- NewCustomError("duplicate event id", map[string]any{
 								"line":    lineCount,
 								"content": line,
 							})
 							continue
 						}
-						cal.masterEvents[blankEvent.GetID()] = resultEvent
+						cal.masterEvents[undecidedEvent.GetID()] = &decidedEvent
 					case event.ChildEvent:
-						cal.childEvents[blankEvent.GetID()] = resultEvent
+						cal.childEvents = append(cal.childEvents, &decidedEvent)
 					default:
 						errCh <- NewCustomError("can't decide event type", map[string]any{
 							"line":    lineCount,
@@ -374,7 +376,7 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						})
 						continue
 					}
-					blankEvent = event.NewUndecidedEvent()
+					undecidedEvent = event.NewUndecidedEvent()
 				case "alarm":
 					if value != "VALARM" {
 						errCh <- NewCustomError("unexpected END:VALARM", map[string]any{
@@ -383,7 +385,7 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						})
 						continue
 					}
-					blankEvent.AddAlarm(newAlarm)
+					undecidedEvent.AddAlarm(newAlarm)
 					newAlarm = structured.NewAlarm()
 					mode = "event"
 				default:
@@ -409,7 +411,7 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						slog.Warn("unhandled line", "line", lineCount, "content", line)
 					}
 				case "event":
-					if err := blankEvent.AddIcalProperty(line); err != nil {
+					if err := undecidedEvent.AddIcalProperty(line); err != nil {
 						errCh <- NewCustomError("can't add ical property to event", map[string]any{
 							"line":    lineCount,
 							"content": line,
