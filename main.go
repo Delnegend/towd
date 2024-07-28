@@ -46,7 +46,7 @@ func main() {
 	handler.Totp(as)
 
 	// tell discordgo how to handle interactions from Discord
-	dgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	as.DgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		execute := func(id string) {
 			if handler, ok := as.GetAppCmdHandler(id); ok {
 				if err := handler(s, i); err != nil {
