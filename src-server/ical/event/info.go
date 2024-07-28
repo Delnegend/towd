@@ -168,9 +168,7 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 	// involved people
 	if len(e.attendee) > 0 {
 		for _, attendee := range e.attendee {
-			if err := attendee.ToIcal(writer); err != nil {
-				return err
-			}
+			attendee.ToIcal(writer)
 		}
 	}
 	if e.organizer != "" {
@@ -179,9 +177,7 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 
 	// miscellaneous
 	for _, alarm := range e.alarm {
-		if err := alarm.ToIcal(writer); err != nil {
-			return err
-		}
+		alarm.ToIcal(writer)
 	}
 	if e.sequence > 0 {
 		writer("SEQUENCE:" + strconv.Itoa(e.sequence) + "\n")
