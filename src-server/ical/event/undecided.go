@@ -87,6 +87,13 @@ func (e *UndecidedEvent) SetUpdatedAt(lastModified int64) *UndecidedEvent {
 	return e
 }
 
+// Set the event attendees
+func (e *UndecidedEvent) SetAttendee(attendee []structured.Attendee) *UndecidedEvent {
+	e.attendee = attendee
+	return e
+}
+
+// Add an attendee to the event
 func (e *UndecidedEvent) AddAttendee(attendee structured.Attendee) *UndecidedEvent {
 	e.attendee = append(e.attendee, attendee)
 	return e
@@ -98,9 +105,26 @@ func (e *UndecidedEvent) SetOrganizer(organizer string) *UndecidedEvent {
 	return e
 }
 
+// Set the event alarms
+func (e *UndecidedEvent) SetAlarm(alarm []structured.Alarm) *UndecidedEvent {
+	e.alarm = alarm
+	return e
+}
+
 // Add an alarm to the event
 func (e *UndecidedEvent) AddAlarm(alarm structured.Alarm) *UndecidedEvent {
 	e.alarm = append(e.alarm, alarm)
+	return e
+}
+
+// Set the event sequence
+func (e *UndecidedEvent) SetSequence(sequence int) *UndecidedEvent {
+	e.sequence = sequence
+	return e
+}
+
+func (e *UndecidedEvent) UpdateSequence() *UndecidedEvent {
+	e.sequence++
 	return e
 }
 
@@ -110,9 +134,27 @@ func (e *UndecidedEvent) AddCustomProperty(property string) *UndecidedEvent {
 	return e
 }
 
-// Set the event sequence
-func (e *UndecidedEvent) SetSequence(sequence int) *UndecidedEvent {
-	e.sequence = sequence
+// Set the event rrule set
+func (e *UndecidedEvent) SetRRuleSet(rruleSet *rrule.Set) *UndecidedEvent {
+	e.rruleSet = rruleSet
+	return e
+}
+
+// Set the event exdate
+func (e *UndecidedEvent) SetExDate(exDate []int64) *UndecidedEvent {
+	e.exDate = exDate
+	return e
+}
+
+// Set the event rdate
+func (e *UndecidedEvent) SetRDate(rDate []int64) *UndecidedEvent {
+	e.rDate = rDate
+	return e
+}
+
+// Set the event recurrence ID
+func (e *UndecidedEvent) SetRecurrenceID(recurrenceID int64) *UndecidedEvent {
+	e.recurrenceID = recurrenceID
 	return e
 }
 
