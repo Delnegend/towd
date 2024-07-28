@@ -538,34 +538,13 @@ func (c *Calendar) IterateMasterEvents(f func(id string, event *event.MasterEven
 	return nil
 }
 
-// Iterate over all ChildEvents in the calendar and apply a function to each.
-func (c *Calendar) IterateChildEvents(f func(id string, event event.ChildEvent) error) error {
-	for id, event := range c.childEvents {
-		if err := f(id, event); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Get the number of MasterEvents in the calendar
 func (c *Calendar) GetMasterEventCount() int {
 	return len(c.masterEvents)
 }
 
-// Get the number of ChildEvents in the calendar
-func (c *Calendar) GetChildEventCount() int {
-	return len(c.childEvents)
-}
-
 // Get a MasterEvent from the calendar by ID
 func (c *Calendar) GetMasterEvent(id string) (event.MasterEvent, bool) {
 	event, ok := c.masterEvents[id]
-	return event, ok
-}
-
-// Get a ChildEvent from the calendar by ID
-func (c *Calendar) GetChildEvent(id string) (event.ChildEvent, bool) {
-	event, ok := c.childEvents[id]
 	return event, ok
 }
