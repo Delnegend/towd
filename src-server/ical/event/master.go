@@ -116,6 +116,4 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 		writer("RECURRENCE-ID:" + utils.TimeToIcalDatetime(childEvent.recurrenceID) + "\n")
 		writer("END:VEVENT\n")
 	}
-
-	return sb.String(), nil
 }
