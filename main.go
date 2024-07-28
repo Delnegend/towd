@@ -90,11 +90,12 @@ func main() {
 		}
 	})
 
-	if dgSession.Open() != nil {
+	// open a connection
+	if err := as.DgSession.Open(); err != nil {
 		fmt.Println("error opening connection,", err)
 		return
 	}
-	defer dgSession.Close()
+	defer as.DgSession.Close()
 
 	// tell Discord what commands we have
 	as.IterateAppCmdInfo(func(k string, v *discordgo.ApplicationCommand) {
