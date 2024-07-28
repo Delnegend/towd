@@ -152,5 +152,5 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 
-	slog.Info("Shutting down...")
+	slog.Info("Gracefully shutting down...")
 }
