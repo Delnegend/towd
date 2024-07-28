@@ -11,9 +11,9 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type DeletedChildEventIDsCtxKeyType string
+type ChildEventIDsCtxKeyType string
 
-const DeletedChildEventIDsCtxKey DeletedChildEventIDsCtxKeyType = "child-event-ids"
+const ChildEventIDCtxKey ChildEventIDsCtxKeyType = "child-event-ids"
 
 type ChildEvent struct {
 	bun.BaseModel `bun:"table:child_events"`
@@ -49,10 +49,10 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		return fmt.Errorf("ChildEvent.AfterDelete: db is nil")
 	}
 
-	switch deletedChildEventID := ctx.Value(DeletedChildEventIDsCtxKey).(type) {
+	switch childEventID := ctx.Value(ChildEventIDCtxKey).(type) {
 	case string:
-		if deletedChildEventID == "" {
-			return fmt.Errorf("ChildEvent.AfterDelete: deletedChildEventID is blank")
+		if childEventID == "" {
+			return fmt.Errorf("ChildEvent.AfterDelete: childEventID is blank")
 		}
 
 		// get the going-to-be-deleted attendee ids before deleting them
@@ -60,7 +60,7 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		if err := query.DB().NewSelect().
 			Model((*Attendee)(nil)).
 			Column("event_id").
-			Where("event_id = ?", deletedChildEventID).
+			Where("event_id = ?", childEventID).
 			Scan(ctx, &deletedAttendeeIDs); err != nil {
 			return fmt.Errorf("ChildEvent.AfterDelete: can't get attendee ids: %w", err)
 		}
@@ -68,36 +68,36 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		// rm related attendees
 		if _, err := query.DB().NewDelete().
 			Model((*Attendee)(nil)).
-			Where("event_id = ?", deletedChildEventID).
+			Where("event_id = ?", childEventID).
 			Exec(ctx); err != nil {
 			return fmt.Errorf("ChildEvent.AfterDelete: can't delete attendees: %w", err)
 		}
 	case []string:
-		if len(deletedChildEventID) == 0 {
-			return fmt.Errorf("ChildEvent.AfterDelete: deletedChildEventID is empty")
+		if len(childEventID) == 0 {
+			return fmt.Errorf("ChildEvent.AfterDelete: childEventID is empty")
 		}
 
 		// get the going-to-be-deleted attendee ids before deleting them
-		deletedAttendeeIDs := []string{}
+		attendeeIDs := []string{}
 		if err := query.DB().NewSelect().
 			Model((*Attendee)(nil)).
 			Column("event_id").
-			Where("event_id IN (?)", bun.In(deletedChildEventID)).
-			Scan(ctx, &deletedAttendeeIDs); err != nil {
+			Where("event_id IN (?)", bun.In(childEventID)).
+			Scan(ctx, &attendeeIDs); err != nil {
 			return fmt.Errorf("ChildEvent.AfterDelete: can't get attendee ids: %w", err)
 		}
 
 		// rm related attendees
 		if _, err := query.DB().NewDelete().
 			Model((*Attendee)(nil)).
-			Where("event_id IN (?)", bun.In(deletedChildEventID)).
-			Exec(context.WithValue(ctx, AttendeeIDCtxKey, deletedAttendeeIDs)); err != nil {
+			Where("event_id IN (?)", bun.In(childEventID)).
+			Exec(context.WithValue(ctx, AttendeeIDCtxKey, attendeeIDs)); err != nil {
 			return fmt.Errorf("ChildEvent.AfterDelete: can't delete attendees: %w", err)
 		}
 	case nil:
 		return fmt.Errorf("ChildEvent.AfterDelete: child event ids is nil")
 	default:
-		return fmt.Errorf("ChildEvent.AfterDelete: wrong deletedChildEventID type | type=%T", deletedChildEventID)
+		return fmt.Errorf("ChildEvent.AfterDelete: wrong childEventID type | type=%T", childEventID)
 	}
 
 	return nil
