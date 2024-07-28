@@ -1,19 +1,16 @@
 package utils
 
 import (
-	"fmt"
 	"time"
 )
 
 // Convert a time to a string in iCalendar format: YYYYMMDD or YYYYMMDDTHHMMSSZ
-	if time_.IsZero() {
-func TimeToIcalDatetime(unixTime int64) (string, error) {
+func TimeToIcalDatetime(unixTime int64) string {
 	t := time.Unix(unixTime, 0)
-		return "", fmt.Errorf("time is zero")
-	}
-	hour, min, sec := time_.Clock()
+
+	hour, min, sec := t.Clock()
 	if hour == 0 && min == 0 && sec == 0 {
-		return time_.Format("20060102"), nil
+		return t.Format("20060102")
 	}
-	return time_.Format("20060102T150405Z"), nil
+	return t.Format("20060102T150405Z")
 }
