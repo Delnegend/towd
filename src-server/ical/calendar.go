@@ -304,9 +304,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 				}
 			case "END":
 				switch mode {
-				case "calendar":
-					errCh <- nil
-					continue
 				case "timezone":
 					if value != "VTIMEZONE" &&
 						value != "STANDARD" &&
