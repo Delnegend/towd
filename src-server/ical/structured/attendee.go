@@ -2,6 +2,7 @@ package structured
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 )
 
@@ -137,9 +138,10 @@ func (a *Attendee) validate() error {
 //	    ToIcal(&sb); err != nil {
 //	    log.Fatal(err)
 //	}
-func (a *Attendee) ToIcal(writer func(string) (int, error)) error {
+func (a *Attendee) ToIcal(writer func(string)) {
 	if err := a.validate(); err != nil {
-		return err
+		slog.Warn("Attendee.ToIcal", "err", err)
+		return
 	}
 
 	writer(fmt.Sprintf("ATTENDEE;CN=%s", a.cn))
@@ -168,7 +170,6 @@ func (a *Attendee) ToIcal(writer func(string) (int, error)) error {
 		writer(fmt.Sprintf(";SENT-BY=%s", a.sentBy))
 	}
 	writer("\n")
-	return nil
 }
 
 // Parse an iCalendar string into an Attendee{} struct. Example usage:
