@@ -542,9 +542,3 @@ func (c *Calendar) IterateMasterEvents(f func(id string, event *event.MasterEven
 func (c *Calendar) GetMasterEventCount() int {
 	return len(c.masterEvents)
 }
-
-// Get a MasterEvent from the calendar by ID
-func (c *Calendar) GetMasterEvent(id string) (event.MasterEvent, bool) {
-	event, ok := c.masterEvents[id]
-	return event, ok
-}
