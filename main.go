@@ -109,8 +109,6 @@ func main() {
 			return cmds
 		}())
 
-	slog.Info("number of guilds", "guilds", len(dgSession.State.Guilds))
-	slog.Info("app is now running.  Press CTRL-C to exit.")
 	// create calendar model for each guild and insert into database
 	func() {
 		calendarModels := make([]model.Calendar, 0)
@@ -148,6 +146,9 @@ func main() {
 			sc <- syscall.SIGTERM
 		}
 	}()
+
+	slog.Info("number of guilds", "guilds", len(as.DgSession.State.Guilds))
+	slog.Info("app is now running, press Ctrl+C to exit")
 
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
