@@ -22,10 +22,10 @@ var (
 //   - otherwise, the datetime will be parsed in the local timezone
 //
 // else, the datetime will be parsed in UTC
-func IcalDatetimeToTime(rawText string) (time.Time, error) {
+func IcalDatetimeToUnix(rawText string) (int64, error) {
 	slice := strings.SplitN(rawText, ":", 2)
 	if len(slice) != 2 {
-		return time.Time{}, fmt.Errorf("must be splitable by ':', got %s", rawText)
+		return 0, fmt.Errorf("must be splitable by ':', got %s", rawText)
 	}
 
 	firstPart := slice[0]
@@ -35,9 +35,9 @@ func IcalDatetimeToTime(rawText string) (time.Time, error) {
 	case datePattern.MatchString(timePart):
 		result, err := time.Parse("20060102", timePart)
 		if err != nil {
-			return time.Time{}, err
+			return 0, err
 		}
-		return result.UTC(), nil
+		return result.UTC().Unix(), nil
 	case localTimePattern.MatchString(timePart):
 		var tzidString string
 		if strings.Contains(firstPart, ";") {
@@ -52,20 +52,20 @@ func IcalDatetimeToTime(rawText string) (time.Time, error) {
 		}
 		location, err := time.LoadLocation(tzidString)
 		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid TZID: %s", err)
+			return 0, fmt.Errorf("invalid TZID: %s", err)
 		}
 		result, error := time.ParseInLocation("20060102T150405", timePart, location)
 		if error != nil {
-			return time.Time{}, error
+			return 0, error
 		}
-		return result.UTC(), nil
+		return result.UTC().Unix(), nil
 	case UTCTimePattern.MatchString(timePart):
 		result, err := time.Parse("20060102T150405Z", timePart)
 		if err != nil {
-			return time.Time{}, err
+			return 0, err
 		}
-		return result, nil
+		return result.Unix(), nil
 	default:
-		return time.Time{}, fmt.Errorf("invalid date-time format")
+		return 0, fmt.Errorf("invalid date-time format")
 	}
 }
