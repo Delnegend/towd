@@ -41,7 +41,9 @@ func main() {
 	handler.Events(as)
 	handler.ImportCalendar(as)
 	handler.ModifyEvent(as)
+	handler.Login(as)
 	handler.Ping(as)
+	handler.Totp(as)
 
 	// tell discordgo how to handle interactions from Discord
 	dgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
