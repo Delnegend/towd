@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 	"towd/src-server/ical/structured"
 	"towd/src-server/ical/utils"
 
@@ -272,17 +271,12 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		switch {
 		case e.startDate == 0:
 			return fmt.Errorf("RRULE requires a start date")
-		case e.endDate.IsZero():
-			return fmt.Errorf("RRULE requires an end date")
 		case e.recurrenceID != 0:
 			return fmt.Errorf("RRULE and RECURRENCE-ID are mutually exclusive")
 		}
-		var sb strings.Builder
-		sb.WriteString("DTSTART:" + e.startDate.Format("20060102T150405Z"))
-		sb.WriteString("\nDTEND:" + e.endDate.Format("20060102T150405Z"))
-		sb.WriteString("\nRRULE:" + val)
-
-		rruleSet, err := rrule.StrToRRuleSet(sb.String())
+		rruleSet, err := rrule.StrToRRuleSet(
+			"DTSTART:" + utils.TimeToIcalDatetime(e.startDate) + "\nRRULE:" + val,
+		)
 		if err != nil {
 			return err
 		}
