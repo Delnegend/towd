@@ -129,7 +129,7 @@ func (e *EventInfo) validate() error {
 //	if err := event.toIcal(writer); err != nil {
 //	    log.Fatal(err)
 //	}
-func (e *EventInfo) toIcal(writer func(string) (int, error)) error {
+func (e *EventInfo) toIcal(writer func(string)) error {
 	if err := e.validate(); err != nil {
 		return err
 	}
