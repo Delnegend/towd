@@ -111,8 +111,6 @@ func (e *EventInfo) validate() error {
 		return fmt.Errorf("summary is missing")
 	case e.startDate == 0:
 		return fmt.Errorf("start date is missing")
-	case e.endDate.IsZero():
-		return fmt.Errorf("end date is missing")
 	case e.endDate != 0 && e.startDate > e.endDate:
 		return fmt.Errorf("start date must be before end date")
 	case e.sequence < 0:
