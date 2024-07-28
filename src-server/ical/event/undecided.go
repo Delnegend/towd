@@ -183,7 +183,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.customProperties = append(e.customProperties, property)
 		return nil
 	case strings.HasPrefix(property, "DTSTART"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.startDate = parsedDate
 		return nil
 	case strings.HasPrefix(property, "DTEND"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.endDate = parsedDate
 		return nil
 	case strings.HasPrefix(property, "EXDATE"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
@@ -212,28 +212,28 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 	case strings.HasPrefix(property, "DTSTAMP"):
 		return nil
 	case strings.HasPrefix(property, "CREATED"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
 		e.createdAt = parsedDate
 		return nil
 	case strings.HasPrefix(property, "LAST-MODIFIED"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
 		e.updatedAt = parsedDate
 		return nil
 	case strings.HasPrefix(property, "RDATE"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
 		e.rDate = append(e.rDate, parsedDate)
 		return nil
 	case strings.HasPrefix(property, "RECURRENCE-ID"):
-		parsedDate, err := utils.IcalDatetimeToTime(property)
+		parsedDate, err := utils.IcalDatetimeToUnix(property)
 		if err != nil {
 			return err
 		}
