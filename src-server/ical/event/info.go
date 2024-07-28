@@ -157,10 +157,10 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 	if err != nil {
 		return err
 	}
-	if !e.updatedAt.IsZero() {
 	writer("DTEND:" + endDateStr + "\n")
 	writer("DTSTAMP:" + time.Now().Format("20060102T150405Z") + "\n")
 	writer("CREATED:" + time.Now().Format("20060102T150405Z") + "\n")
+	if e.updatedAt != 0 {
 		updatedAt := time.Unix(e.updatedAt, 0).Format("20060102T150405Z")
 		writer("LAST-MODIFIED:" + updatedAt + "\n")
 	}
