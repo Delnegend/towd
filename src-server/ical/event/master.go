@@ -67,10 +67,11 @@ func (e *MasterEvent) AddChildEvent(childEvent *ChildEvent) error {
 }
 
 // Iterate over the child events and apply a function to each
-func (e *MasterEvent) IterateChildEvents(fn func(id string, event *ChildEvent)) {
+func (e *MasterEvent) IterateChildEvents(fn func(id string, event *ChildEvent) error) error {
 	for _, childEvent := range e.childEvents {
-		fn(childEvent.GetID(), childEvent)
+		return fn(childEvent.GetID(), childEvent)
 	}
+	return nil
 }
 
 // Turn a MasterEvent into an UndecidedEvent for modification
