@@ -210,9 +210,7 @@ func (a *Alarm) ToIcal(writer func(string)) {
 		writer("SUMMARY:" + a.summary + "\n")
 	}
 	for _, attendee := range a.attendee {
-		if err := attendee.ToIcal(writer); err != nil {
-			return err
-		}
+		attendee.ToIcal(writer)
 	}
 	writer("END:VALARM\n")
 }
