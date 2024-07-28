@@ -1,18 +1,24 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 	"towd/src-server/handler"
+	"towd/src-server/model"
+	"towd/src-server/routes"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 	"github.com/lmittmann/tint"
+	"github.com/uptrace/bun"
 )
 
 func init() {
