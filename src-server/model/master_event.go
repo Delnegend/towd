@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"time"
 	"towd/src-server/ical/event"
 
 	"github.com/uptrace/bun"
@@ -155,23 +154,23 @@ func (m *MasterEvent) FromIcal(
 	m.URL = masterEvent.GetURL()
 	m.Organizer = masterEvent.GetOrganizer()
 
-	m.StartDate = masterEvent.GetStartDate().Unix()
-	m.EndDate = masterEvent.GetEndDate().Unix()
+	m.StartDate = masterEvent.GetStartDate()
+	m.EndDate = masterEvent.GetEndDate()
 
-	m.CreatedAt = masterEvent.GetCreatedAt().Unix()
-	m.UpdatedAt = masterEvent.GetUpdatedAt().Unix()
+	m.CreatedAt = masterEvent.GetCreatedAt()
+	m.UpdatedAt = masterEvent.GetUpdatedAt()
 	m.Sequence = masterEvent.GetSequence()
 
 	if masterEvent.GetRRuleSet() != nil {
 		m.RRule = masterEvent.GetRRuleSet().String()
 		var rdates []string
-		masterEvent.IterateRDates(func(date time.Time) {
-			rdates = append(rdates, fmt.Sprintf("%d", date.Unix()))
+		masterEvent.IterateRDates(func(unixTime int64) {
+			rdates = append(rdates, fmt.Sprintf("%d", unixTime))
 		})
 		m.RDate = strings.Join(rdates, ",")
 		var exdates []string
-		masterEvent.IterateExDates(func(date time.Time) {
-			exdates = append(exdates, fmt.Sprintf("%d", date.Unix()))
+		masterEvent.IterateExDates(func(unixTime int64) {
+			exdates = append(exdates, fmt.Sprintf("%d", unixTime))
 		})
 		m.ExDate = strings.Join(exdates, ",")
 	}
