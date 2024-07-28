@@ -18,9 +18,9 @@ type UndecidedEvent struct {
 	EventInfo
 
 	rruleSet     *rrule.Set
-	exDate       []time.Time
-	rDate        []time.Time
-	recurrenceID time.Time
+	exDate       []int64
+	rDate        []int64
+	recurrenceID int64
 }
 
 // Create a new undecided event with new UID
@@ -64,25 +64,25 @@ func (e *UndecidedEvent) SetURL(url string) *UndecidedEvent {
 }
 
 // Set the event start date
-func (e *UndecidedEvent) SetStartDate(startDate time.Time) error {
-	if !e.endDate.IsZero() && !startDate.Equal(e.endDate) && startDate.After(e.endDate) {
-		return fmt.Errorf("start date must be before end date")
-	}
+func (e *UndecidedEvent) SetStartDate(startDate int64) *UndecidedEvent {
 	e.startDate = startDate
-	return nil
+	return e
 }
 
 // Set the event end date
-func (e *UndecidedEvent) SetEndDate(endDate time.Time) error {
-	if !e.startDate.IsZero() && !endDate.Equal(e.startDate) && endDate.Before(e.startDate) {
-		return fmt.Errorf("end date must be after start date")
-	}
+func (e *UndecidedEvent) SetEndDate(endDate int64) *UndecidedEvent {
 	e.endDate = endDate
-	return nil
+	return e
+}
+
+// Set the event created date
+func (e *UndecidedEvent) SetCreatedAt(createdAt int64) *UndecidedEvent {
+	e.createdAt = createdAt
+	return e
 }
 
 // Set the event last modified date
-func (e *UndecidedEvent) SetLastModified(lastModified time.Time) *UndecidedEvent {
+func (e *UndecidedEvent) SetUpdatedAt(lastModified int64) *UndecidedEvent {
 	e.updatedAt = lastModified
 	return e
 }
@@ -145,7 +145,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		if err != nil {
 			return err
 		}
-		if !e.endDate.IsZero() && !parsedDate.Equal(e.endDate) && parsedDate.After(e.endDate) {
+		if e.endDate != 0 && parsedDate > e.endDate {
 			return fmt.Errorf("DTSTART must be before DTEND")
 		}
 		e.startDate = parsedDate
@@ -155,7 +155,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		if err != nil {
 			return err
 		}
-		if !e.startDate.IsZero() && !parsedDate.Equal(e.startDate) && parsedDate.Before(e.startDate) {
+		if e.startDate != 0 && parsedDate < e.startDate {
 			return fmt.Errorf("DTEND must be after DTSTART")
 		}
 		e.endDate = parsedDate
@@ -228,11 +228,11 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.sequence = sequence
 	case "RRULE":
 		switch {
-		case e.startDate.IsZero():
+		case e.startDate == 0:
 			return fmt.Errorf("RRULE requires a start date")
 		case e.endDate.IsZero():
 			return fmt.Errorf("RRULE requires an end date")
-		case !e.recurrenceID.IsZero():
+		case e.recurrenceID != 0:
 			return fmt.Errorf("RRULE and RECURRENCE-ID are mutually exclusive")
 		}
 		var sb strings.Builder
@@ -259,11 +259,11 @@ func (e *UndecidedEvent) DecideEventType() (interface{}, error) {
 
 	switch {
 	// expect to be a child event has a more strict condition
-	case !e.recurrenceID.IsZero() && e.rruleSet != nil:
+	case e.recurrenceID != 0 && e.rruleSet != nil:
 		return nil, fmt.Errorf("seems like a child event, but rruleSet is set")
-	case !e.recurrenceID.IsZero() && len(e.exDate) > 0:
+	case e.recurrenceID != 0 && len(e.exDate) > 0:
 		return nil, fmt.Errorf("seems like a child event, but exdate is set")
-	case !e.recurrenceID.IsZero() && len(e.rDate) > 0:
+	case e.recurrenceID != 0 && len(e.rDate) > 0:
 		return nil, fmt.Errorf("seems like a child event, but rdate is set")
 
 	case (e.rruleSet == nil && len(e.exDate) > 0):
@@ -271,7 +271,7 @@ func (e *UndecidedEvent) DecideEventType() (interface{}, error) {
 	case (e.rruleSet == nil && len(e.rDate) > 0):
 		return nil, fmt.Errorf("rdate only works with recurring events")
 
-	case e.recurrenceID.IsZero():
+	case e.recurrenceID == 0:
 		return MasterEvent{
 			EventInfo: e.EventInfo,
 			rrule:     e.rruleSet,
@@ -282,7 +282,7 @@ func (e *UndecidedEvent) DecideEventType() (interface{}, error) {
 	// to be a child event has a more strict condition; the template event
 	// needs to have a recurrence-id and must not have exdate, rdate or rruleSet
 	// since all of them are master's properties, although they are optional
-	case !e.recurrenceID.IsZero() && (e.rruleSet == nil) &&
+	case e.recurrenceID != 0 && (e.rruleSet == nil) &&
 		(len(e.exDate) == 0) && (len(e.rDate) == 0):
 		return ChildEvent{
 			EventInfo:    e.EventInfo,

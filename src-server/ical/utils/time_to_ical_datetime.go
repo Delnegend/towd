@@ -6,8 +6,9 @@ import (
 )
 
 // Convert a time to a string in iCalendar format: YYYYMMDD or YYYYMMDDTHHMMSSZ
-func TimeToIcalDatetime(time_ time.Time) (string, error) {
 	if time_.IsZero() {
+func TimeToIcalDatetime(unixTime int64) (string, error) {
+	t := time.Unix(unixTime, 0)
 		return "", fmt.Errorf("time is zero")
 	}
 	hour, min, sec := time_.Clock()

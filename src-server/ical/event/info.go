@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 	"towd/src-server/ical/structured"
 	"towd/src-server/ical/utils"
@@ -22,10 +23,10 @@ type EventInfo struct {
 	description string
 	location    string
 	url         string
-	startDate   time.Time
-	endDate     time.Time
-	createdAt   time.Time
-	updatedAt   time.Time
+	startDate   int64
+	endDate     int64
+	createdAt   int64
+	updatedAt   int64
 
 	attendee         []structured.Attendee
 	organizer        string
@@ -60,22 +61,22 @@ func (e *EventInfo) GetURL() string {
 }
 
 // Get the event start date
-func (e *EventInfo) GetStartDate() time.Time {
+func (e *EventInfo) GetStartDate() int64 {
 	return e.startDate
 }
 
 // Get the event end date
-func (e *EventInfo) GetEndDate() time.Time {
+func (e *EventInfo) GetEndDate() int64 {
 	return e.endDate
 }
 
 // Get the event updated date
-func (e *EventInfo) GetCreatedAt() time.Time {
+func (e *EventInfo) GetCreatedAt() int64 {
 	return e.createdAt
 }
 
 // Get the event updated date
-func (e *EventInfo) GetUpdatedAt() time.Time {
+func (e *EventInfo) GetUpdatedAt() int64 {
 	return e.updatedAt
 }
 
@@ -108,11 +109,11 @@ func (e *EventInfo) validate() error {
 	switch {
 	case e.summary == "":
 		return fmt.Errorf("summary is missing")
-	case e.startDate.IsZero():
+	case e.startDate == 0:
 		return fmt.Errorf("start date is missing")
 	case e.endDate.IsZero():
 		return fmt.Errorf("end date is missing")
-	case !e.startDate.Equal(e.endDate) && e.startDate.After(e.endDate):
+	case e.endDate != 0 && e.startDate > e.endDate:
 		return fmt.Errorf("start date must be before end date")
 	case e.sequence < 0:
 		return fmt.Errorf("sequence must be non-negative")

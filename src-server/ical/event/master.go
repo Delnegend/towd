@@ -3,7 +3,6 @@ package event
 import (
 	"fmt"
 	"strings"
-	"time"
 	"towd/src-server/ical/utils"
 
 	"github.com/xyedo/rrule"
@@ -14,8 +13,8 @@ type MasterEvent struct {
 	EventInfo
 
 	rrule       *rrule.Set
-	exDates     []time.Time
-	rDates      []time.Time
+	exDates     []int64
+	rDates      []int64
 	childEvents []*ChildEvent
 }
 
@@ -25,14 +24,14 @@ func (e *MasterEvent) GetRRuleSet() *rrule.Set {
 }
 
 // Iterate over the exdates and apply a function to each
-func (e *MasterEvent) IterateExDates(fn func(time.Time)) {
+func (e *MasterEvent) IterateExDates(fn func(int64)) {
 	for _, exDate := range e.exDates {
 		fn(exDate)
 	}
 }
 
 // Iterate over the rdates and apply a function to each
-func (e *MasterEvent) IterateRDates(fn func(time.Time)) {
+func (e *MasterEvent) IterateRDates(fn func(int64)) {
 	for _, rDate := range e.rDates {
 		fn(rDate)
 	}
@@ -43,16 +42,28 @@ func (e *MasterEvent) AddChildEvent(childEvent *ChildEvent) error {
 	if e.rrule == nil {
 		return fmt.Errorf("MasterEvent.AddChildEvent: master event does not have a rrule, child event cannot be added")
 	}
+	parsedRRuleUnixTime := func() []int64 {
+		var parsedRRuleSet []int64
+		for _, rruleTime := range e.rrule.All() {
+			parsedRRuleSet = append(parsedRRuleSet, rruleTime.Unix())
+		}
+		return parsedRRuleSet
+	}()
 
-	rruleTimeSlice := e.rrule.All()
-	for _, rruleTime := range rruleTimeSlice {
-		if rruleTime.Equal(childEvent.GetRecurrenceID()) {
+	for _, rruleTime := range parsedRRuleUnixTime {
+		if rruleTime == childEvent.GetRecurrenceID() {
 			e.childEvents = append(e.childEvents, childEvent)
 			return nil
 		}
 	}
 
-	return fmt.Errorf("MasterEvent.AddChildEvent: child event recurrence id not found in master event rrule")
+	return fmt.Errorf("MasterEvent.AddChildEvent: rec-id (%d) not in rrule (%s)", childEvent.GetRecurrenceID(), func() string {
+		var parsedRRuleSet []string
+		for _, rruleTime := range parsedRRuleUnixTime {
+			parsedRRuleSet = append(parsedRRuleSet, fmt.Sprintf("%d", rruleTime))
+		}
+		return strings.Join(parsedRRuleSet, ",")
+	}())
 }
 
 // Iterate over the child events and apply a function to each
