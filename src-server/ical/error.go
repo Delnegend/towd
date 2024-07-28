@@ -21,8 +21,8 @@ func NewCustomError(msg string, args map[string]any) *CustomError {
 	}
 }
 
-func (e CustomError) Error() string {
 // Conver the custom error to string
+func (e *CustomError) Error() string {
 	var sb strings.Builder
 	sb.WriteString(e.msg)
 	sb.WriteString(" | ")
@@ -32,11 +32,11 @@ func (e CustomError) Error() string {
 	return sb.String()
 }
 
-func (e CustomError) GetMsg() string {
+func (e *CustomError) GetMsg() string {
 	return e.msg
 }
 
-func (e CustomError) GetArgs() []any {
+func (e *CustomError) GetArgs() []any {
 	temp := make([]any, 0)
 	for k, v := range e.args {
 		temp = append(temp, k, v)
