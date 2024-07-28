@@ -458,13 +458,6 @@ func (cal *Calendar) ToIcal(w func(string)) error {
 	}
 
 	for _, event := range cal.masterEvents {
-		eventStr, err := event.ToIcal()
-		if err != nil {
-			return "", NewCustomError("can't marshal event", map[string]any{
-				"eventID": event.GetID(),
-				"err":     err,
-			})
-		}
 		event.ToIcal(writer)
 	}
 	writer("END:VCALENDAR\n")
