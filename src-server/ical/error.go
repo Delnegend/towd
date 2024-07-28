@@ -25,9 +25,11 @@ func NewCustomError(msg string, args map[string]any) *CustomError {
 func (e *CustomError) Error() string {
 	var sb strings.Builder
 	sb.WriteString(e.msg)
-	sb.WriteString(" | ")
-	for key, value := range e.args {
-		sb.WriteString(fmt.Sprintf(" %s: %v", key, value))
+	if len(e.args) > 0 {
+		sb.WriteString(" |")
+		for key, value := range e.args {
+			sb.WriteString(key + ": " + fmt.Sprintf("%v", value))
+		}
 	}
 	return sb.String()
 }
