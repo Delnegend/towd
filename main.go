@@ -98,15 +98,16 @@ func main() {
 	defer as.DgSession.Close()
 
 	// tell Discord what commands we have
-	as.IterateAppCmdInfo(func(k string, v *discordgo.ApplicationCommand) {
-		if _, err := dgSession.ApplicationCommandCreate(
-			dgSession.State.User.ID,
-			as.Config.GetDiscordGuildID(),
-			v); err != nil {
-			slog.Error("cannot create command", "name", k, "error", err)
-			return
-		}
-	})
+	as.DgSession.ApplicationCommandBulkOverwrite(
+		as.Config.GetDiscordClientId(),
+		as.Config.GetDiscordGuildID(),
+		func() []*discordgo.ApplicationCommand {
+			var cmds []*discordgo.ApplicationCommand
+			as.IterateAppCmdInfo(func(k string, v *discordgo.ApplicationCommand) {
+				cmds = append(cmds, v)
+			})
+			return cmds
+		}())
 
 	slog.Info("number of guilds", "guilds", len(dgSession.State.Guilds))
 	slog.Info("app is now running.  Press CTRL-C to exit.")
