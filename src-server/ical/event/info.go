@@ -135,15 +135,16 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 	}
 
 	// basic properties
-	writer(fmt.Sprintf("UID:%s\nSUMMARY:%s\n", e.id, e.summary))
+	writer("UID:" + e.id + "\n")
+	writer("SUMMARY:" + e.summary + "\n")
 	if e.description != "" {
-		writer(fmt.Sprintf("DESCRIPTION:%s\n", e.description))
+		writer("DESCRIPTION:" + e.description + "\n")
 	}
 	if e.location != "" {
-		writer(fmt.Sprintf("LOCATION:%s\n", e.location))
+		writer("LOCATION:" + e.location + "\n")
 	}
 	if e.url != "" {
-		writer(fmt.Sprintf("URL:%s\n", e.url))
+		writer("URL:" + e.url + "\n")
 	}
 
 	// dates
@@ -151,16 +152,17 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 	if err != nil {
 		return err
 	}
-	writer(fmt.Sprintf("DTSTART:%s\n", startDateStr))
+	writer("DTSTART:" + startDateStr + "\n")
 	endDateStr, err := utils.TimeToIcalDatetime(e.endDate)
 	if err != nil {
 		return err
 	}
-	writer(fmt.Sprintf("DTEND:%s\n", endDateStr))
-	writer(fmt.Sprintf("DTSTAMP:%s\n", time.Now().Format("20060102T150405Z")))
-	writer(fmt.Sprintf("CREATED:%s\n", time.Now().Format("20060102T150405Z")))
 	if !e.updatedAt.IsZero() {
-		writer(fmt.Sprintf("LAST-MODIFIED:%s\n", e.updatedAt.Format("20060102T150405Z")))
+	writer("DTEND:" + endDateStr + "\n")
+	writer("DTSTAMP:" + time.Now().Format("20060102T150405Z") + "\n")
+	writer("CREATED:" + time.Now().Format("20060102T150405Z") + "\n")
+		updatedAt := time.Unix(e.updatedAt, 0).Format("20060102T150405Z")
+		writer("LAST-MODIFIED:" + updatedAt + "\n")
 	}
 
 	// involved people
@@ -172,7 +174,7 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 		}
 	}
 	if e.organizer != "" {
-		writer(fmt.Sprintf("ORGANIZER:%s\n", e.organizer))
+		writer("ORGANIZER:" + e.organizer + "\n")
 	}
 
 	// miscellaneous
@@ -182,7 +184,7 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 		}
 	}
 	if e.sequence > 0 {
-		writer(fmt.Sprintf("SEQUENCE:%d\n", e.sequence))
+		writer("SEQUENCE:" + strconv.Itoa(e.sequence) + "\n")
 	}
 
 	// custom properties
