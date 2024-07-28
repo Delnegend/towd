@@ -27,6 +27,7 @@ type StaticEvent struct {
 	ID          string    `json:"id"`
 	StartDate   int64     `json:"start_date"`
 	EndDate     int64     `json:"end_date"`
+	IsWholeDay  bool      `json:"is_whole_day"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Location    string    `json:"location"`
@@ -85,9 +86,13 @@ func GetStaticEventInRange(
 		// add the master event right away and continue if it's not recurring
 		if e.RRule == "" {
 			staticEvents = append(staticEvents, StaticEvent{
-				ID:          e.ID,
-				StartDate:   e.StartDate,
-				EndDate:     e.EndDate,
+				ID:        e.ID,
+				StartDate: e.StartDate,
+				EndDate:   e.EndDate,
+				IsWholeDay: func() bool {
+					startDate := time.Unix(e.StartDate, 0)
+					return startDate.Hour() == 0 && startDate.Minute() == 0
+				}(),
 				Title:       e.Summary,
 				Description: e.Description,
 				Location:    e.Location,
@@ -145,9 +150,13 @@ func GetStaticEventInRange(
 				continue
 			}
 			staticEvents = append(staticEvents, StaticEvent{
-				ID:          e.ID,
-				StartDate:   date,
-				EndDate:     date + eventDuration,
+				ID:        e.ID,
+				StartDate: date,
+				EndDate:   date + eventDuration,
+				IsWholeDay: func() bool {
+					startDate := time.Unix(date, 0)
+					return startDate.Hour() == 0 && startDate.Minute() == 0
+				}(),
 				Title:       e.Summary,
 				Description: e.Description,
 				Location:    e.Location,
@@ -175,9 +184,13 @@ func GetStaticEventInRange(
 		}()
 		eventDuration := e.EndDate - e.StartDate
 		staticEvents = append(staticEvents, StaticEvent{
-			ID:          string(e.RecurrenceID),
-			StartDate:   e.RecurrenceID,
-			EndDate:     e.RecurrenceID + eventDuration,
+			ID:        string(e.RecurrenceID),
+			StartDate: e.RecurrenceID,
+			EndDate:   e.RecurrenceID + eventDuration,
+			IsWholeDay: func() bool {
+				startDate := time.Unix(e.RecurrenceID, 0)
+				return startDate.Hour() == 0 && startDate.Minute() == 0
+			}(),
 			Title:       e.Summary,
 			Description: e.Description,
 			Location:    e.Location,
