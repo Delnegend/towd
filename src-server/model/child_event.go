@@ -111,7 +111,7 @@ func (c *ChildEvent) FromIcal(
 	}
 
 	c.ID = childEvent.GetID()
-	c.RecurrenceID = childEvent.GetRecurrenceID().Unix()
+	c.RecurrenceID = childEvent.GetRecurrenceID()
 
 	c.Summary = childEvent.GetSummary()
 	c.Description = childEvent.GetDescription()
@@ -119,11 +119,11 @@ func (c *ChildEvent) FromIcal(
 	c.URL = childEvent.GetURL()
 	c.Organizer = childEvent.GetOrganizer()
 
-	c.StartDate = childEvent.GetStartDate().Unix()
-	c.EndDate = childEvent.GetEndDate().Unix()
+	c.StartDate = childEvent.GetStartDate()
+	c.EndDate = childEvent.GetEndDate()
 
-	c.CreatedAt = childEvent.GetCreatedAt().Unix()
-	c.UpdatedAt = childEvent.GetUpdatedAt().Unix()
+	c.CreatedAt = childEvent.GetCreatedAt()
+	c.UpdatedAt = childEvent.GetUpdatedAt()
 	c.Sequence = childEvent.GetSequence()
 
 	return nil
