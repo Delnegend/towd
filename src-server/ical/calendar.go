@@ -449,9 +449,12 @@ func (cal *Calendar) ToIcal(w func(string)) error {
 		w(strings.Join(slices, "\n "))
 	}
 
-	sb.WriteString(fmt.Sprintf("BEGIN:VCALENDAR\nPRODID:%s\nVERSION:2.0\nX-WR-CALNAME:%s\n", cal.prodID, cal.name))
+	writer("BEGIN:VCALENDAR\n")
+	writer("PRODID:" + cal.prodID + "\n")
+	writer("VERSION:2.0\n")
+	writer("X-WR-CALNAME:" + cal.name + "\n")
 	if cal.description != "" {
-		sb.WriteString(fmt.Sprintf("X-WR-CALDESC:%s\n", cal.description))
+		writer("X-WR-CALDESC:" + cal.description + "\n")
 	}
 
 	for _, event := range cal.masterEvents {
@@ -462,9 +465,9 @@ func (cal *Calendar) ToIcal(w func(string)) error {
 				"err":     err,
 			})
 		}
-		sb.WriteString(eventStr)
+		event.ToIcal(writer)
 	}
-	sb.WriteString("END:VCALENDAR\n")
+	writer("END:VCALENDAR\n")
 
 	return nil
 }
