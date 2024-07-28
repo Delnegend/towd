@@ -234,7 +234,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					mode = "calendar"
 				case "VTIMEZONE":
@@ -243,7 +242,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					mode = "timezone"
 				case "STANDARD":
@@ -252,7 +250,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					if mode != "timezone" {
 						errCh <- NewCustomError("STANDARD block not in VTIMEZONE block", map[string]any{
@@ -260,7 +257,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"content": line,
 							"mode":    mode,
 						})
-						continue
 					}
 					mode = "standard"
 				case "DAYLIGHT":
@@ -272,13 +268,11 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					default:
 						errCh <- NewCustomError("DAYLIGHT block not in STANDARD block", map[string]any{
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 				case "VEVENT":
 					if mode == "event" {
@@ -294,13 +288,11 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					default:
 						errCh <- NewCustomError("VALARM block not in VEVENT block", map[string]any{
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 				default:
 					if mode == "" {
@@ -308,7 +300,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 				}
 			case "END":
@@ -324,7 +315,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					mode = "calendar"
 				case "standard":
@@ -333,7 +323,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					mode = "timezone"
 				case "daylight":
@@ -342,7 +331,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					mode = "timezone"
 				case "event":
@@ -352,7 +340,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					eventCount++
 					if undecidedEvent.GetSummary() == "" {
@@ -364,7 +351,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					switch decidedEvent := resultEvent.(type) {
 					case event.MasterEvent:
@@ -373,7 +359,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 								"line":    lineCount,
 								"content": line,
 							})
-							continue
 						}
 						cal.masterEvents[undecidedEvent.GetID()] = &decidedEvent
 					case event.ChildEvent:
@@ -383,7 +368,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					undecidedEvent = event.NewUndecidedEvent()
 				case "alarm":
@@ -392,7 +376,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"line":    lineCount,
 							"content": line,
 						})
-						continue
 					}
 					undecidedEvent.AddAlarm(newAlarm)
 					newAlarm = structured.NewAlarm()
@@ -403,7 +386,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						"content": line,
 						"mode":    mode,
 					})
-					continue
 				}
 			default:
 				switch mode {
@@ -426,7 +408,6 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 							"content": line,
 							"err":     err,
 						})
-						continue
 					}
 				case "alarm":
 					newAlarm.AddIcalProperty(line)
