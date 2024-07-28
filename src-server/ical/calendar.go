@@ -512,7 +512,7 @@ func (c *Calendar) SetDescription(desc string) {
 }
 
 // Add a MasterEvent to the calendar
-func (c *Calendar) AddMasterEvent(id string, e event.MasterEvent) error {
+func (c *Calendar) AddMasterEvent(id string, e *event.MasterEvent) error {
 	if _, ok := c.masterEvents[id]; ok {
 		return fmt.Errorf("event with id %s already exists", id)
 	}
@@ -532,7 +532,7 @@ func (c *Calendar) RemoveMasterEvent(id string) error {
 }
 
 // Iterate over all MasterEvents in the calendar and apply a function to each.
-func (c *Calendar) IterateMasterEvents(f func(id string, event event.MasterEvent) error) error {
+func (c *Calendar) IterateMasterEvents(f func(id string, event *event.MasterEvent) error) error {
 	for id, event := range c.masterEvents {
 		if err := f(id, event); err != nil {
 			return err
