@@ -3,6 +3,7 @@ package utils
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -17,9 +18,11 @@ type Config struct {
 	discordClientId     string
 	discordClientSecret string
 
-	location *time.Location
-
+	location   *time.Location
 	groqApiKey string
+
+	hostname           string
+	staticWebClientDir string
 }
 
 func NewConfig() *Config {
@@ -113,7 +116,6 @@ func NewConfig() *Config {
 			slog.Debug("env", "TIMEZONE", timezoneStr)
 			return loc
 		}(),
-
 		groqApiKey: func() string {
 			groqApiKey := os.Getenv("GROQ_API_KEY")
 			if groqApiKey == "" {
@@ -122,6 +124,35 @@ func NewConfig() *Config {
 			}
 			slog.Debug("env", "GROQ_API_KEY", groqApiKey[0:3]+"...")
 			return groqApiKey
+		}(),
+
+		staticWebClientDir: func() string {
+			staticWebClientDir := os.Getenv("STATIC_WEB_CLIENT_DIR")
+			if staticWebClientDir == "" {
+				slog.Error("STATIC_WEB_CLIENT_DIR is not set")
+				os.Exit(1)
+			}
+			info, err := os.Stat(staticWebClientDir)
+			if err != nil {
+				slog.Error("can't get info of STATIC_WEB_CLIENT_DIR", "error", err)
+				os.Exit(1)
+			}
+			if !info.IsDir() {
+				slog.Error("STATIC_WEB_CLIENT_DIR is not a directory", "error", err)
+				os.Exit(1)
+			}
+
+			slog.Debug("env", "STATIC_WEB_CLIENT_DIR", staticWebClientDir)
+			return filepath.Clean(staticWebClientDir)
+		}(),
+		hostname: func() string {
+			hostname := os.Getenv("HOSTNAME")
+			if hostname == "" {
+				slog.Error("HOSTNAME is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "HOSTNAME", hostname)
+			return hostname
 		}(),
 	}
 }
@@ -169,4 +200,14 @@ func (c *Config) GetLocation() *time.Location {
 // Get GROQ_API_KEY env
 func (c *Config) GetGroqApiKey() string {
 	return c.groqApiKey
+}
+
+// Get STATIC_WEB_CLIENT_DIR env
+func (c *Config) GetStaticWebClientDir() string {
+	return c.staticWebClientDir
+}
+
+// Get HOSTNAME env
+func (c *Config) GetHostname() string {
+	return c.hostname
 }
