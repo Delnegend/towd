@@ -97,35 +97,23 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 
 	// recurrence
 	if e.rrule != nil {
-		writer(fmt.Sprintf("RRULE:%s\n", e.rrule.String()))
+		writer("RRULE:" + e.rrule.GetRRule().String() + "\n")
 	}
 	for _, exdate := range e.exDates {
-		exDateStr, err := utils.TimeToIcalDatetime(exdate)
-		if err != nil {
-			return "", err
-		}
-		writer(fmt.Sprintf("EXDATE:%s\n", exDateStr))
+		writer("EXDATE:" + utils.TimeToIcalDatetime(exdate) + "\n")
 	}
 	for _, rdate := range e.rDates {
-		rdateStr, err := utils.TimeToIcalDatetime(rdate)
-		if err != nil {
-			return "", nil
-		}
-		writer(fmt.Sprintf("RDATE:%s\n", rdateStr))
+		writer("RDATE:" + utils.TimeToIcalDatetime(rdate) + "\n")
 	}
 
 	// child events
 	for _, childEvent := range e.childEvents {
 		writer("BEGIN:VEVENT\n")
 		if err := childEvent.EventInfo.toIcal(writer); err != nil {
-			return "", err
-		}
-		recurrenceIDStr, err := utils.TimeToIcalDatetime(childEvent.recurrenceID)
-		if err != nil {
 			slog.Warn("MasterEvent.ToIcal: can't write basic properties for child event", "error", err)
 			return
 		}
-		writer("RECURRENCE-ID:" + recurrenceIDStr + "\n")
+		writer("RECURRENCE-ID:" + utils.TimeToIcalDatetime(childEvent.recurrenceID) + "\n")
 		writer("END:VEVENT\n")
 	}
 
