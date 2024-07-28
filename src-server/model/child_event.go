@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
 	"towd/src-server/ical/event"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/uptrace/bun"
 )
 
@@ -175,64 +173,4 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	}
 
 	return nil
-}
-
-// Format the event to be sent to Discord
-func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) (*discordgo.MessageEmbed, error) {
-	fields := []*discordgo.MessageEmbedField{
-		{
-			Name:   "Start Date",
-			Value:  fmt.Sprintf("<t:%d:t>", e.StartDate),
-			Inline: true,
-		},
-		{
-			Name:   "End Date",
-			Value:  fmt.Sprintf("<t:%d:t>", e.EndDate),
-			Inline: true,
-		},
-	}
-
-	if e.Location != "" {
-		fields = append(fields, &discordgo.MessageEmbedField{
-			Name:  "Location",
-			Value: e.Location,
-		})
-	}
-	if e.URL != "" {
-		fields = append(fields, &discordgo.MessageEmbedField{
-			Name:  "URL",
-			Value: e.URL,
-		})
-	}
-	attendees := make([]Attendee, 0)
-	if err := db.NewSelect().
-		Model(&attendees).
-		Where("event_id = ?", e.ID).
-		Scan(ctx); err != nil {
-		return nil, fmt.Errorf("MasterEvent.ToDiscordEmbed: %w", err)
-	}
-	if len(attendees) > 0 {
-		fields = append(fields, &discordgo.MessageEmbedField{
-			Name: "Attendees",
-			Value: strings.Join(func() []string {
-				attendeeNames := make([]string, len(attendees))
-				for i, attendee := range attendees {
-					attendeeNames[i] = attendee.Data
-				}
-				return attendeeNames
-			}(), ", "),
-		})
-	}
-
-	return &discordgo.MessageEmbed{
-		Title:       e.Summary,
-		Description: e.Description,
-		Author: &discordgo.MessageEmbedAuthor{
-			Name: e.Organizer,
-		},
-		Fields: fields,
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: e.ID,
-		},
-	}, nil
 }
