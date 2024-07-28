@@ -85,7 +85,7 @@ func (m *MasterEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) e
 		if _, err := query.DB().NewDelete().
 			Model((*ChildEvent)(nil)).
 			Where("id = ?", masterEventID).
-			Exec(context.WithValue(ctx, DeletedChildEventIDsCtxKey, deletedChildEventIDs)); err != nil {
+			Exec(context.WithValue(ctx, ChildEventIDCtxKey, deletedChildEventIDs)); err != nil {
 			return fmt.Errorf("MasterEvent.AfterDelete: can't delete child events: %w", err)
 		}
 	case []string:
@@ -124,7 +124,7 @@ func (m *MasterEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) e
 		if _, err := query.DB().NewDelete().
 			Model((*ChildEvent)(nil)).
 			Where("id IN (?)", bun.In(masterEventID)).
-			Exec(context.WithValue(ctx, DeletedChildEventIDsCtxKey, deletedChildEventIDs)); err != nil {
+			Exec(context.WithValue(ctx, ChildEventIDCtxKey, deletedChildEventIDs)); err != nil {
 			return fmt.Errorf("MasterEvent.AfterDelete: can't delete child events: %w", err)
 		}
 	case nil:
