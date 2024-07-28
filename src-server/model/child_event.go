@@ -165,6 +165,25 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		return fmt.Errorf("ChildEvent.Upsert: master event id not found")
 	}
 
+	// check if from a read-only calendar
+	masterEventModal := new(MasterEvent)
+	if err := db.NewSelect().
+		Model(masterEventModal).
+		Where("id = ?", e.ID).
+		Scan(ctx, masterEventModal); err != nil {
+		return fmt.Errorf("ChildEvent.Upsert: can't get master event: %w", err)
+	}
+	calendarModal := new(Calendar)
+	if err := db.NewSelect().
+		Model(calendarModal).
+		Where("id = ?", masterEventModal.CalendarID).
+		Scan(ctx, calendarModal); err != nil {
+		return fmt.Errorf("ChildEvent.Upsert: can't get calendar: %w", err)
+	}
+	if calendarModal.Url != "" {
+		return fmt.Errorf("ChildEvent.Upsert: this event is from a read-only calendar")
+	}
+
 	// upsert to db
 	if _, err := db.NewInsert().
 		Model(e).
