@@ -43,13 +43,6 @@ func main() {
 	handler.ModifyEvent(as)
 	handler.Ping(as)
 
-	// create a new Discord App client session
-	dgSession, err := discordgo.New("Bot " + as.Config.GetDiscordAppToken())
-	if err != nil {
-		slog.Error("can't create Discord session", "error", err)
-		os.Exit(1)
-	}
-
 	// tell discordgo how to handle interactions from Discord
 	dgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		execute := func(id string) {
