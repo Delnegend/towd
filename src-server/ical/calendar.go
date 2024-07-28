@@ -326,7 +326,7 @@ func iCalParser(lineCh <-chan string) (*Calendar, *CustomError) {
 						})
 						continue
 					}
-					mode = "event"
+					mode = "calendar"
 				case "standard":
 					if value != "STANDARD" {
 						errCh <- NewCustomError("unexpected END:STANDARD", map[string]any{
