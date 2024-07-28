@@ -111,6 +111,28 @@ func main() {
 
 	slog.Info("number of guilds", "guilds", len(dgSession.State.Guilds))
 	slog.Info("app is now running.  Press CTRL-C to exit.")
+	// create calendar model for each guild and insert into database
+	func() {
+		calendarModels := make([]model.Calendar, 0)
+		for _, guild := range as.DgSession.State.Guilds {
+			calendarModels = append(calendarModels, model.Calendar{
+				ID:   guild.ID,
+				Name: guild.Name,
+			})
+		}
+		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			if _, err := tx.NewInsert().
+				Model(&calendarModels).
+				On("CONFLICT (id) DO UPDATE").
+				Set("name = EXCLUDED.name").
+				Exec(ctx); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			slog.Error("can't create calendar model", "error", err)
+		}
+	}()
 
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
