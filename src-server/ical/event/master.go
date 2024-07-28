@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"towd/src-server/ical/utils"
 
@@ -90,7 +91,8 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 	// basic properties
 	writer("BEGIN:VEVENT\n")
 	if err := e.EventInfo.toIcal(writer); err != nil {
-		return "", err
+		slog.Warn("MasterEvent.ToIcal: can't write basic properties", "error", err)
+		return
 	}
 
 	// recurrence
@@ -120,7 +122,8 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 		}
 		recurrenceIDStr, err := utils.TimeToIcalDatetime(childEvent.recurrenceID)
 		if err != nil {
-			return "", err
+			slog.Warn("MasterEvent.ToIcal: can't write basic properties for child event", "error", err)
+			return
 		}
 		writer("RECURRENCE-ID:" + recurrenceIDStr + "\n")
 		writer("END:VEVENT\n")
