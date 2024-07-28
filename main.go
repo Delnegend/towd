@@ -135,6 +135,20 @@ func main() {
 	}()
 
 	sc := make(chan os.Signal, 1)
+
+	// http server
+	go func() {
+		muxer := http.NewServeMux()
+		routes.Auth(muxer, as)
+		routes.Index(muxer, as, sc)
+		routes.Ical(muxer, as)
+
+		if err := http.ListenAndServe(":"+as.Config.GetPort(), muxer); err != nil {
+			slog.Error("cannot start HTTP server", "error", err)
+			sc <- syscall.SIGTERM
+		}
+	}()
+
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 
