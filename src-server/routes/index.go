@@ -9,7 +9,7 @@ import (
 	"towd/src-server/utils"
 )
 
-func Index(as *utils.AppState, sc chan<- os.Signal) (string, func(http.ResponseWriter, *http.Request)) {
+func Index(muxer *http.ServeMux, as *utils.AppState, sc chan<- os.Signal) {
 	files := http.FS(os.DirFS(as.Config.GetStaticWebClientDir()))
 	indexFile, err := files.Open("index.html")
 	if err != nil {
@@ -22,7 +22,7 @@ func Index(as *utils.AppState, sc chan<- os.Signal) (string, func(http.ResponseW
 		sc <- syscall.SIGTERM
 	}
 
-	return "GET /{filepath...}", func(w http.ResponseWriter, r *http.Request) {
+	muxer.HandleFunc("GET /{filepath...}", func(w http.ResponseWriter, r *http.Request) {
 		filepath := filepath.Clean(r.PathValue("filepath"))
 		if filepath == "." {
 			filepath = "index.html"
@@ -43,5 +43,5 @@ func Index(as *utils.AppState, sc chan<- os.Signal) (string, func(http.ResponseW
 		}
 
 		http.ServeContent(w, r, stat.Name(), stat.ModTime(), file)
-	}
+	})
 }

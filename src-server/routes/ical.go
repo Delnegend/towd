@@ -14,8 +14,8 @@ import (
 	"github.com/xyedo/rrule"
 )
 
-func Ical(as *utils.AppState) (string, func(w http.ResponseWriter, r *http.Request)) {
-	return "GET /ical/{calendar_id}", func(w http.ResponseWriter, r *http.Request) {
+func Ical(muxer *http.ServeMux, as *utils.AppState) {
+	muxer.HandleFunc("GET /ical/{calendar_id}", func(w http.ResponseWriter, r *http.Request) {
 		calendarID := r.PathValue("calendar_id")
 
 		// getting the calendar model
@@ -168,5 +168,5 @@ func Ical(as *utils.AppState) (string, func(w http.ResponseWriter, r *http.Reque
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	}
+	})
 }
