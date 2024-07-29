@@ -11,6 +11,7 @@ type User struct {
 	bun.BaseModel `bun:"table:users"`
 
 	ID         string `bun:"id,pk,notnull"`
+	Username   string `bun:"username,notnull"`
 	TotpSecret string `json:"totp_secret"`
 }
 
