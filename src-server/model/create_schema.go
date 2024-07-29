@@ -21,6 +21,7 @@ func CreateSchema(db *bun.DB) error {
 			if _, err := tx.
 				NewCreateTable().
 				Model(model).
+				IfNotExists().
 				Exec(context.Background()); err != nil {
 				return err
 			}
