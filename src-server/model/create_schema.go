@@ -16,6 +16,7 @@ func CreateSchema(db *bun.DB) error {
 			(*ChildEvent)(nil),
 			(*Attendee)(nil),
 			(*RRule)(nil),
+			(*User)(nil),
 		} {
 			if _, err := tx.
 				NewCreateTable().
