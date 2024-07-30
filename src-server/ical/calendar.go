@@ -24,7 +24,7 @@
 // Parse from a file
 //	calendar, _ := ical.FromIcalFile("path/to/input/calendar.ics")
 //
-// Parse from an URL
+// Parse from a URL
 //	calendar, _ := ical.FromIcalUrl("https://example.com/calendar.ics")
 //
 // Marshal to a string -> file
