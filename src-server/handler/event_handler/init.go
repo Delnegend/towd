@@ -25,12 +25,13 @@ func Init(as *utils.AppState) {
 	list(as, &localCmdInfo, localCmdHandler)
 	modify(as, &localCmdInfo, localCmdHandler)
 
-	as.AddAppCmdInfo("event", &discordgo.ApplicationCommand{
-		Name:        "event",
+	id := "event"
+	as.AddAppCmdInfo(id, &discordgo.ApplicationCommand{
+		Name:        id,
 		Description: "Event management commands.",
 		Options:     localCmdInfo,
 	})
-	as.AddAppCmdHandler("event", func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	as.AddAppCmdHandler(id, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		data := i.ApplicationCommandData()
 		if handler, ok := localCmdHandler[data.Options[0].Name]; ok {
 			return handler(s, i)
