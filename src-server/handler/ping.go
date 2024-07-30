@@ -20,7 +20,6 @@ func Ping(as *utils.AppState) {
 
 func pingHandler() func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		latency := fmt.Sprintf("%.2fms", float64(s.HeartbeatLatency().Nanoseconds())/1000000)
 
 		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -35,7 +34,7 @@ func pingHandler() func(s *discordgo.Session, i *discordgo.InteractionCreate) er
 						Fields: []*discordgo.MessageEmbedField{
 							{
 								Name:   "Latency",
-								Value:  latency,
+								Value:  fmt.Sprintf("%dms", s.HeartbeatLatency().Milliseconds()),
 								Inline: true,
 							},
 							{
