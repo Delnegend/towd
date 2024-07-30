@@ -100,7 +100,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		staticEvent, err := func() (*model.StaticEvent, error) {
 			staticEvent := new(model.StaticEvent)
 			staticEvent.Attendees = new([]string)
-			if err := staticEvent.FromGroqAI(context.Background(), as, content); err != nil {
+			if err := staticEvent.FromNaturalText(context.Background(), as, content); err != nil {
 				return nil, err
 			}
 			return staticEvent, err
