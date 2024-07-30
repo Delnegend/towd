@@ -103,10 +103,12 @@ func (as *AppState) IterateAppCmdInfo(f func(k string, v *discordgo.ApplicationC
 	}
 }
 
-func (as *AppState) RemoveAppCmdInfo(id string) {
+// NukeAppCmdInfo re-initializes the slash command info
+// in the AppState in order to free up memory.
+func (as *AppState) NukeAppCmdInfo() {
 	as.appCmdInfoMutex.Lock()
 	defer as.appCmdInfoMutex.Unlock()
-	delete(as.appCmdInfo, id)
+	as.appCmdInfo = make(map[string]*discordgo.ApplicationCommand)
 }
 
 // AddAppCmdHandler adds a slash command handler to the AppState.
