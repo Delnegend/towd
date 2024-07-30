@@ -87,6 +87,7 @@ func (as *AppState) GetUptime() time.Duration {
 	return time.Since(as.startedAt).Truncate(time.Second)
 }
 
+// AddAppCmdInfo adds a slash command info to the AppState.
 func (as *AppState) AddAppCmdInfo(id string, info *discordgo.ApplicationCommand) {
 	as.appCmdInfoMutex.Lock()
 	defer as.appCmdInfoMutex.Unlock()
@@ -100,6 +101,7 @@ func (as *AppState) GetAppCmdInfo(id string) (*discordgo.ApplicationCommand, boo
 	return appCmdInfo, ok
 }
 
+// IterateAppCmdInfo iterates over all slash command info in the AppState.
 func (as *AppState) IterateAppCmdInfo(f func(k string, v *discordgo.ApplicationCommand)) {
 	as.appCmdInfoMutex.RLock()
 	defer as.appCmdInfoMutex.RUnlock()
@@ -114,12 +116,14 @@ func (as *AppState) RemoveAppCmdInfo(id string) {
 	delete(as.appCmdInfo, id)
 }
 
+// AddAppCmdHandler adds a slash command handler to the AppState.
 func (as *AppState) AddAppCmdHandler(id string, handler func(s *discordgo.Session, i *discordgo.InteractionCreate) error) {
 	as.appCmdHandlerMutex.Lock()
 	defer as.appCmdHandlerMutex.Unlock()
 	as.appCmdHandler[id] = handler
 }
 
+// GetAppCmdHandler gets a slash command handler from the AppState.
 func (as *AppState) GetAppCmdHandler(id string) (func(s *discordgo.Session, i *discordgo.InteractionCreate) error, bool) {
 	as.appCmdHandlerMutex.RLock()
 	defer as.appCmdHandlerMutex.RUnlock()
@@ -135,6 +139,7 @@ func (as *AppState) IterateAppCmdHandler(f func(k string, v func(s *discordgo.Se
 	}
 }
 
+// RemoveAppCmdHandler removes a slash command handler from the AppState.
 func (as *AppState) RemoveAppCmdHandler(id string) {
 	as.appCmdHandlerMutex.Lock()
 	defer as.appCmdHandlerMutex.Unlock()
