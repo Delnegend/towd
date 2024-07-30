@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
@@ -130,45 +129,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds: &[]*discordgo.MessageEmbed{
-					{
-						Title:       staticEvent.Title,
-						Description: staticEvent.Description,
-						Fields: func() []*discordgo.MessageEmbedField {
-							fields := []*discordgo.MessageEmbedField{
-								{
-									Name:   "Start Date",
-									Value:  fmt.Sprintf("<t:%d:f>", staticEvent.StartDate),
-									Inline: true,
-								},
-								{
-									Name:   "End Date",
-									Value:  fmt.Sprintf("<t:%d:f>", staticEvent.EndDate),
-									Inline: true,
-								},
-							}
-							if staticEvent.Location != "" {
-								fields = append(fields, &discordgo.MessageEmbedField{
-									Name:  "Location",
-									Value: staticEvent.Location,
-								})
-							}
-							if staticEvent.Attendees != nil {
-								if len(*staticEvent.Attendees) > 0 {
-									fields = append(fields, &discordgo.MessageEmbedField{
-										Name:  "Attendees",
-										Value: strings.Join(*staticEvent.Attendees, ", "),
-									})
-								}
-							}
-							return fields
-						}(),
-						Footer: &discordgo.MessageEmbedFooter{
-							Text: staticEvent.ID,
-						},
-						Author: &discordgo.MessageEmbedAuthor{
-							Name: i.Member.User.Username,
-						},
-					},
+					staticEvent.ToDiscordEmbed(context.Background(), as.BunDB),
 				},
 				Components: &[]discordgo.MessageComponent{
 					discordgo.ActionsRow{

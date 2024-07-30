@@ -191,43 +191,7 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Is this correct?",
-					Embeds: []*discordgo.MessageEmbed{
-						{
-							Title:       eventModel.Summary,
-							Description: eventModel.Description,
-							URL:         eventModel.URL,
-							Fields: func() []*discordgo.MessageEmbedField {
-								fields := []*discordgo.MessageEmbedField{
-									{
-										Name:   "Start Date",
-										Value:  fmt.Sprintf("<t:%d:f>", eventModel.StartDate),
-										Inline: true,
-									},
-									{
-										Name:   "End Date",
-										Value:  fmt.Sprintf("<t:%d:f>", eventModel.EndDate),
-										Inline: true,
-									},
-								}
-								if eventModel.Location != "" {
-									fields = append(fields, &discordgo.MessageEmbedField{
-										Name:  "Location",
-										Value: eventModel.Location,
-									})
-								}
-								if len(*staticEvent.Attendees) > 0 {
-									fields = append(fields, &discordgo.MessageEmbedField{
-										Name:  "Invitees",
-										Value: strings.Join(*staticEvent.Attendees, ", "),
-									})
-								}
-								return fields
-							}(),
-							Author: &discordgo.MessageEmbedAuthor{
-								Name: eventModel.Organizer,
-							},
-						},
-					},
+					Embeds:  eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
 					Components: []discordgo.MessageComponent{
 						discordgo.ActionsRow{
 							Components: []discordgo.MessageComponent{

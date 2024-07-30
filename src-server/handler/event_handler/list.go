@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
@@ -111,42 +110,7 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 		// compose & send the message
 		embeds := []*discordgo.MessageEmbed{}
 		for _, event := range *staticEvents {
-			fields := []*discordgo.MessageEmbedField{
-				{
-					Name:   "Start Date",
-					Value:  fmt.Sprintf("<t:%d:f>", event.StartDate),
-					Inline: true,
-				},
-				{
-					Name:   "End Date",
-					Value:  fmt.Sprintf("<t:%d:f>", event.EndDate),
-					Inline: true,
-				},
-			}
-			if event.Location != "" {
-				fields = append(fields, &discordgo.MessageEmbedField{
-					Name:  "Location",
-					Value: event.Location,
-				})
-			}
-			if event.Attendees != nil {
-				if len(*event.Attendees) > 0 {
-					fields = append(fields, &discordgo.MessageEmbedField{
-						Name:  "Attendees",
-						Value: strings.Join(*event.Attendees, ", "),
-					})
-				}
-			}
-			embeds = append(embeds, &discordgo.MessageEmbed{
-				Title:       event.Title,
-				Description: event.Description,
-				Author: &discordgo.MessageEmbedAuthor{
-					Name: event.Organizer,
-				},
-				Fields: fields,
-				URL:    event.URL,
-				Footer: &discordgo.MessageEmbedFooter{Text: event.ID},
-			})
+			embeds = append(embeds, event.ToDiscordEmbed(context.Background(), as.BunDB))
 		}
 		// edit the deferred message
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
