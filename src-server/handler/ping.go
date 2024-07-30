@@ -48,7 +48,7 @@ func pingHandler() func(s *discordgo.Session, i *discordgo.InteractionCreate) er
 				},
 			},
 		}); err != nil {
-			slog.Error("can't respond", "handler", "ping", "err", err)
+			slog.Warn("can't respond", "handler", "ping", "err", err)
 		}
 		return nil
 	}
