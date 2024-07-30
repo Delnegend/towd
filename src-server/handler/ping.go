@@ -11,14 +11,14 @@ import (
 
 func Ping(as *utils.AppState) {
 	id := "ping"
-	as.AddAppCmdHandler(id, pingHandler())
+	as.AddAppCmdHandler(id, pingHandler(as))
 	as.AddAppCmdInfo(id, &discordgo.ApplicationCommand{
 		Name:        id,
 		Description: "A ping command.",
 	})
 }
 
-func pingHandler() func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func pingHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 
 		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -32,6 +32,10 @@ func pingHandler() func(s *discordgo.Session, i *discordgo.InteractionCreate) er
 							Text: i.GuildID,
 						},
 						Fields: []*discordgo.MessageEmbedField{
+							{
+								Name:  "Uptime",
+								Value: as.GetUptime().String(),
+							},
 							{
 								Name:   "Latency",
 								Value:  fmt.Sprintf("%dms", s.HeartbeatLatency().Milliseconds()),
