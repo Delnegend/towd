@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"strings"
 	"time"
 	"towd/src-server/ical"
 	"towd/src-server/ical/event"
@@ -42,105 +41,140 @@ func ImportCalendar(as *utils.AppState) {
 
 func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		interaction := i.Interaction
+
+		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			slog.Warn("can't respond", "handler", "import-calendar", "content", "deferring", "error", err)
 		}
 
-		// #region | parse url, name & validate url
-		options := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, 0)
-		for _, opt := range i.ApplicationCommandData().Options {
-			options[opt.Name] = opt
-		}
-		var url_ string
-		if opt, ok := options["url"]; ok {
-			url_ = opt.StringValue()
-		}
-		var name_ string
-		if opt, ok := options["name"]; ok {
-			name_ = opt.StringValue()
-		}
-		if _, err := url.ParseRequestURI(url_); err != nil {
-			msg := "Invalid URL."
-			msgLower := strings.TrimSuffix(strings.ToLower(msg), ".")
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		// parse calendarURL, nameOverride & validate calendarURL
+		calendarURL, nameOverride, err := func() (string, string, error) {
+			options := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, 0)
+			for _, opt := range i.ApplicationCommandData().Options {
+				options[opt.Name] = opt
+			}
+			var url_ string
+			if opt, ok := options["url"]; ok {
+				url_ = opt.StringValue()
+			}
+			var name_ string
+			if opt, ok := options["name"]; ok {
+				name_ = opt.StringValue()
+			}
+			if _, err := url.ParseRequestURI(url_); err != nil {
+				return "", "", err
+			}
+			return url_, name_, nil
+		}()
+		if err != nil {
+			msg := err.Error()
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", msgLower, "error", err)
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "invalid-url", "error", err)
 			}
-			return fmt.Errorf(msgLower)
+			return err
 		}
-		// #endregion
 
-		// #region | check if calendar already exists in DB
+		// calendar already exists?
 		if exists, err := as.BunDB.
 			NewSelect().
 			Model((*model.Calendar)(nil)).
-			Where("url = ?", url_).
+			Where("url = ?", calendarURL).
 			Exists(context.Background()); err != nil {
 			return err
 		} else if exists {
 			msg := "Calendar already exists in the database."
-			msgLower := strings.TrimSuffix(strings.ToLower(msg), ".")
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", msgLower, "error", err)
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "calendar-already-exists", "error", err)
 			}
-			return fmt.Errorf(msgLower)
+			return nil
 		}
-		// #endregion
 
-		// #region | fetch & parse calendar
-		var icalCalendar *ical.Calendar
-		type icalParseResultChType struct {
-			ok  *ical.Calendar
-			err error
-		}
-		icalParseResultCh := make(chan icalParseResultChType)
-		go func() {
-			defer close(icalParseResultCh)
-			iCalCalendar, err := ical.FromIcalUrl(url_)
-			if err != nil {
-				icalParseResultCh <- icalParseResultChType{err: err}
-				return
+		// fetch & parse calendar
+		icalCalendar, err := func() (*ical.Calendar, error) {
+			calCh := make(chan *ical.Calendar)
+			errCh := make(chan error)
+			defer close(calCh)
+			defer close(errCh)
+			go func() {
+				iCalCalendar, err := ical.FromIcalUrl(calendarURL)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				calCh <- iCalCalendar
+			}()
+			select {
+			case <-time.After(time.Minute * 5):
+				return nil, fmt.Errorf("timed out waiting for calendar to be fetched & parsed")
+			case err := <-errCh:
+				return nil, fmt.Errorf("can't fetch calendar: %w", err)
+			case icalCal := <-calCh:
+				return icalCal, nil
 			}
-			icalParseResultCh <- icalParseResultChType{ok: iCalCalendar}
 		}()
-		select {
-		case result := <-icalParseResultCh:
-			if result.err != nil {
-				return result.err
-			}
-			icalCalendar = result.ok
-		case <-time.After(time.Minute * 5):
-			msg := "Fetching and parsing the calendar took too long."
-			msgLower := strings.TrimSuffix(strings.ToLower(msg), ".")
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		if err != nil {
+			msg := fmt.Sprintf("Can't fetch calendar.\n```\n%s\n```", err.Error())
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", msgLower, "error", err)
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "fetch-calendar-error", "error", err)
 			}
-			return fmt.Errorf(msgLower)
+			return err
 		}
-		// #endregion
 
-		// #region | handle if there's no calendar name
-		if name_ != "" {
-			icalCalendar.SetName(name_)
-		} else if icalCalendar.GetName() == "" {
-			// prepare IDs and channels
+		// prompt to enter calendar name if not provided & calendar not has one
+		if isCanceled, isTimedOut, err := func() (bool, bool, error) {
+			if nameOverride != "" {
+				icalCalendar.SetName(nameOverride)
+				return false, false, nil
+			}
+			if icalCalendar.GetName() != "" {
+				return false, false, nil
+			}
+
 			addNameButtonID := "add-" + icalCalendar.GetID()
 			cancelAddNameButtonID := "cancel-" + icalCalendar.GetID()
 			addNameModalID := "modal-" + icalCalendar.GetID()
+
+			msg := "Seems like the calendar is missing a name."
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+				Components: &[]discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.Button{
+								CustomID: addNameButtonID,
+								Label:    "Give it one",
+								Style:    discordgo.PrimaryButton,
+							}, discordgo.Button{
+								CustomID: cancelAddNameButtonID,
+								Label:    "Cancel import",
+								Style:    discordgo.SecondaryButton,
+							},
+						},
+					}},
+			}); err != nil {
+				return false, false, fmt.Errorf("can't send msg to collect calendar name: %w", err)
+			}
+
+			// prepare channels
 			calNameCh := make(chan string)
+			cancelCh := make(chan struct{})
 			errCh := make(chan error)
 			defer close(calNameCh)
+			defer close(cancelCh)
 			defer close(errCh)
 
+			// create buttons/modal handlers
 			as.AddAppCmdHandler(addNameButtonID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				interaction = i.Interaction
+				if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseModal,
 					Data: &discordgo.InteractionResponseData{
 						CustomID: addNameModalID,
@@ -160,26 +194,17 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 						},
 					},
 				}); err != nil {
-					slog.Warn("can't respond", "handler", "import-calendar", "content", "add name modal", "error", err)
+					errCh <- fmt.Errorf("can't send modal to collect calendar name: %w", err)
 				}
 				return nil
 			})
 			as.AddAppCmdHandler(cancelAddNameButtonID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				msg := "Calendar import canceled."
-				msgLower := strings.TrimSuffix(strings.ToLower(msg), ".")
-				if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Flags:   discordgo.MessageFlagsEphemeral,
-						Content: msg,
-					},
-				}); err != nil {
-					slog.Warn("can't respond", "handler", "import-calendar", "content", msgLower, "error", err)
-				}
-				errCh <- fmt.Errorf(msgLower)
+				interaction = i.Interaction
+				cancelCh <- struct{}{}
 				return nil
 			})
 			as.AddAppCmdHandler(addNameModalID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+				interaction = i.Interaction
 				modalData := i.ModalSubmitData()
 				calName := modalData.Components[0].(*discordgo.ActionsRow).Components[0].(*discordgo.TextInput).Value
 				calNameCh <- calName
@@ -189,163 +214,218 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			defer as.RemoveAppCmdHandler(cancelAddNameButtonID)
 			defer as.RemoveAppCmdHandler(addNameModalID)
 
-			msg := "Seems like the calendar is missing a name."
-			msgLower := strings.TrimSuffix(strings.ToLower(msg), ".")
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			// wait for response
+			select {
+			case <-time.After(time.Minute * 2):
+				return false, true, nil
+			case <-cancelCh:
+				return true, false, nil
+			case err := <-errCh:
+				return false, false, err
+			case name := <-calNameCh:
+				icalCalendar.SetName(name)
+				return false, false, nil
+			}
+		}(); err != nil {
+			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Calendar import canceled.\n```\n%s\n```", err.Error()),
+				},
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-error", "error", err)
+			}
+			return err
+		} else if isCanceled {
+			msg := "Calendar import canceled."
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-cancel", "error", err)
+			}
+			return nil
+		} else if isTimedOut {
+			if _, err := s.ChannelMessageSend(interaction.ChannelID, "Calendar import canceled."); err != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-timeout", "error", err)
+			}
+			return nil
+		}
+
+		// ask for confirmation to continue
+		if isCanceled, isTimedOut, err := func() (bool, bool, error) {
+			cancelButtonID := "cancel-import-" + icalCalendar.GetID()
+			confirmButtonID := "confirm-import-" + icalCalendar.GetID()
+			cancelCh := make(chan struct{})
+			confirmCh := make(chan struct{})
+			defer close(cancelCh)
+			defer close(confirmCh)
+
+			// create buttons/modal handlers
+			as.AddAppCmdHandler(cancelButtonID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+				interaction = i.Interaction
+				cancelCh <- struct{}{}
+				return nil
+			})
+			as.AddAppCmdHandler(confirmButtonID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+				interaction = i.Interaction
+				confirmCh <- struct{}{}
+				return nil
+			})
+			defer as.RemoveAppCmdHandler(confirmButtonID)
+			defer as.RemoveAppCmdHandler(cancelButtonID)
+
+			// send msg to ask for confirmation
+			msg := fmt.Sprintf(
+				"Found `%d` events in `%s`. Continue?",
+				icalCalendar.GetMasterEventCount(),
+				icalCalendar.GetName(),
+			)
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Components: &[]discordgo.MessageComponent{
 					discordgo.ActionsRow{
 						Components: []discordgo.MessageComponent{
 							discordgo.Button{
-								CustomID: addNameButtonID,
-								Label:    "Give it one",
+								CustomID: confirmButtonID,
+								Label:    "Import",
 								Style:    discordgo.PrimaryButton,
-							}, discordgo.Button{
-								CustomID: cancelAddNameButtonID,
-								Label:    "Cancel import",
-								Style:    discordgo.SecondaryButton,
+							},
+							discordgo.Button{
+								CustomID: cancelButtonID,
+								Label:    "Cancel",
+								Style:    discordgo.DangerButton,
 							},
 						},
 					}},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", msgLower, "error", err)
-				errCh <- fmt.Errorf(msgLower)
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-error", "error", err)
 			}
 
+			// waiting for response
 			select {
-			case calNameResult := <-calNameCh:
-				icalCalendar.SetName(calNameResult)
-			case err := <-errCh:
-				return err
-			case <-time.After(time.Minute * 5):
-				msg := "Timed out waiting for entering calendar name."
-				msgLower := strings.TrimSuffix(strings.ToLower(msg), ".")
-				if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-					Content: &msg,
-				}); err != nil {
-					slog.Warn("can't respond", "handler", "import-calendar", "content", msgLower, "error", err)
-				}
-				return fmt.Errorf(msgLower)
+			case <-time.After(time.Minute * 2):
+				return false, true, nil
+			case <-cancelCh:
+				return true, false, nil
+			case <-confirmCh:
+				return false, false, nil
 			}
-		}
-		// #endregion
-
-		// #region | confirm or cancel import
-		confirmButtonID := "confirm-import-" + icalCalendar.GetID()
-		cancelButtonID := "cancel-import-" + icalCalendar.GetID()
-
-		confirmCh := make(chan struct{})
-		cancelCh := make(chan struct{})
-		defer close(confirmCh)
-		defer close(cancelCh)
-		msg := fmt.Sprintf("Found `%d` events in `%s`. Continue?", icalCalendar.GetMasterEventCount(), icalCalendar.GetName())
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &msg,
-			Components: &[]discordgo.MessageComponent{
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.Button{
-							CustomID: confirmButtonID,
-							Label:    "Import",
-							Style:    discordgo.PrimaryButton,
-						}, discordgo.Button{
-							CustomID: cancelButtonID,
-							Label:    "Cancel",
-							Style:    discordgo.SecondaryButton,
-						},
-					},
+		}(); err != nil {
+			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Calendar import canceled.\n```\n%s\n```", err.Error()),
 				},
-			},
-		}); err != nil {
-			slog.Warn("can't respond", "handler", "import-calendar", "content", "importing", "error", err)
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-error", "error", err)
+			}
+			return err
+		} else if isCanceled {
+			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Calendar import canceled.",
+				},
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-cancel", "error", err)
+			}
+			return nil
+		} else if isTimedOut {
+			if _, err := s.ChannelMessageSend(interaction.ChannelID, "Calendar import canceled."); err != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-timeout", "error", err)
+			}
+			return nil
 		}
-		var buttonInteraction *discordgo.Interaction
-		as.AddAppCmdHandler(confirmButtonID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-			buttonInteraction = i.Interaction
-			confirmCh <- struct{}{}
-			return nil
-		})
-		as.AddAppCmdHandler(cancelButtonID, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-			buttonInteraction = i.Interaction
-			cancelCh <- struct{}{}
-			return nil
-		})
-		defer as.RemoveAppCmdHandler(confirmButtonID)
-		defer as.RemoveAppCmdHandler(cancelButtonID)
 
-		// #region | run in transaction, import calendar
-		var resultErr error
-		select {
-		case <-cancelCh:
-			resultErr = fmt.Errorf("calendar import canceled")
-		case <-confirmCh:
-			if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
-				// create new calendar model and insert to DB
-				calendarModel := model.Calendar{
-					ID:          icalCalendar.GetID(),
-					ProdID:      icalCalendar.GetProdID(),
-					Name:        icalCalendar.GetName(),
-					Description: icalCalendar.GetDescription(),
-					Url:         url_,
-				}
-				if _, err := tx.
-					NewInsert().
-					Model(&calendarModel).
-					Exec(ctx); err != nil {
+		// insert to DB
+		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			// create new calendar model and insert to DB
+			hash, err := utils.GetFileHash(calendarURL)
+			if err != nil {
+				return err
+			}
+			calendarModel := model.Calendar{
+				ID:          icalCalendar.GetID(),
+				ProdID:      icalCalendar.GetProdID(),
+				Name:        icalCalendar.GetName(),
+				Description: icalCalendar.GetDescription(),
+				Url:         calendarURL,
+				Hash:        hash,
+			}
+			if _, err := tx.
+				NewInsert().
+				Model(&calendarModel).
+				Exec(ctx); err != nil {
+				return err
+			}
+
+			// extract master events and child events
+			masterEventModels := make([]model.MasterEvent, 0)
+			childEventModels := make([]model.ChildEvent, 0)
+			if err := icalCalendar.IterateMasterEvents(func(id string, icalMasterEvent *event.MasterEvent) error {
+				masterEventModel := new(model.MasterEvent)
+				if err := masterEventModel.FromIcal(
+					ctx,
+					tx,
+					icalMasterEvent,
+					calendarModel.ID,
+				); err != nil {
 					return err
 				}
-
-				// upsert all master events
-				if err := icalCalendar.IterateMasterEvents(func(id string, icalMasterEvent event.MasterEvent) error {
-					masterEventModel := new(model.MasterEvent)
-					if err := masterEventModel.FromIcal(
-						ctx, tx, &icalMasterEvent, calendarModel.ID); err != nil {
-						return err
-					}
-					return masterEventModel.Upsert(ctx, tx)
-				}); err != nil {
-					return err
-				}
-
-				// upsert all child events
-				if err := icalCalendar.IterateChildEvents(func(id string, icalChildEvent event.ChildEvent) error {
+				masterEventModels = append(masterEventModels, *masterEventModel)
+				if err := icalMasterEvent.IterateChildEvents(func(id string, icalChildEvent *event.ChildEvent) error {
 					childEventModel := new(model.ChildEvent)
 					if err := childEventModel.FromIcal(
-						ctx, tx, &icalChildEvent); err != nil {
+						ctx,
+						tx,
+						icalChildEvent,
+					); err != nil {
 						return err
 					}
-					return childEventModel.Upsert(ctx, tx)
+					childEventModels = append(childEventModels, *childEventModel)
+					return nil
 				}); err != nil {
 					return err
 				}
-
 				return nil
 			}); err != nil {
-				resultErr = fmt.Errorf("importCalendarHandler: %w", err)
+				return err
 			}
-		case <-time.After(time.Minute * 2):
-			s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation.")
-			return nil
-		}
-		// #endregion
 
-		if err := s.InteractionRespond(buttonInteraction, &discordgo.InteractionResponse{
+			// insert all events
+			if _, err := tx.NewInsert().
+				Model(&masterEventModels).
+				Exec(ctx); err != nil {
+				return err
+			}
+			if _, err := tx.NewInsert().
+				Model(&childEventModels).
+				Exec(ctx); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			if err2 := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Can't import calendar.\n```\n%s\n```", err.Error()),
+				},
+			}); err2 != nil {
+				slog.Warn("can't respond", "handler", "import-calendar", "content", "import-calendar-error", "error", err)
+			}
+			return err
+		}
+
+		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: func() string {
-					if resultErr != nil {
-						return msg
-					}
-					return fmt.Sprintf("%s\n\n%s", msg, "Imported events will be added to the calendar.")
-				}(),
+				Content: fmt.Sprintf("Calendar `%s` imported successfully.", icalCalendar.GetName()),
 			},
 		}); err != nil {
-			slog.Error("can't respond", "handler", "import-calendar", "content", "import-calendar-error", "error", err)
+			slog.Warn("can't respond", "handler", "import-calendar", "content", "import-calendar-success", "error", err)
 		}
 
-		if resultErr != nil {
-			return fmt.Errorf("importCalendarHandler: %w", resultErr)
-		}
 		return nil
 	}
 }
