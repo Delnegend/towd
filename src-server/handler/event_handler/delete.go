@@ -162,15 +162,9 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			var embeds []*discordgo.MessageEmbed
 			switch eventModel := eventModel.(type) {
 			case *model.MasterEvent:
-				embeds, err = eventModel.ToDiscordEmbed(context.Background(), as.BunDB)
-				if err != nil {
-					return false, false, fmt.Errorf("can't build embed: %w", err)
-				}
+				embeds = eventModel.ToDiscordEmbed(context.Background(), as.BunDB)
 			case *model.ChildEvent:
-				embeds, err = eventModel.ToDiscordEmbed(context.Background(), as.BunDB)
-				if err != nil {
-					return false, false, fmt.Errorf("can't build embed: %w", err)
-				}
+				embeds = eventModel.ToDiscordEmbed(context.Background(), as.BunDB)
 			}
 
 			// edit the deferred message
