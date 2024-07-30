@@ -182,7 +182,7 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 
 // Turn the child event into a discord embeded message.
 // It's just a single embed though, but return as a slice for easier processing.
-func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) ([]*discordgo.MessageEmbed, error) {
+func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) []*discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Title:       e.Summary,
 		Description: e.Description,
@@ -243,5 +243,5 @@ func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) ([]*discord
 		})
 	}
 
-	return []*discordgo.MessageEmbed{embed}, nil
+	return []*discordgo.MessageEmbed{embed}
 }
