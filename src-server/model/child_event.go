@@ -51,17 +51,7 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 	switch childEventID := ctx.Value(ChildEventIDCtxKey).(type) {
 	case string:
 		if childEventID == "" {
-			return fmt.Errorf("ChildEvent.AfterDelete: childEventID is blank")
-		}
-
-		// get the going-to-be-deleted attendee ids before deleting them
-		deletedAttendeeIDs := []string{}
-		if err := query.DB().NewSelect().
-			Model((*Attendee)(nil)).
-			Column("event_id").
-			Where("event_id = ?", childEventID).
-			Scan(ctx, &deletedAttendeeIDs); err != nil {
-			return fmt.Errorf("ChildEvent.AfterDelete: can't get attendee ids: %w", err)
+			return nil
 		}
 
 		// rm related attendees
@@ -73,17 +63,7 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		}
 	case []string:
 		if len(childEventID) == 0 {
-			return fmt.Errorf("ChildEvent.AfterDelete: childEventID is empty")
-		}
-
-		// get the going-to-be-deleted attendee ids before deleting them
-		attendeeIDs := []string{}
-		if err := query.DB().NewSelect().
-			Model((*Attendee)(nil)).
-			Column("event_id").
-			Where("event_id IN (?)", bun.In(childEventID)).
-			Scan(ctx, &attendeeIDs); err != nil {
-			return fmt.Errorf("ChildEvent.AfterDelete: can't get attendee ids: %w", err)
+			return nil
 		}
 
 		// rm related attendees
