@@ -20,6 +20,9 @@ func Ping(as *utils.AppState) {
 
 func pingHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		memUsage := float64(m.Sys) / 1024 / 1024
 
 		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -44,6 +47,11 @@ func pingHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 							{
 								Name:   "Go version",
 								Value:  runtime.Version(),
+								Inline: true,
+							},
+							{
+								Name:   "Memory",
+								Value:  fmt.Sprintf("%.2fMB", memUsage),
 								Inline: true,
 							},
 						},
