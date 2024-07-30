@@ -43,7 +43,7 @@ func pingHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 							},
 							{
 								Name:   "Go version",
-								Value:  runtime.Version()[2:],
+								Value:  runtime.Version(),
 								Inline: true,
 							},
 						},
