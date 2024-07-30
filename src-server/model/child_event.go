@@ -42,6 +42,7 @@ type ChildEvent struct {
 
 var _ bun.AfterDeleteHook = (*ChildEvent)(nil)
 
+// Cleanup attendees after child event is deleted
 func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) error {
 	if query.DB() == nil {
 		return fmt.Errorf("ChildEvent.AfterDelete: db is nil")
@@ -101,6 +102,7 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 	return nil
 }
 
+// Create a new ChildEvent model from an ical child event
 func (c *ChildEvent) FromIcal(
 	ctx context.Context,
 	db bun.IDB,
@@ -129,6 +131,7 @@ func (c *ChildEvent) FromIcal(
 	return nil
 }
 
+// Upsert the child event to the database
 func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	// basic field validation
 	switch {
