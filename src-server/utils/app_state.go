@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/olebedev/when"
@@ -22,6 +23,8 @@ type AppState struct {
 	DgSession *discordgo.Session
 	When      *when.Parser
 
+	startedAt time.Time
+
 	// will be send to Discord
 	appCmdInfo      map[string]*discordgo.ApplicationCommand
 	appCmdInfoMutex sync.RWMutex
@@ -31,6 +34,7 @@ type AppState struct {
 }
 
 func NewAppState() *AppState {
+	startedAt := time.Now()
 	config := NewConfig()
 	return &AppState{
 		Config: config,
@@ -69,11 +73,18 @@ func NewAppState() *AppState {
 			return w
 		}(),
 
+		startedAt: startedAt,
+
 		appCmdInfo:         make(map[string]*discordgo.ApplicationCommand),
 		appCmdInfoMutex:    sync.RWMutex{},
 		appCmdHandler:      make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error),
 		appCmdHandlerMutex: sync.RWMutex{},
 	}
+}
+
+// GetUptime returns the uptime of the app.
+func (as *AppState) GetUptime() time.Duration {
+	return time.Since(as.startedAt).Truncate(time.Second)
 }
 
 func (as *AppState) AddAppCmdInfo(id string, info *discordgo.ApplicationCommand) {
