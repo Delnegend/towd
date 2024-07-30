@@ -115,15 +115,14 @@ func FromIcalFile(path string) (*Calendar, *CustomError) {
 
 // Unmarshal an iCalendar URL into a Calendar{} struct.
 func FromIcalUrl(url_ string) (*Calendar, *CustomError) {
-	validUrl, err := url.ParseRequestURI(url_)
-	if err != nil {
+	if _, err := url.ParseRequestURI(url_); err != nil {
 		return nil, NewCustomError("can't parse URL", map[string]any{
 			"url": url_,
 			"err": err,
 		})
 	}
 
-	req, err := http.NewRequest("GET", validUrl.String(), nil)
+	req, err := http.NewRequest("GET", url_, nil)
 	if err != nil {
 		return nil, NewCustomError("can't create HTTP request", map[string]any{
 			"url": url_,
