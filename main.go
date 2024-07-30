@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 	"towd/src-server/handler"
@@ -117,6 +118,10 @@ func main() {
 		}()); err != nil {
 		slog.Error("can't create slash commands", "error", err.Error())
 	}
+
+	// cleanup appCmdInfo from memory
+	as.NukeAppCmdInfo()
+	runtime.GC()
 
 	// create calendar model for each guild and insert into database
 	func() {
