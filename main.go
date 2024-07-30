@@ -104,8 +104,8 @@ func main() {
 	}
 	defer as.DgSession.Close()
 
-	as.DgSession.ApplicationCommandBulkOverwrite(
 	// tell Discord what commands we have (w/ appCmdInfo)
+	if _, err := as.DgSession.ApplicationCommandBulkOverwrite(
 		as.Config.GetDiscordClientId(),
 		as.Config.GetDiscordGuildID(),
 		func() []*discordgo.ApplicationCommand {
@@ -114,7 +114,9 @@ func main() {
 				cmds = append(cmds, v)
 			})
 			return cmds
-		}())
+		}()); err != nil {
+		slog.Error("can't create slash commands", "error", err.Error())
+	}
 
 	// create calendar model for each guild and insert into database
 	func() {
