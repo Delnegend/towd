@@ -69,22 +69,22 @@ func (m *MasterEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) e
 			return fmt.Errorf("MasterEvent.AfterDelete: can't delete attendees: %w", err)
 		}
 
-		// get the going-to-be-deleted child event ids before deleting them
-		// to trigger the after delete hook on the child event
-		deletedChildEventIDs := []string{}
-		if err := query.DB().NewSelect().
-			Model((*ChildEvent)(nil)).
-			Column("id").
-			Where("id = ?", masterEventID).
-			Scan(ctx, &deletedChildEventIDs); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't get child event ids: %w", err)
-		}
-
 		// rm related child events
 		if _, err := query.DB().NewDelete().
 			Model((*ChildEvent)(nil)).
 			Where("id = ?", masterEventID).
-			Exec(context.WithValue(ctx, ChildEventIDCtxKey, deletedChildEventIDs)); err != nil {
+			Exec(context.WithValue(ctx, ChildEventIDCtxKey, func() []string {
+				childEventIDs := []string{}
+				if err := query.DB().NewSelect().
+					Model((*ChildEvent)(nil)).
+					Column("id").
+					Where("id = ?", masterEventID).
+					Scan(ctx, &childEventIDs); err != nil {
+					slog.Warn("MasterEvent.AfterDelete: can't get child event ids to inject to context", "error", err)
+					return []string{}
+				}
+				return childEventIDs
+			}())); err != nil {
 			return fmt.Errorf("MasterEvent.AfterDelete: can't delete child events: %w", err)
 		}
 	case []string:
@@ -108,22 +108,23 @@ func (m *MasterEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) e
 			return fmt.Errorf("MasterEvent.AfterDelete: can't delete rrule: %w", err)
 		}
 
-		// get the going-to-be-deleted child event ids before deleting them
-		// to trigger the after delete hook on the child event
-		deletedChildEventIDs := []string{}
-		if err := query.DB().NewSelect().
-			Model((*ChildEvent)(nil)).
-			Column("id").
-			Where("id IN (?)", bun.In(masterEventID)).
-			Scan(ctx, &deletedChildEventIDs); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't get child event ids: %w", err)
-		}
-
 		// rm related child events
 		if _, err := query.DB().NewDelete().
 			Model((*ChildEvent)(nil)).
 			Where("id IN (?)", bun.In(masterEventID)).
-			Exec(context.WithValue(ctx, ChildEventIDCtxKey, deletedChildEventIDs)); err != nil {
+			Exec(context.WithValue(ctx, ChildEventIDCtxKey, func() []string {
+				childEventIDs := []string{}
+				if err := query.DB().NewSelect().
+					Model((*ChildEvent)(nil)).
+					Column("id").
+					Where("id IN (?)", bun.In(masterEventID)).
+					Scan(ctx, &childEventIDs); err != nil {
+					slog.Warn("MasterEvent.AfterDelete: can't get child event ids to inject to context", "error", err)
+					return []string{}
+				}
+				return childEventIDs
+
+			})); err != nil {
 			return fmt.Errorf("MasterEvent.AfterDelete: can't delete child events: %w", err)
 		}
 	case nil:
