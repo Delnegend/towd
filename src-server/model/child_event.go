@@ -70,7 +70,7 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		if _, err := query.DB().NewDelete().
 			Model((*Attendee)(nil)).
 			Where("event_id IN (?)", bun.In(childEventID)).
-			Exec(context.WithValue(ctx, AttendeeIDCtxKey, attendeeIDs)); err != nil {
+			Exec(ctx); err != nil {
 			return fmt.Errorf("ChildEvent.AfterDelete: can't delete attendees: %w", err)
 		}
 	case nil:
