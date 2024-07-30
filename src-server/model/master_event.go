@@ -3,10 +3,12 @@ package model
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 	"towd/src-server/ical/event"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/uptrace/bun"
 	"github.com/xyedo/rrule"
 )
@@ -342,4 +344,110 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	}
 
 	return nil
+}
+
+// Turn the master event into a discord embeded message.
+// If the event is recurring, it will return multiple embeds
+func (e *MasterEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) []*discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Title:       e.Summary,
+		Description: e.Description,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Start Date",
+				Value:  fmt.Sprintf("<t:%d:f>", e.StartDate),
+				Inline: true,
+			},
+			{
+				Name:   "End Date",
+				Value:  fmt.Sprintf("<t:%d:f>", e.EndDate),
+				Inline: true,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: e.ID,
+		},
+		Author: &discordgo.MessageEmbedAuthor{
+			Name: e.Organizer,
+		},
+	}
+	if e.Location != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Location",
+			Value: e.Location,
+		})
+	}
+	if e.URL != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "URL",
+			Value: e.URL,
+		})
+	}
+	if e.RRule != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Recurrence Rule",
+			Value: e.RRule,
+		})
+		if e.RDate != "" {
+			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+				Name: "Included Dates",
+				Value: func() string {
+					var dates []string
+					for _, date := range strings.Split(e.RDate, ",") {
+						dates = append(dates, fmt.Sprintf("<t:%s:f>", date))
+					}
+					return strings.Join(dates, ", ")
+				}(),
+			})
+		}
+		if e.ExDate != "" {
+			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+				Name: "Excluded Dates",
+				Value: func() string {
+					var dates []string
+					for _, date := range strings.Split(e.ExDate, ",") {
+						dates = append(dates, fmt.Sprintf("<t:%s:f>", date))
+					}
+					return strings.Join(dates, ", ")
+				}(),
+			})
+		}
+	}
+	attendees := func() []string {
+		var attendeeModels []Attendee
+		if err := db.NewSelect().
+			Model(&attendeeModels).
+			Where("event_id = ?", e.ID).
+			Scan(ctx, &attendeeModels); err != nil {
+			slog.Warn("can't get attendees", "where", "(*MasterEvent).ToDiscordEmbed", "error", err)
+			return []string{}
+		}
+		attendees := make([]string, len(attendeeModels))
+		for i, attendee := range attendeeModels {
+			attendees[i] = attendee.Data
+		}
+		return attendees
+	}()
+	if len(attendees) > 0 {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Invitees",
+			Value: strings.Join(attendees, ", "),
+		})
+	}
+
+	embeds := make([]*discordgo.MessageEmbed, 0)
+	embeds = append(embeds, embed)
+
+	childEvents := make([]ChildEvent, 0)
+	if err := db.NewSelect().
+		Model(&childEvents).
+		Where("id = ?", e.ID).
+		Scan(ctx, &childEvents); err != nil {
+		slog.Warn("can't get child events", "where", "(*MasterEvent).ToDiscordEmbed", "error", err)
+	}
+	for _, childEvent := range childEvents {
+		embeds = append(embeds, childEvent.ToDiscordEmbed(ctx, db)...)
+	}
+
+	return embeds
 }
