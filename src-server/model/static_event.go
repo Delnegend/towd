@@ -14,6 +14,7 @@ import (
 	"time"
 	"towd/src-server/utils"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 	"github.com/xyedo/rrule"
@@ -208,6 +209,44 @@ func GetStaticEventInRange(
 	return &staticEvents, nil
 }
 
+func (s *StaticEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) *discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Title:       s.Title,
+		Description: s.Description,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Start Date",
+				Value:  fmt.Sprintf("<t:%d:f>", s.StartDate),
+				Inline: true,
+			},
+			{
+				Name:   "End Date",
+				Value:  fmt.Sprintf("<t:%d:f>", s.EndDate),
+				Inline: true,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: s.ID,
+		},
+		Author: &discordgo.MessageEmbedAuthor{
+			Name: s.Organizer,
+		},
+	}
+	if s.Location != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Location",
+			Value: s.Location,
+		})
+	}
+	if len(*s.Attendees) > 0 {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Attendees",
+			Value: strings.Join(*s.Attendees, ", "),
+		})
+	}
+	return embed
+}
+
 func (s *StaticEvent) FromNaturalText(ctx context.Context, as *utils.AppState, text string) error {
 	apiKey := as.Config.GetGroqApiKey()
 	if apiKey == "" {
@@ -216,7 +255,6 @@ func (s *StaticEvent) FromNaturalText(ctx context.Context, as *utils.AppState, t
 
 	// #region | preparing the request body
 	now := time.Now().UTC().Truncate(24 * time.Hour).Format("02/01/2006 15:04")
-	slog.Debug("FromNaturalText", "now", now, "text", text)
 	reqBody := struct {
 		Messages []struct {
 			Role    string `json:"role"`
