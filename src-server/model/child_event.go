@@ -3,9 +3,12 @@ package model
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
+	"strings"
 	"towd/src-server/ical/event"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/uptrace/bun"
 )
 
@@ -175,4 +178,70 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	}
 
 	return nil
+}
+
+// Turn the child event into a discord embeded message.
+// It's just a single embed though, but return as a slice for easier processing.
+func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) ([]*discordgo.MessageEmbed, error) {
+	embed := &discordgo.MessageEmbed{
+		Title:       e.Summary,
+		Description: e.Description,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Start Date",
+				Value:  fmt.Sprintf("<t:%d:f>", e.StartDate),
+				Inline: true,
+			},
+			{
+				Name:   "End Date",
+				Value:  fmt.Sprintf("<t:%d:f>", e.EndDate),
+				Inline: true,
+			},
+			{
+				Name:  "Master Event's ID",
+				Value: fmt.Sprintf("<t:%s:f>", e.ID),
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: string(e.RecurrenceID),
+		},
+		Author: &discordgo.MessageEmbedAuthor{
+			Name: e.Organizer,
+		},
+	}
+	if e.Location != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Location",
+			Value: e.Location,
+		})
+	}
+	if e.URL != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "URL",
+			Value: e.URL,
+		})
+	}
+	attendees := func() []string {
+		var attendeeModels []Attendee
+		if err := db.NewSelect().
+			Model(&attendeeModels).
+			Where("event_id = ?", e.RecurrenceID).
+			Scan(ctx, &attendeeModels); err != nil {
+			slog.Warn("can't get attendees", "where", "(*ChildEvent).ToDiscordEmbed", "error", err)
+			return []string{}
+		}
+		attendees := make([]string, len(attendeeModels))
+		for i, attendee := range attendeeModels {
+			attendees[i] = attendee.Data
+		}
+		return attendees
+	}()
+	if len(attendees) > 0 {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Invitees",
+			Value: strings.Join(attendees, ", "),
+		})
+	}
+
+	return []*discordgo.MessageEmbed{embed}, nil
 }
