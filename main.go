@@ -34,6 +34,9 @@ func init() {
 }
 
 func main() {
+	// There are 2 important things (and others) inside the AppState:
+	// - appCmdInfo: a map of all slash commands
+	// - appCmdHandler: a map of all slash command handlers
 	as := utils.NewAppState()
 
 	if err := model.CreateSchema(as.BunDB); err != nil {
@@ -45,13 +48,14 @@ func main() {
 	handler.CreateEvent(as)
 	handler.DeleteEvent(as)
 	handler.Events(as)
+	// injecting interaction handlers into appCmdInfo, appCmdHandler in AppState
 	handler.ImportCalendar(as)
 	handler.ModifyEvent(as)
 	handler.Login(as)
 	handler.Ping(as)
 	handler.Totp(as)
 
-	// tell discordgo how to handle interactions from Discord
+	// tell discordgo how to handle interactions from Discord (w/ appCmdHandler)
 	as.DgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		execute := func(id string) {
 			if handler, ok := as.GetAppCmdHandler(id); ok {
@@ -103,8 +107,8 @@ func main() {
 	}
 	defer as.DgSession.Close()
 
-	// tell Discord what commands we have
 	as.DgSession.ApplicationCommandBulkOverwrite(
+	// tell Discord what commands we have (w/ appCmdInfo)
 		as.Config.GetDiscordClientId(),
 		as.Config.GetDiscordGuildID(),
 		func() []*discordgo.ApplicationCommand {
