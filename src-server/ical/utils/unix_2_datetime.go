@@ -5,8 +5,8 @@ import (
 )
 
 // Convert a time to a string in iCalendar format: YYYYMMDD or YYYYMMDDTHHMMSSZ
-	t := time.Unix(unixTime, 0)
 func Unix2Datetime(unixTime int64) string {
+	t := time.Unix(unixTime, 0).UTC()
 
 	hour, min, sec := t.Clock()
 	if hour == 0 && min == 0 && sec == 0 {
