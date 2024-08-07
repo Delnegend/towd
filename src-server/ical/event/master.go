@@ -99,10 +99,10 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 		writer("RRULE:" + e.rrule.GetRRule().String() + "\n")
 	}
 	for _, exdate := range e.exDates {
-		writer("EXDATE:" + utils.TimeToIcalDatetime(exdate) + "\n")
+		writer("EXDATE:" + utils.Unix2Datetime(exdate) + "\n")
 	}
 	for _, rdate := range e.rDates {
-		writer("RDATE:" + utils.TimeToIcalDatetime(rdate) + "\n")
+		writer("RDATE:" + utils.Unix2Datetime(rdate) + "\n")
 	}
 
 	// child events
@@ -112,7 +112,7 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 			slog.Warn("MasterEvent.ToIcal: can't write basic properties for child event", "error", err)
 			return
 		}
-		writer("RECURRENCE-ID:" + utils.TimeToIcalDatetime(childEvent.recurrenceID) + "\n")
+		writer("RECURRENCE-ID:" + utils.Unix2Datetime(childEvent.recurrenceID) + "\n")
 		writer("END:VEVENT\n")
 	}
 }
