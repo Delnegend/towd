@@ -23,6 +23,9 @@ type Config struct {
 
 	hostname           string
 	staticWebClientDir string
+
+	eventNotifyInterval    time.Duration
+	calendarUpdateInterval time.Duration
 }
 
 func NewConfig() *Config {
@@ -154,6 +157,35 @@ func NewConfig() *Config {
 			slog.Debug("env", "HOSTNAME", hostname)
 			return hostname
 		}(),
+
+		eventNotifyInterval: func() time.Duration {
+			eventNotifyInterval := os.Getenv("EVENT_NOTIFY_INTERVAL")
+			if eventNotifyInterval == "" {
+				slog.Warn("EVENT_NOTIFY_INTERVAL is not set, using default value", "interval", time.Minute)
+				return time.Minute
+			}
+			duration, err := time.ParseDuration(eventNotifyInterval)
+			if err != nil {
+				slog.Error("invalid EVENT_NOTIFY_INTERVAL", "error", err)
+				os.Exit(1)
+			}
+			slog.Debug("env", "EVENT_NOTIFY_INTERVAL", eventNotifyInterval, "duration", duration)
+			return duration
+		}(),
+		calendarUpdateInterval: func() time.Duration {
+			calendarUpdateInterval := os.Getenv("CALENDAR_UPDATE_INTERVAL")
+			if calendarUpdateInterval == "" {
+				slog.Warn("CALENDAR_UPDATE_INTERVAL is not set, using default value", "interval", time.Hour)
+				return time.Hour
+			}
+			duration, err := time.ParseDuration(calendarUpdateInterval)
+			if err != nil {
+				slog.Error("invalid CALENDAR_UPDATE_INTERVAL", "error", err)
+				os.Exit(1)
+			}
+			slog.Debug("env", "CALENDAR_UPDATE_INTERVAL", calendarUpdateInterval, "duration", duration)
+			return duration
+		}(),
 	}
 }
 
@@ -210,4 +242,14 @@ func (c *Config) GetStaticWebClientDir() string {
 // Get HOSTNAME env
 func (c *Config) GetHostname() string {
 	return c.hostname
+}
+
+// Get EVENT_NOTIFY_INTERVAL env
+func (c *Config) GetEventNotifyInterval() time.Duration {
+	return c.eventNotifyInterval
+}
+
+// Get CALENDAR_UPDATE_INTERVAL env
+func (c *Config) GetCalendarUpdateInterval() time.Duration {
+	return c.calendarUpdateInterval
 }
