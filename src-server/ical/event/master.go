@@ -43,28 +43,27 @@ func (e *MasterEvent) AddChildEvent(childEvent *ChildEvent) error {
 	if e.rrule == nil {
 		return fmt.Errorf("MasterEvent.AddChildEvent: master event does not have a rrule, child event cannot be added")
 	}
-	parsedRRuleUnixTime := func() []int64 {
-		var parsedRRuleSet []int64
-		for _, rruleTime := range e.rrule.All() {
-			parsedRRuleSet = append(parsedRRuleSet, rruleTime.Unix())
+
+	unixDatesFromRRule := func() map[int64]struct{} {
+		unixDatesFromRRule := make(map[int64]struct{})
+		for _, date := range e.rrule.All() {
+			unixDatesFromRRule[date.UTC().Unix()] = struct{}{}
 		}
-		return parsedRRuleSet
+		return unixDatesFromRRule
 	}()
 
-	for _, rruleTime := range parsedRRuleUnixTime {
-		if rruleTime == childEvent.GetRecurrenceID() {
-			e.childEvents = append(e.childEvents, childEvent)
-			return nil
-		}
+	if _, ok := unixDatesFromRRule[childEvent.GetRecurrenceID()]; !ok {
+		return fmt.Errorf("MasterEvent.AddChildEvent: rec-id (%d) not in rrule (%s)", childEvent.GetRecurrenceID(), func() string {
+			var parsedRRuleSet []string
+			for date := range unixDatesFromRRule {
+				parsedRRuleSet = append(parsedRRuleSet, fmt.Sprintf("%d", date))
+			}
+			return strings.Join(parsedRRuleSet, ",")
+		}())
 	}
 
-	return fmt.Errorf("MasterEvent.AddChildEvent: rec-id (%d) not in rrule (%s)", childEvent.GetRecurrenceID(), func() string {
-		var parsedRRuleSet []string
-		for _, rruleTime := range parsedRRuleUnixTime {
-			parsedRRuleSet = append(parsedRRuleSet, fmt.Sprintf("%d", rruleTime))
-		}
-		return strings.Join(parsedRRuleSet, ",")
-	}())
+	e.childEvents = append(e.childEvents, childEvent)
+	return nil
 }
 
 // Iterate over the child events and apply a function to each
