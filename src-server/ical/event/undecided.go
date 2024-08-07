@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -182,7 +183,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.customProperties = append(e.customProperties, property)
 		return nil
 	case strings.HasPrefix(property, "DTSTART"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
@@ -192,7 +193,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.startDate = parsedDate
 		return nil
 	case strings.HasPrefix(property, "DTEND"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
@@ -202,7 +203,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		e.endDate = parsedDate
 		return nil
 	case strings.HasPrefix(property, "EXDATE"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
@@ -211,31 +212,32 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 	case strings.HasPrefix(property, "DTSTAMP"):
 		return nil
 	case strings.HasPrefix(property, "CREATED"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
 		e.createdAt = parsedDate
 		return nil
 	case strings.HasPrefix(property, "LAST-MODIFIED"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
 		e.updatedAt = parsedDate
 		return nil
 	case strings.HasPrefix(property, "RDATE"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
 		e.rDate = append(e.rDate, parsedDate)
 		return nil
 	case strings.HasPrefix(property, "RECURRENCE-ID"):
-		parsedDate, err := utils.IcalDatetimeToUnix(property)
+		parsedDate, err := utils.Datetime2Unix(property)
 		if err != nil {
 			return err
 		}
+		slog.Info("RECURRENCE-ID", "raw", property, "parsed unix", parsedDate, "human readable", utils.Unix2Datetime(parsedDate))
 		e.recurrenceID = parsedDate
 		return nil
 	}
@@ -275,7 +277,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 			return fmt.Errorf("RRULE and RECURRENCE-ID are mutually exclusive")
 		}
 		rruleSet, err := rrule.StrToRRuleSet(
-			"DTSTART:" + utils.TimeToIcalDatetime(e.startDate) + "\nRRULE:" + val,
+			"DTSTART:" + utils.Unix2Datetime(e.startDate) + "\nRRULE:" + val,
 		)
 		if err != nil {
 			return err

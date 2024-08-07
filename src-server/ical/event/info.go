@@ -148,8 +148,8 @@ func (e *EventInfo) toIcal(writer func(string)) error {
 	}
 
 	// dates
-	writer("DTSTART:" + utils.TimeToIcalDatetime(e.startDate) + "\n")
-	writer("DTEND:" + utils.TimeToIcalDatetime(e.endDate) + "\n")
+	writer("DTSTART:" + utils.Unix2Datetime(e.startDate) + "\n")
+	writer("DTEND:" + utils.Unix2Datetime(e.endDate) + "\n")
 	writer("DTSTAMP:" + time.Now().Format("20060102T150405Z") + "\n")
 	writer("CREATED:" + time.Now().Format("20060102T150405Z") + "\n")
 	if e.updatedAt != 0 {

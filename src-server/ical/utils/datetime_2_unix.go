@@ -22,7 +22,7 @@ var (
 //   - otherwise, the datetime will be parsed in the local timezone
 //
 // else, the datetime will be parsed in UTC
-func IcalDatetimeToUnix(rawText string) (int64, error) {
+func Datetime2Unix(rawText string) (int64, error) {
 	slice := strings.SplitN(rawText, ":", 2)
 	if len(slice) != 2 {
 		return 0, fmt.Errorf("must be splitable by ':', got %s", rawText)
@@ -39,16 +39,18 @@ func IcalDatetimeToUnix(rawText string) (int64, error) {
 		}
 		return result.UTC().Unix(), nil
 	case localTimePattern.MatchString(timePart):
-		var tzidString string
-		if strings.Contains(firstPart, ";") {
+		tzidString := func() string {
 			for _, prop := range strings.Split(firstPart, ";") {
-				parts := strings.SplitN(prop, "=", 2)
-				if len(parts) == 2 {
+				if parts := strings.SplitN(prop, "=", 2); len(parts) == 2 {
 					if parts[0] == "TZID" {
-						tzidString = parts[1]
+						return parts[1]
 					}
 				}
 			}
+			return ""
+		}()
+		if tzidString == "" {
+			return 0, fmt.Errorf("TZID not found")
 		}
 		location, err := time.LoadLocation(tzidString)
 		if err != nil {
