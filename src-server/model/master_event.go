@@ -185,7 +185,9 @@ func (m *MasterEvent) FromIcal(
 
 // Upsert the master event to the database
 func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
-	// validate
+	// #region - validation
+
+	// self-validate
 	switch {
 	case e.Summary == "":
 		return fmt.Errorf("MasterEvent.Upsert: summary is required")
@@ -242,8 +244,9 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	if calendarModal.Url != "" {
 		return fmt.Errorf("MasterEvent.Upsert: this event is from a read-only calendar")
 	}
+	// #endregion
 
-	// upsert to db
+	// #region -  upsert to db
 	if _, err := db.NewInsert().
 		Model(e).
 		On("CONFLICT (id) DO UPDATE").
@@ -265,8 +268,9 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		Exec(ctx); err != nil {
 		return fmt.Errorf("MasterEvent.Upsert: %w", err)
 	}
+	// #endregion
 
-	// remove all parsed rrules
+	// #region - rrules handling
 	if _, err := db.NewDelete().
 		Model((*RRule)(nil)).
 		Where("event_id = ?", e.ID).
@@ -344,6 +348,8 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			return fmt.Errorf("MasterEvent.Upsert: %w", err)
 		}
 	}
+
+	// #endregion
 
 	return nil
 }
