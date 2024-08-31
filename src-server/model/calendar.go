@@ -21,6 +21,7 @@ type Calendar struct {
 	Url         string `bun:"url"`
 	Hash        string `bun:"hash"`
 
+	ChannelID    string        `bun:"channel_id"`
 	MasterEvents []MasterEvent `bun:"rel:has-many,join:id=calendar_id"`
 }
 
