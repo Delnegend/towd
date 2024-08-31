@@ -329,8 +329,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			Exec(ctx); err != nil {
 			return fmt.Errorf("MasterEvent.Upsert: %w", err)
 		}
-	} else {
-		// remove all child events since there's no recurrence rule
+
 		if _, err := db.NewDelete().
 			Model((*ChildEvent)(nil)).
 			Where("id = ?", e.ID).
