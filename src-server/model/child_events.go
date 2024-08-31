@@ -24,7 +24,7 @@ type ChildEvent struct {
 	// recurrence id
 	// - act as exdates (it match any of the dates in the rrule set)
 	// - fill in the excluded date with another event
-	ID           string `bun:"id,notnull"`
+	ID           string `bun:"id,notnull,unique"`
 	RecurrenceID int64  `bun:"recurrence_id,notnull"`
 
 	Summary     string `bun:"summary,notnull"`
