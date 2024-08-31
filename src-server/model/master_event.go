@@ -317,6 +317,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			delete(parsedUnixDateFromRRule, dateInt)
 		}
 
+		// create Rulle models and mass insert
 		rruleModels := make([]RRule, 0)
 		for date := range parsedUnixDateFromRRule {
 			rruleModels = append(rruleModels, RRule{
@@ -330,6 +331,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			return fmt.Errorf("MasterEvent.Upsert: %w", err)
 		}
 
+		// mass delete old RRule models that their date not in the parsed rrule
 		if _, err := db.NewDelete().
 			Model((*ChildEvent)(nil)).
 			Where("id = ?", e.ID).
