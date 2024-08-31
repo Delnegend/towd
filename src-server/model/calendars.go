@@ -14,12 +14,12 @@ const DeletedCalendarIDsCtxKey DeletedCalendarIDsCtxKeyType = "calendar-id"
 type Calendar struct {
 	bun.BaseModel `bun:"table:calendars"`
 
-	ID          string `bun:"id,pk,notnull"`
+	ID          string `bun:"id,pk,notnull,unique"`
 	ProdID      string `bun:"calendar_id"`
 	Name        string `bun:"name"`
 	Description string `bun:"description"`
-	Url         string `bun:"url"`
-	Hash        string `bun:"hash"`
+	Url         string `bun:"url,unique"`
+	Hash        string `bun:"hash,unique"`
 
 	ChannelID    string        `bun:"channel_id"`
 	MasterEvents []MasterEvent `bun:"rel:has-many,join:id=calendar_id"`
