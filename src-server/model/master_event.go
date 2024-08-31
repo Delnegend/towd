@@ -20,7 +20,7 @@ const MasterEventIDCtxKey MasterEventIDCtxKeyType = "master-event-ids"
 type MasterEvent struct {
 	bun.BaseModel `bun:"table:master_events"`
 
-	ID          string `bun:"id,pk,notnull"`
+	ID          string `bun:"id,pk,notnull,unique"`
 	CalendarID  string `bun:"calendar_id,notnull"`
 	Summary     string `bun:"summary,notnull"`
 	Description string `bun:"description"`
