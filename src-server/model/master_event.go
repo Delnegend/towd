@@ -333,8 +333,9 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 
 		// mass delete old RRule models that their date not in the parsed rrule
 		if _, err := db.NewDelete().
-			Model((*ChildEvent)(nil)).
-			Where("id = ?", e.ID).
+			Model((*RRule)(nil)).
+			Where("event_id = ?", e.ID).
+			Where("date NOT IN (?)", bun.In(parsedUnixDateFromRRule)).
 			Exec(context.WithValue(
 				ctx,
 				ChildEventIDCtxKey,
