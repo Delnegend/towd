@@ -356,6 +356,30 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		}
 	}
 
+	// straight up rm all child events since no rrules
+	if _, err := db.NewDelete().
+		Model((*ChildEvent)(nil)).
+		Where("id = ?", e.ID).
+		Exec(context.WithValue(
+			ctx,
+			ChildEventIDCtxKey,
+			func() []string {
+				childEventModels := make([]ChildEvent, 0)
+				if err := db.NewSelect().
+					Model(&childEventModels).
+					Where("id = ?", e.ID).
+					Scan(ctx, &childEventModels); err != nil {
+					return nil
+				}
+				IDs := make([]string, 0)
+				for _, childEventModel := range childEventModels {
+					IDs = append(IDs, childEventModel.ID)
+				}
+				return IDs
+			}()),
+		); err != nil {
+		return fmt.Errorf("MasterEvent.Upsert: %w", err)
+	}
 	// #endregion
 
 	return nil
