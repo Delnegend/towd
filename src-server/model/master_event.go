@@ -207,6 +207,8 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		}
 	case e.RRule == "" && (e.RDate != "" || e.ExDate != ""):
 		return fmt.Errorf("MasterEvent.Upsert: rdate/exdate only works with rrule")
+	case e.ChannelID == "":
+		return fmt.Errorf("MasterEvent.Upsert: channel id is required")
 	}
 	if e.URL != "" {
 		if _, err := url.ParseRequestURI(e.URL); err != nil {
@@ -265,6 +267,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		Set("rrule = EXCLUDED.rrule").
 		Set("rdate = EXCLUDED.rdate").
 		Set("exdate = EXCLUDED.exdate").
+		Set("channel_id = EXCLUDED.channel_id").
 		Exec(ctx); err != nil {
 		return fmt.Errorf("MasterEvent.Upsert: %w", err)
 	}
