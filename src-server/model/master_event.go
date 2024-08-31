@@ -282,47 +282,51 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	}
 
 	if rruleSet != nil {
-		parsedUnixFromRRule := make(map[int64]struct{})
+		// parse rrules into date and store int RRules table for
+		// when need to retrieve all static events in a date range
+		parsedUnixDateFromRRule := make(map[int64]struct{})
 		for _, date := range rruleSet.All() {
-			parsedUnixFromRRule[date.Unix()] = struct{}{}
+			parsedUnixDateFromRRule[date.Unix()] = struct{}{}
 		}
 
-		// insert new parsed rrules
-		for date := range parsedUnixFromRRule {
-			rruleModel := RRule{
+		// adding rdates to the map
+		rdateSliceRaw := strings.Split(e.RDate, ",")
+		for _, date := range rdateSliceRaw {
+			date = strings.TrimSpace(date)
+			if date == "" {
+				continue
+			}
+			dateInt := int64(0)
+			if dateInt, err = strconv.ParseInt(date, 10, 64); err != nil {
+				slog.Warn("MasterEvent.Upsert: invalid rdate", "event ID", e.ID, "date", date)
+			}
+			parsedUnixDateFromRRule[dateInt] = struct{}{}
+		}
+
+		// removing exdates from the map
+		exdateSliceRaw := strings.Split(e.ExDate, ",")
+		for _, date := range exdateSliceRaw {
+			date = strings.TrimSpace(date)
+			if date == "" {
+				continue
+			}
+			dateInt := int64(0)
+			if dateInt, err = strconv.ParseInt(date, 10, 64); err != nil {
+				slog.Warn("MasterEvent.Upsert: invalid exdate", "event ID", e.ID, "date", date)
+			}
+			delete(parsedUnixDateFromRRule, dateInt)
+		}
+
+		rruleModels := make([]RRule, 0)
+		for date := range parsedUnixDateFromRRule {
+			rruleModels = append(rruleModels, RRule{
 				EventID: e.ID,
-				Date:    date,
-			}
-			if _, err := db.NewInsert().
-				Model(&rruleModel).
-				Exec(ctx); err != nil {
-				return fmt.Errorf("MasterEvent.Upsert: %w", err)
-			}
+				Date:    date + e.StartDate,
+			})
 		}
-
-		// remove child events that doesn't include parsed rrule dates
-		if _, err := db.NewDelete().
-			Model((*ChildEvent)(nil)).
-			Where("id = ?", e.ID).
-			Where("data NOT IN (?)", bun.In(parsedUnixFromRRule)).
-			Exec(context.WithValue(
-				ctx,
-				ChildEventIDCtxKey,
-				func() []string {
-					childEventModels := make([]ChildEvent, 0)
-					if err := db.NewSelect().
-						Model(&childEventModels).
-						Where("id = ?", e.ID).
-						Scan(ctx, &childEventModels); err != nil {
-						return nil
-					}
-					IDs := make([]string, 0)
-					for _, childEventModel := range childEventModels {
-						IDs = append(IDs, childEventModel.ID)
-					}
-					return IDs
-				}()),
-			); err != nil {
+		if _, err := db.NewInsert().
+			Model(&rruleModels).
+			Exec(ctx); err != nil {
 			return fmt.Errorf("MasterEvent.Upsert: %w", err)
 		}
 	} else {
