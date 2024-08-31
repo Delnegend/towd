@@ -39,7 +39,8 @@ type MasterEvent struct {
 	RDate  string `bun:"rdate"`
 	ExDate string `bun:"exdate"`
 
-	Calendar *Calendar `bun:"rel:belongs-to,join:calendar_id=id"`
+	ChannelID string    `bun:"channel_id"`
+	Calendar  *Calendar `bun:"rel:belongs-to,join:calendar_id=id"`
 }
 
 var _ bun.AfterDeleteHook = (*MasterEvent)(nil)
