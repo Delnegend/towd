@@ -40,7 +40,8 @@ type ChildEvent struct {
 	UpdatedAt int64 `bun:"updated_at,notnull"`
 	Sequence  int   `bun:"sequence"`
 
-	Event *MasterEvent `bun:"rel:belongs-to,join:id=id"`
+	ChannelID string       `bun:"channel_id"`
+	Event     *MasterEvent `bun:"rel:belongs-to,join:id=id"`
 }
 
 var _ bun.AfterDeleteHook = (*ChildEvent)(nil)
