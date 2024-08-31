@@ -2,7 +2,6 @@ package event
 
 import (
 	"fmt"
-	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -237,7 +236,6 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		if err != nil {
 			return err
 		}
-		slog.Info("RECURRENCE-ID", "raw", property, "parsed unix", parsedDate, "human readable", utils.Unix2Datetime(parsedDate))
 		e.recurrenceID = parsedDate
 		return nil
 	}
