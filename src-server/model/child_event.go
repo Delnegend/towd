@@ -117,7 +117,7 @@ func (c *ChildEvent) FromIcal(
 
 // Upsert the child event to the database
 func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
-	// basic field validation
+	// #region - basic field validation
 	switch {
 	case e.Summary == "":
 		return fmt.Errorf("ChildEvent.Upsert: summary is required")
@@ -139,8 +139,9 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			return fmt.Errorf("ChildEvent.Upsert: %w", err)
 		}
 	}
+	// #endregion
 
-	// check if master event exists
+	// #region - check if master event exists
 	exist, err := db.NewSelect().
 		Model(&MasterEvent{}).
 		Where("id = ?", e.ID).
@@ -151,8 +152,9 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	if !exist {
 		return fmt.Errorf("ChildEvent.Upsert: master event id not found")
 	}
+	// #endregion
 
-	// check if from a read-only calendar
+	// #region - check if from a read-only calendar
 	masterEventModal := new(MasterEvent)
 	if err := db.NewSelect().
 		Model(masterEventModal).
@@ -170,6 +172,7 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	if calendarModal.Url != "" {
 		return fmt.Errorf("ChildEvent.Upsert: this event is from a read-only calendar")
 	}
+	// #endregion
 
 	// upsert to db
 	if _, err := db.NewInsert().
