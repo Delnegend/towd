@@ -35,8 +35,9 @@ type MasterEvent struct {
 	UpdatedAt int64  `bun:"updated_at"`
 	Sequence  int    `bun:"sequence"`
 	RRule     string `bun:"rrule"`
-	RDate     string `bun:"rdate"`
-	ExDate    string `bun:"exdate"`
+	// Each separated by comma, in unix time since epoch
+	RDate  string `bun:"rdate"`
+	ExDate string `bun:"exdate"`
 
 	Calendar *Calendar `bun:"rel:belongs-to,join:calendar_id=id"`
 }
