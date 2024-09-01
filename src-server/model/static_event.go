@@ -80,7 +80,9 @@ func GetStaticEventInRange(
 		childEventRecIDs[childEvent.RecurrenceID] = struct{}{}
 	}
 
+	// transform all queried master events into static events
 	for _, e := range masterEvents {
+		// prepare attendees for the current master event
 		attendees := func() []string {
 			models := make([]Attendee, 0)
 			if err := db.NewSelect().
@@ -151,6 +153,7 @@ func GetStaticEventInRange(
 		}
 	}
 
+	// transform all queried child events into static events
 	for _, e := range childEvents {
 		attendees := func() []string {
 			models := make([]Attendee, 0)
