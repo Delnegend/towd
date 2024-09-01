@@ -73,6 +73,7 @@ func GetStaticEventInRange(
 		Scan(ctx); err != nil {
 		return nil, fmt.Errorf("GetStaticEventInRange: %w", err)
 	}
+
 	// this acts as exdates
 	childEventRecIDs := make(map[int64]struct{})
 	for _, childEvent := range childEvents {
