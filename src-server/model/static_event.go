@@ -116,50 +116,21 @@ func GetStaticEventInRange(
 			continue
 		}
 
-		// parse the recurrence rule set
-		rruleSet, err := rrule.StrToRRuleSet(e.RRule)
-		if err != nil {
-			return nil, fmt.Errorf("GetStaticEventInRange: %w", err)
-		}
-
-		// rdates AND parsed rrules
-		rDates := make(map[int64]struct{})
-		if e.RDate != "" {
-			for _, dateStr := range strings.Split(e.RDate, ",") {
-				dateInt, err := strconv.ParseInt(dateStr, 10, 64)
-				if err != nil {
-					return nil, fmt.Errorf("GetStaticEventInRange: %w", err)
-				}
-				rDates[dateInt] = struct{}{}
-			}
-		}
-		for _, date := range rruleSet.All() {
-			rDates[date.Unix()] = struct{}{}
-		}
-
-		// exdates of the master event
-		exDates := make(map[int64]struct{})
-		if e.ExDate != "" {
-			for _, dateStr := range strings.Split(e.ExDate, ",") {
-				dateInt, err := strconv.ParseInt(dateStr, 10, 64)
-				if err != nil {
-					return nil, fmt.Errorf("GetStaticEventInRange: %w", err)
-				}
-				exDates[dateInt] = struct{}{}
-			}
+		parsedUnixDateFromRRule := new([]int64)
+		if err := db.
+			NewSelect().
+			Model((*RRule)(nil)).
+			Where("event_id = ?", e.ID).
+			Scan(ctx, parsedUnixDateFromRRule); err != nil {
+			slog.Warn("GetStaticEventInRange: can't find rrule dates for event", "event ID", e.ID, "error", err)
+			continue
 		}
 
 		// iterate and create clones of the master event
 		// with different start and end dates
 		eventDuration := e.EndDate - e.StartDate
-		for date := range rDates {
-			if _, ok := exDates[date]; ok {
-				continue
-			}
-			if _, ok := childEventRecIDs[date]; ok {
-				continue
-			}
-			if date < startDateStartRange {
+		for _, date := range *parsedUnixDateFromRRule {
+			if date < startRange || date > endRange {
 				continue
 			}
 			staticEvents = append(staticEvents, StaticEvent{
