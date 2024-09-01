@@ -191,36 +191,36 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	// self-validate
 	switch {
 	case e.Summary == "":
-		return fmt.Errorf("MasterEvent.Upsert: summary is required")
+		return fmt.Errorf("(*MasterEvent).Upsert: summary is required")
 	case e.CalendarID == "":
-		return fmt.Errorf("MasterEvent.Upsert: calendar id is required")
+		return fmt.Errorf("(*MasterEvent).Upsert: calendar id is required")
 	case e.CreatedAt == 0:
-		return fmt.Errorf("MasterEvent.Upsert: created at is required")
+		return fmt.Errorf("(*MasterEvent).Upsert: created at is required")
 	case e.StartDate == 0:
-		return fmt.Errorf("MasterEvent.Upsert: start date is required")
+		return fmt.Errorf("(*MasterEvent).Upsert: start date is required")
 	case e.EndDate == 0:
-		return fmt.Errorf("MasterEvent.Upsert: end date is required")
+		return fmt.Errorf("(*MasterEvent).Upsert: end date is required")
 	case e.StartDate > e.EndDate:
-		return fmt.Errorf("MasterEvent.Upsert: start date must be before end date")
+		return fmt.Errorf("(*MasterEvent).Upsert: start date must be before end date")
 	case e.URL != "":
 		if _, err := url.ParseRequestURI(e.URL); err != nil {
-			return fmt.Errorf("MasterEvent.Upsert: url is invalid: %w", err)
+			return fmt.Errorf("(*MasterEvent).Upsert: url is invalid: %w", err)
 		}
 	case e.RRule == "" && (e.RDate != "" || e.ExDate != ""):
-		return fmt.Errorf("MasterEvent.Upsert: rdate/exdate only works with rrule")
+		return fmt.Errorf("(*MasterEvent).Upsert: rdate/exdate only works with rrule")
 	case e.ChannelID == "":
-		return fmt.Errorf("MasterEvent.Upsert: channel id is required")
+		return fmt.Errorf("(*MasterEvent).Upsert: channel id is required")
 	}
 	if e.URL != "" {
 		if _, err := url.ParseRequestURI(e.URL); err != nil {
-			return fmt.Errorf("MasterEvent.Upsert: url is invalid: %w", err)
+			return fmt.Errorf("(*MasterEvent).Upsert: url is invalid: %w", err)
 		}
 	}
 	var rruleSet *rrule.Set
 	if e.RRule != "" {
 		var err error
 		if rruleSet, err = rrule.StrToRRuleSet(e.RRule); err != nil {
-			return fmt.Errorf("MasterEvent.Upsert: invalid rrule: %w", err)
+			return fmt.Errorf("(*MasterEvent).Upsert: invalid rrule: %w", err)
 		}
 	}
 
@@ -233,7 +233,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		return err
 	}
 	if !calendarExist {
-		return fmt.Errorf("MasterEvent.Upsert: calendar id not found")
+		return fmt.Errorf("(*MasterEvent).Upsert: calendar id not found")
 	}
 
 	// check if calendar is read-only
@@ -242,10 +242,10 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		Model(calendarModal).
 		Where("id = ?", e.CalendarID).
 		Scan(ctx, calendarModal); err != nil {
-		return fmt.Errorf("MasterEvent.Upsert: can't get calendar: %w", err)
+		return fmt.Errorf("(*MasterEvent).Upsert: can't get calendar: %w", err)
 	}
 	if calendarModal.Url != "" {
-		return fmt.Errorf("MasterEvent.Upsert: this event is from a read-only calendar")
+		return fmt.Errorf("(*MasterEvent).Upsert: this event is from a read-only calendar")
 	}
 	// #endregion
 
@@ -270,7 +270,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		Set("exdate = EXCLUDED.exdate").
 		Set("channel_id = EXCLUDED.channel_id").
 		Exec(ctx); err != nil {
-		return fmt.Errorf("MasterEvent.Upsert: %w", err)
+		return fmt.Errorf("(*MasterEvent).Upsert: %w", err)
 	}
 	// #endregion
 
@@ -279,7 +279,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		Model((*RRule)(nil)).
 		Where("event_id = ?", e.ID).
 		Exec(ctx); err != nil {
-		return fmt.Errorf("MasterEvent.Upsert: %w", err)
+		return fmt.Errorf("(*MasterEvent).Upsert: %w", err)
 	}
 
 	if rruleSet != nil {
@@ -299,7 +299,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			}
 			dateInt := int64(0)
 			if dateInt, err = strconv.ParseInt(date, 10, 64); err != nil {
-				slog.Warn("MasterEvent.Upsert: invalid rdate", "event ID", e.ID, "date", date)
+				slog.Warn("(*MasterEvent).Upsert: invalid rdate", "event ID", e.ID, "date", date)
 			}
 			parsedUnixDateFromRRule[dateInt] = struct{}{}
 		}
@@ -313,7 +313,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 			}
 			dateInt := int64(0)
 			if dateInt, err = strconv.ParseInt(date, 10, 64); err != nil {
-				slog.Warn("MasterEvent.Upsert: invalid exdate", "event ID", e.ID, "date", date)
+				slog.Warn("(*MasterEvent).Upsert: invalid exdate", "event ID", e.ID, "date", date)
 			}
 			delete(parsedUnixDateFromRRule, dateInt)
 		}
@@ -329,7 +329,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		if _, err := db.NewInsert().
 			Model(&rruleModels).
 			Exec(ctx); err != nil {
-			return fmt.Errorf("MasterEvent.Upsert: %w", err)
+			return fmt.Errorf("(*MasterEvent).Upsert: %w", err)
 		}
 
 		// mass delete old RRule models that their date not in the parsed rrule
@@ -355,7 +355,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 					return IDs
 				}()),
 			); err != nil {
-			return fmt.Errorf("MasterEvent.Upsert: %w", err)
+			return fmt.Errorf("(*MasterEvent).Upsert: %w", err)
 		}
 	}
 
@@ -381,7 +381,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 				return IDs
 			}()),
 		); err != nil {
-		return fmt.Errorf("MasterEvent.Upsert: %w", err)
+		return fmt.Errorf("(*MasterEvent).Upsert: %w", err)
 	}
 	// #endregion
 
