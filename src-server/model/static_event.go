@@ -49,16 +49,28 @@ func GetStaticEventInRange(
 	masterEvents := make([]MasterEvent, 0)
 	if err := db.NewSelect().
 		Model(&masterEvents).
-		Where("start_date >= ?", startDateStartRange).
-		Where("start_date <= ?", startDateEndRange).
+		Where("channel_id = ?", channelID).
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.
+				WhereOr("start_date >= ?", startRange).
+				WhereOr("start_date <= ?", endRange).
+				WhereOr("end_date >= ?", startRange).
+				WhereOr("end_date <= ?", endRange)
+		}).
 		Scan(ctx); err != nil {
 		return nil, fmt.Errorf("GetStaticEventInRange: %w", err)
 	}
 	childEvents := make([]ChildEvent, 0)
 	if err := db.NewSelect().
 		Model(&childEvents).
-		Where("start_date >= ?", startDateStartRange).
-		Where("start_date <= ?", startDateEndRange).
+		Where("channel_id = ?", channelID).
+		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.
+				WhereOr("start_date >= ?", startRange).
+				WhereOr("start_date <= ?", endRange).
+				WhereOr("end_date >= ?", startRange).
+				WhereOr("end_date <= ?", endRange)
+		}).
 		Scan(ctx); err != nil {
 		return nil, fmt.Errorf("GetStaticEventInRange: %w", err)
 	}
