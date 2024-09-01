@@ -29,13 +29,13 @@ var _ bun.AfterDeleteHook = (*Calendar)(nil)
 
 func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) error {
 	if query.DB() == nil {
-		return fmt.Errorf("Calendar.AfterDelete: db is nil")
+		return fmt.Errorf("(*Calendar).AfterDelete: db is nil")
 	}
 
 	switch deletedCalendarID := ctx.Value(DeletedCalendarIDsCtxKey).(type) {
 	case string:
 		if deletedCalendarID == "" {
-			return fmt.Errorf("Calendar.AfterDelete: deletedCalendarID is blank")
+			return fmt.Errorf("(*Calendar).AfterDelete: deletedCalendarID is blank")
 		}
 
 		// get the going-to-be-deleted master event ids before deleting them
@@ -45,7 +45,7 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 			Column("id").
 			Where("calendar_id = ?", deletedCalendarID).
 			Scan(ctx, &deletedMasterEventIDs); err != nil {
-			return fmt.Errorf("Calendar.AfterDelete: can't get deleted master event ids: %w", err)
+			return fmt.Errorf("(*Calendar).AfterDelete: can't get deleted master event ids: %w", err)
 		}
 
 		// rm master events of the calendar
@@ -53,11 +53,11 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 			Model((*MasterEvent)(nil)).
 			Where("calendar_id = ?", deletedCalendarID).
 			Exec(context.WithValue(ctx, MasterEventIDCtxKey, deletedMasterEventIDs)); err != nil {
-			return fmt.Errorf("Calendar.AfterDelete: can't delete master events: %w", err)
+			return fmt.Errorf("(*Calendar).AfterDelete: can't delete master events: %w", err)
 		}
 	case []string:
 		if len(deletedCalendarID) == 0 {
-			return fmt.Errorf("Calendar.AfterDelete: deletedCalendarID is empty")
+			return fmt.Errorf("(*Calendar).AfterDelete: deletedCalendarID is empty")
 		}
 
 		// get the going-to-be-deleted master event ids before deleting them
@@ -67,7 +67,7 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 			Column("id").
 			Where("calendar_id IN (?)", bun.In(deletedCalendarID)).
 			Scan(ctx, &deletedMasterEventIDs); err != nil {
-			return fmt.Errorf("Calendar.AfterDelete: can't get deleted master event ids: %w", err)
+			return fmt.Errorf("(*Calendar).AfterDelete: can't get deleted master event ids: %w", err)
 		}
 
 		// rm master events of the calendar
@@ -75,12 +75,12 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 			Model((*MasterEvent)(nil)).
 			Where("calendar_id IN (?)", bun.In(deletedCalendarID)).
 			Exec(context.WithValue(ctx, MasterEventIDCtxKey, deletedMasterEventIDs)); err != nil {
-			return fmt.Errorf("Calendar.AfterDelete: can't delete master events: %w", err)
+			return fmt.Errorf("(*Calendar).AfterDelete: can't delete master events: %w", err)
 		}
 	case nil:
-		return fmt.Errorf("Calendar.AfterDelete: calendar id is nil")
+		return fmt.Errorf("(*Calendar).AfterDelete: calendar id is nil")
 	default:
-		return fmt.Errorf("Calendar.AfterDelete: wrong deletedCalendarID type | type=%T", deletedCalendarID)
+		return fmt.Errorf("(*Calendar).AfterDelete: wrong deletedCalendarID type | type=%T", deletedCalendarID)
 	}
 
 	return nil
@@ -88,15 +88,15 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 
 func (c *Calendar) Upsert(ctx context.Context, db bun.IDB) error {
 	if db == nil {
-		return fmt.Errorf("Calendar.Upsert: db is nil")
+		return fmt.Errorf("(*Calendar).Upsert: db is nil")
 	}
 
 	// vaidate
 	switch {
 	case c.ID == "":
-		return fmt.Errorf("Calendar.Upsert: calendar id is blank")
+		return fmt.Errorf("(*Calendar).Upsert: calendar id is blank")
 	case c.Name == "":
-		return fmt.Errorf("Calendar.Upsert: calendar name is blank")
+		return fmt.Errorf("(*Calendar).Upsert: calendar name is blank")
 	}
 
 	// upsert
@@ -108,7 +108,7 @@ func (c *Calendar) Upsert(ctx context.Context, db bun.IDB) error {
 		Set("description = EXCLUDED.description").
 		Set("url = EXCLUDED.url").
 		Exec(ctx); err != nil {
-		return fmt.Errorf("Calendar.Upsert: can't upsert calendar: %w", err)
+		return fmt.Errorf("(*Calendar).Upsert: can't upsert calendar: %w", err)
 	}
 
 	return nil
