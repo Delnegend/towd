@@ -8,4 +8,6 @@ type RRule struct {
 
 	EventID string `bun:"event_id,notnull"`
 	Date    int64  `bun:"date,notnull"`
+
+	MasterEvent *MasterEvent `bun:"rel:belongs-to,join:event_id=id"`
 }
