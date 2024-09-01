@@ -41,8 +41,9 @@ type StaticEvent struct {
 func GetStaticEventInRange(
 	ctx context.Context,
 	db bun.IDB,
-	startDateStartRange int64,
-	startDateEndRange int64,
+	startRange int64,
+	endRange int64,
+	channelID string,
 ) (*[]StaticEvent, error) {
 	staticEvents := make([]StaticEvent, 0)
 
