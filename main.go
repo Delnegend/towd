@@ -152,9 +152,8 @@ func main() {
 	go func() {
 		muxer := http.NewServeMux()
 		routes.Auth(muxer, as)
-		routes.Index(muxer, as, sc)
 		routes.Ical(muxer, as)
-
+		routes.SPA(muxer, as, sc)
 		if err := http.ListenAndServe(":"+as.Config.GetPort(), muxer); err != nil {
 			slog.Error("cannot start HTTP server", "error", err)
 			sc <- syscall.SIGTERM
