@@ -9,7 +9,7 @@ import (
 	"towd/src-server/utils"
 )
 
-func Index(muxer *http.ServeMux, as *utils.AppState, sc chan<- os.Signal) {
+func SPA(muxer *http.ServeMux, as *utils.AppState, sc chan<- os.Signal) {
 	files := http.FS(os.DirFS(as.Config.GetStaticWebClientDir()))
 	indexFile, err := files.Open("index.html")
 	if err != nil {
