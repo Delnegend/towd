@@ -1,38 +1,39 @@
 {
-  "name": "nuxt-app",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
-    "lint:biome": "biome check --write src",
-    "lint:prettier": "prettier -w --use-tabs --tab-width 4 src/**/*.{vue,ts}",
-    "lint": "bun lint:prettier && bun lint:biome"
-  },
-  "dependencies": {
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.1",
-    "lucide-vue-next": "^0.395.0",
-    "radix-vue": "^1.9.1",
-    "shadcn-nuxt": "^0.10.4",
-    "tailwind-merge": "^2.4.0",
-    "tailwindcss-animate": "^1.0.7",
-    "vue": "^3.4.32",
-    "vue-router": "^4.4.0"
-  },
-  "packageManager": "pnpm@9.3.0+sha1.d4f1da7af76dbdb4ab1a08f6b5add602ffad6fd4",
-  "devDependencies": {
-    "@biomejs/biome": "1.8.1",
-    "@iconify-json/radix-icons": "^1.1.14",
-    "@iconify/vue": "^4.1.2",
-    "@nuxtjs/color-mode": "^3.4.2",
-    "@nuxtjs/tailwindcss": "^6.12.1",
-    "nuxt": "^3.12.3",
-    "prettier": "^3.3.3",
-    "prettier-plugin-tailwindcss": "^0.6.5",
-    "typescript": "^5.5.3"
-  }
+	"name": "towd",
+	"private": false,
+	"type": "module",
+	"author": "Delnegend",
+	"repository": "https://github.com/Delnegend/towd",
+	"scripts": {
+		"build": "nuxt build",
+		"dev": "nuxt dev",
+		"generate": "nuxt generate",
+		"preview": "nuxt preview",
+		"postinstall": "nuxt prepare",
+		"lint": "time eslint --fix --cache src/**/*.{ts,vue}"
+	},
+	"dependencies": {
+		"class-variance-authority": "^0.7.0",
+		"clsx": "^2.1.1",
+		"lucide-vue-next": "^0.395.0",
+		"radix-vue": "^1.9.5",
+		"shadcn-nuxt": "^0.10.4",
+		"tailwind-merge": "^2.5.2",
+		"tailwindcss-animate": "^1.0.7",
+		"vue": "^3.4.38"
+	},
+	"devDependencies": {
+		"@iconify-json/radix-icons": "^1.1.15",
+		"@iconify/vue": "^4.1.2",
+		"@nuxtjs/color-mode": "^3.4.4",
+		"@nuxtjs/tailwindcss": "^6.12.1",
+		"eslint": "^9.9.1",
+		"eslint-plugin-hagemanto": "github:Delnegend/hagemanto",
+		"eslint-plugin-tailwindcss": "^3.17.4",
+		"eslint-plugin-vue": "^9.27.0",
+		"globals": "^15.9.0",
+		"nuxt": "^3.13.0",
+		"typescript": "^5.5.4",
+		"vue-eslint-parser": "^9.4.3"
+	}
 }
