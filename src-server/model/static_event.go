@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 	"towd/src-server/utils"
@@ -17,7 +16,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
-	"github.com/xyedo/rrule"
 )
 
 // This struct technically is a model, but not for create database table.
