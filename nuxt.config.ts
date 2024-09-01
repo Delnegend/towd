@@ -3,10 +3,9 @@ export default defineNuxtConfig({
 	ssr: false,
 	devtools: { enabled: false },
 	srcDir: "src",
-
 	css: ["~/assets/main.css"],
-
 	modules: ["@nuxtjs/tailwindcss", "shadcn-nuxt", "@nuxtjs/color-mode"],
+
 	shadcn: {
 		/**
 		 * Prefix for all the imported component
@@ -18,8 +17,5 @@ export default defineNuxtConfig({
 		 */
 		componentDir: "./src/components/ui"
 	},
-
-	experimental: {
-		typedPages: true
-	},
+	compatibilityDate: "2024-08-28",
 })
