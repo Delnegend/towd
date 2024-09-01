@@ -20,12 +20,16 @@ func (u *User) Upsert(ctx context.Context, db bun.IDB) error {
 		return fmt.Errorf("(*User).Upsert: missing ID")
 	}
 
-	_, err := db.
+	if _, err := db.
 		NewInsert().
 		Model(u).
 		On("CONFLICT (id) DO UPDATE").
 		Set("totp_secret = EXCLUDED.totp_secret").
-		Exec(ctx)
+		Set("username = EXCLUDED.username").
+		Set("totp_secret = EXCLUDED.totp_secret").
+		Exec(ctx); err != nil {
+		return fmt.Errorf("(*User).Upsert: %w", err)
+	}
 
-	return err
+	return nil
 }
