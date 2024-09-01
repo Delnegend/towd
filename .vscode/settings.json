@@ -1,6 +1,0 @@
-{
-    "explorer.fileNesting.patterns": {
-        "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb, tailwind.config.js, .prettier*, .gitignore, biome.json, components.json, nuxt.config.ts",
-        "main.go": "go.mod, go.sum",
-    }
-}
