@@ -11,11 +11,15 @@ import (
 func CreateSchema(db *bun.DB) error {
 	if err := db.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 		for _, model := range []interface{}{
-			(*Calendar)(nil),
-			(*MasterEvent)(nil),
-			(*ChildEvent)(nil),
 			(*Attendee)(nil),
+			(*Calendar)(nil),
+			(*ChildEvent)(nil),
+			(*KanbanTable)(nil),
+			(*KanbanGroup)(nil),
+			(*KanbanItem)(nil),
+			(*MasterEvent)(nil),
 			(*RRule)(nil),
+			(*SessionToken)(nil),
 			(*User)(nil),
 		} {
 			if _, err := tx.
