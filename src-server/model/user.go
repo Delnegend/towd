@@ -17,7 +17,7 @@ type User struct {
 
 func (u *User) Upsert(ctx context.Context, db bun.IDB) error {
 	if u.ID == "" {
-		return fmt.Errorf("user id is empty")
+		return fmt.Errorf("(*User).Upsert: missing ID")
 	}
 
 	_, err := db.
