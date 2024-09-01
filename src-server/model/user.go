@@ -12,7 +12,7 @@ type User struct {
 
 	ID         string `bun:"id,pk,notnull,unique"`
 	Username   string `bun:"username,notnull"`
-	TotpSecret string `json:"totp_secret"`
+	TotpSecret string `bun:"totp_secret,notnull,unique"`
 }
 
 func (u *User) Upsert(ctx context.Context, db bun.IDB) error {
