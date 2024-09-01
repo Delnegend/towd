@@ -64,11 +64,11 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 
 		sessionSecret := uuid.NewString()
 		sessionTokenModel := model.SessionToken{
-			Secret:    sessionSecret,
-			UserID:    reqBody.UID,
-			CreatedAt: time.Now().Unix(),
-			IpAddress: r.RemoteAddr,
-			UserAgent: r.UserAgent(),
+			Secret:        sessionSecret,
+			UserID:        reqBody.UID,
+			CreatedAtUnix: time.Now().Unix(),
+			IpAddress:     r.RemoteAddr,
+			UserAgent:     r.UserAgent(),
 		}
 		if _, err := as.BunDB.
 			NewInsert().
