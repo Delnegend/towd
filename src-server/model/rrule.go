@@ -2,7 +2,7 @@ package model
 
 import "github.com/uptrace/bun"
 
-// This model stores the unmarshalled rrule set of a master event
+// Parsed dates from RRule sets from master events
 type RRule struct {
 	bun.BaseModel `bun:"table:rrules"`
 
