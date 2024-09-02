@@ -1,6 +1,8 @@
 package model
 
-import "github.com/uptrace/bun"
+import (
+	"github.com/uptrace/bun"
+)
 
 type Attendee struct {
 	bun.BaseModel `bun:"table:attendees"`
