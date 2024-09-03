@@ -171,7 +171,7 @@ func GetStaticEventInRange(
 		}()
 		eventDuration := e.EndDate - e.StartDate
 		staticEvents = append(staticEvents, StaticEvent{
-			ID:        string(e.RecurrenceID),
+			ID:        fmt.Sprintf("%d", e.RecurrenceID),
 			StartDate: e.RecurrenceID,
 			EndDate:   e.RecurrenceID + eventDuration,
 			IsWholeDay: func() bool {
