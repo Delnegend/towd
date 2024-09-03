@@ -156,7 +156,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 
 	// check if calendar exists
 	calendarExist, err := db.NewSelect().
-		Model(&Calendar{}).
+		Model((*Calendar)(nil)).
 		Where("id = ?", e.CalendarID).
 		Exists(context.Background())
 	if err != nil {
