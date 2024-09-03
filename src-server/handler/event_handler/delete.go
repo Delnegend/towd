@@ -111,7 +111,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				fmt.Println("master event", eventID)
 				exist, err := as.BunDB.
 					NewSelect().
-					Model(&model.MasterEvent{}).
+					Model((*model.MasterEvent)(nil)).
 					Where("id = ?", eventID).
 					Exists(context.Background())
 				if err != nil {
