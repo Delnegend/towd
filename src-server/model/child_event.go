@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
-	"towd/src-server/ical/event"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/uptrace/bun"
@@ -71,32 +70,13 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		return fmt.Errorf("(*ChildEvent).AfterDelete: wrong childEventID type | type=%T", childEventID)
 	}
 
-
-// Create a new ChildEvent model from an ical child event
-func (c *ChildEvent) FromIcal(
-	ctx context.Context,
-	db bun.IDB,
-	childEvent *event.ChildEvent,
-) error {
-	if db == nil {
-		return fmt.Errorf("(*ChildEvent).FromIcal: db is nil")
+	// delete all related Attendee models
+	if _, err := query.DB().NewDelete().
+		Model((*Attendee)(nil)).
+		Where("event_id IN (?)", bun.In(childEventIDs)).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("(*ChildEvent).AfterDelete: can't delete attendees: %w", err)
 	}
-
-	c.ID = childEvent.GetID()
-	c.RecurrenceID = childEvent.GetRecurrenceID()
-
-	c.Summary = childEvent.GetSummary()
-	c.Description = childEvent.GetDescription()
-	c.Location = childEvent.GetLocation()
-	c.URL = childEvent.GetURL()
-	c.Organizer = childEvent.GetOrganizer()
-
-	c.StartDate = childEvent.GetStartDate()
-	c.EndDate = childEvent.GetEndDate()
-
-	c.CreatedAt = childEvent.GetCreatedAt()
-	c.UpdatedAt = childEvent.GetUpdatedAt()
-	c.Sequence = childEvent.GetSequence()
 
 	return nil
 }
