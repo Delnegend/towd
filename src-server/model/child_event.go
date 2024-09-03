@@ -19,29 +19,29 @@ const ChildEventIDCtxKey ChildEventIDsCtxKeyType = "child-event-ids"
 type ChildEvent struct {
 	bun.BaseModel `bun:"table:child_events"`
 
-	// id
-	// - must be the same as the master event id
-	// recurrence id
-	// - act as exdates (it match any of the dates in the rrule set)
-	// - fill in the excluded date with another event
-	ID           string `bun:"id,notnull,unique"`
-	RecurrenceID int64  `bun:"recurrence_id,notnull"`
+	ID            string `bun:"id,pk"`                   // required
+	MasterEventID string `bun:"master_event_id,notnull"` // required
+	// a.k.a one of the parsed dates from master event's rrule set
+	RecurrenceID int64 `bun:"recurrence_id,notnull"` // required
 
-	Summary     string `bun:"summary,notnull"`
+	Summary     string `bun:"summary,notnull"` // 	required
 	Description string `bun:"description"`
 	Location    string `bun:"location"`
 	URL         string `bun:"url"`
 	Organizer   string `bun:"organizer"`
 
-	StartDate int64 `bun:"start_date,notnull"`
-	EndDate   int64 `bun:"end_date,notnull"`
+	StartDate int64 `bun:"start_date,notnull"` // required
+	EndDate   int64 `bun:"end_date,notnull"`   // required
 
-	CreatedAt int64 `bun:"created_at,notnull"`
-	UpdatedAt int64 `bun:"updated_at,notnull"`
+	CreatedAt int64 `bun:"created_at,notnull"` // required
+	UpdatedAt int64 `bun:"updated_at"`
 	Sequence  int   `bun:"sequence"`
 
-	ChannelID string       `bun:"channel_id"`
-	Event     *MasterEvent `bun:"rel:belongs-to,join:id=id"`
+	CalendarID string `bun:"calendar_id,notnull"` // required
+	ChannelID  string `bun:"channel_id,notnull"`  // required
+
+	Event    *MasterEvent `bun:"rel:belongs-to,join:master_event_id=id"`
+	Calendar *Calendar    `bun:"rel:belongs-to,join:calendar_id=id"`
 }
 
 var _ bun.AfterDeleteHook = (*ChildEvent)(nil)
