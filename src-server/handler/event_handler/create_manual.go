@@ -80,7 +80,7 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 		interaction := i.Interaction
 		eventID := uuid.New().String()
 
-		// collect data
+		// #region - collect data
 		staticEvent, err := func() (*model.StaticEvent, error) {
 			staticEvent := new(model.StaticEvent)
 			staticEvent.Attendees = new([]string)
@@ -152,6 +152,7 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			}
 			return nil
 		}
+		// #endregion
 
 		// static event -> event model
 		eventModel := func() *model.MasterEvent {
