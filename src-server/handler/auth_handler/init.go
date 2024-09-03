@@ -16,7 +16,7 @@ func Init(as *utils.AppState) {
 		map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error,
 	)
 
-	login(as, &localCmdInfo, localCmdHandler)
+	totpNew(as, &localCmdInfo, localCmdHandler)
 	totpCreate(as, &localCmdInfo, localCmdHandler)
 	totpCheck(as, &localCmdInfo, localCmdHandler)
 
