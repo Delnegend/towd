@@ -10,9 +10,9 @@ import (
 type User struct {
 	bun.BaseModel `bun:"table:users"`
 
-	ID         string `bun:"id,pk,notnull,unique"`
-	Username   string `bun:"username,notnull"`
-	TotpSecret string `bun:"totp_secret,notnull,unique"`
+	ID         string `bun:"id,pk"`                      //	required
+	Username   string `bun:"username,notnull,unique"`    // required
+	TotpSecret string `bun:"totp_secret,notnull,unique"` // required
 }
 
 func (u *User) Upsert(ctx context.Context, db bun.IDB) error {
