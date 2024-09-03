@@ -14,9 +14,9 @@ const DeletedCalendarIDsCtxKey DeletedCalendarIDsCtxKeyType = "calendar-id"
 type Calendar struct {
 	bun.BaseModel `bun:"table:calendars"`
 
-	ID          string `bun:"id,pk,notnull,unique"`
-	ProdID      string `bun:"calendar_id"`
-	Name        string `bun:"name"`
+	ID          string `bun:"id,pk"` // required
+	ProdID      string `bun:"prod_id"`
+	Name        string `bun:"name,notnull"` // required
 	Description string `bun:"description"`
 	Url         string `bun:"url,unique"`
 	Hash        string `bun:"hash,unique"`
