@@ -4,13 +4,13 @@ Tiny Office With Discord
 ## Development
 ### Prerequisites
 - [Go](https://go.dev/)
-- [Bun](https://bun.sh/)
+- [pnpm](https://pnpm.io/)
 - [requiredfield](https://github.com/abhinav/requiredfield/)
 - Discord Bot Token, Groq API Key
 
 ### Development server
 - Backend: `go run .`
-- Frontend: `bun dev`
+- Frontend: `pnpm dev`
 
 ## Build, deployment and update
 ### Prerequisites
