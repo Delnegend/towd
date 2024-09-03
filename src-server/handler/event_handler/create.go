@@ -51,11 +51,10 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			for _, opt := range options {
 				optionMap[opt.Name] = opt
 			}
-			var content string
 			if opt, ok := optionMap["content"]; ok {
-				content = opt.StringValue()
+				return opt.StringValue(), nil
 			}
-			return content, nil
+			return "", nil
 		}()
 		if err != nil {
 			// edit the deferred message
