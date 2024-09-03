@@ -5,6 +5,7 @@ Tiny Office With Discord
 ### Prerequisites
 - [Go](https://go.dev/)
 - [Bun](https://bun.sh/)
+- [requiredfield](https://github.com/abhinav/requiredfield/)
 - Discord Bot Token, Groq API Key
 
 ### Development server
