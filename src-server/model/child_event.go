@@ -109,7 +109,7 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 
 	// #region - check if master event exists
 	exist, err := db.NewSelect().
-		Model(&MasterEvent{}).
+		Model((*MasterEvent)(nil)).
 		Where("id = ?", e.MasterEventID).
 		Exists(context.Background())
 	if err != nil {
@@ -173,7 +173,7 @@ func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) []*discordg
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: string(e.RecurrenceID),
+			Text: fmt.Sprintf("%d", e.RecurrenceID),
 		},
 		Author: &discordgo.MessageEmbedAuthor{
 			Name: e.Organizer,
