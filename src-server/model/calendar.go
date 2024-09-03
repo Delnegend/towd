@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/uptrace/bun"
 )
@@ -32,55 +33,46 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 		return fmt.Errorf("(*Calendar).AfterDelete: db is nil")
 	}
 
+	deletedCalendarIDs := make([]string, 0)
 	switch deletedCalendarID := ctx.Value(DeletedCalendarIDsCtxKey).(type) {
 	case string:
 		if deletedCalendarID == "" {
 			return fmt.Errorf("(*Calendar).AfterDelete: deletedCalendarID is blank")
 		}
 
-		// get the going-to-be-deleted master event ids before deleting them
-		deletedMasterEventIDs := []string{}
-		if err := query.DB().NewSelect().
-			Model((*MasterEvent)(nil)).
-			Column("id").
-			Where("calendar_id = ?", deletedCalendarID).
-			Scan(ctx, &deletedMasterEventIDs); err != nil {
-			return fmt.Errorf("(*Calendar).AfterDelete: can't get deleted master event ids: %w", err)
-		}
-
-		// rm master events of the calendar
-		if _, err := query.DB().NewDelete().
-			Model((*MasterEvent)(nil)).
-			Where("calendar_id = ?", deletedCalendarID).
-			Exec(context.WithValue(ctx, MasterEventIDCtxKey, deletedMasterEventIDs)); err != nil {
-			return fmt.Errorf("(*Calendar).AfterDelete: can't delete master events: %w", err)
-		}
+		deletedCalendarIDs = append(deletedCalendarIDs, deletedCalendarID)
 	case []string:
 		if len(deletedCalendarID) == 0 {
-			return fmt.Errorf("(*Calendar).AfterDelete: deletedCalendarID is empty")
+			return nil
 		}
-
-		// get the going-to-be-deleted master event ids before deleting them
-		deletedMasterEventIDs := []string{}
-		if err := query.DB().NewSelect().
-			Model((*MasterEvent)(nil)).
-			Column("id").
-			Where("calendar_id IN (?)", bun.In(deletedCalendarID)).
-			Scan(ctx, &deletedMasterEventIDs); err != nil {
-			return fmt.Errorf("(*Calendar).AfterDelete: can't get deleted master event ids: %w", err)
-		}
-
-		// rm master events of the calendar
-		if _, err := query.DB().NewDelete().
-			Model((*MasterEvent)(nil)).
-			Where("calendar_id IN (?)", bun.In(deletedCalendarID)).
-			Exec(context.WithValue(ctx, MasterEventIDCtxKey, deletedMasterEventIDs)); err != nil {
-			return fmt.Errorf("(*Calendar).AfterDelete: can't delete master events: %w", err)
-		}
+		deletedCalendarIDs = append(deletedCalendarIDs, deletedCalendarID...)
 	case nil:
 		return fmt.Errorf("(*Calendar).AfterDelete: calendar id is nil")
 	default:
 		return fmt.Errorf("(*Calendar).AfterDelete: wrong deletedCalendarID type | type=%T", deletedCalendarID)
+	}
+
+	// delete all related master events
+	if _, err := query.DB().NewDelete().
+		Model((*MasterEvent)(nil)).
+		Where("calendar_id IN (?)", bun.In(deletedCalendarIDs)).
+		Exec(context.WithValue(ctx, MasterEventIDCtxKey, func() []string {
+			masterEventModels := make([]MasterEvent, 0)
+			if err := query.DB().NewSelect().
+				Model(&masterEventModels).
+				Column("id").
+				Where("calendar_id IN (?)", bun.In(deletedCalendarIDs)).
+				Scan(ctx); err != nil {
+				slog.Warn("can't get deleted master event ids", "error", err)
+				return []string{}
+			}
+			masterEventIDs := make([]string, 0)
+			for _, masterEventModel := range masterEventModels {
+				masterEventIDs = append(masterEventIDs, masterEventModel.ID)
+			}
+			return masterEventIDs
+		}())); err != nil {
+		return fmt.Errorf("(*Calendar).AfterDelete: can't delete master events: %w", err)
 	}
 
 	return nil
