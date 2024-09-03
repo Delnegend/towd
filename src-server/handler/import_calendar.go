@@ -357,6 +357,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 				Description: icalCalendar.GetDescription(),
 				Url:         calendarURL,
 				Hash:        hash,
+				ChannelID:   interaction.ChannelID,
 			}
 			if _, err := tx.
 				NewInsert().
