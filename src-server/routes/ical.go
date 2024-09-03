@@ -124,7 +124,7 @@ func Ical(muxer *http.ServeMux, as *utils.AppState) {
 				for _, childEventModel := range childEventModels {
 					childEvent := event.NewUndecidedEvent()
 					childEvent.
-						SetID(childEventModel.ID).
+						SetID(childEventModel.MasterEventID).
 						SetRecurrenceID(childEventModel.RecurrenceID).
 						SetSummary(childEventModel.Summary).
 						SetDescription(childEventModel.Description).
