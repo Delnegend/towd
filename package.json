@@ -10,7 +10,8 @@
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare",
-		"lint": "time eslint --fix --cache src/**/*.{ts,vue}"
+		"lint": "time eslint --fix --cache src/**/*.{ts,vue}",
+		"test": "go vet -vettool=$(which requiredfield) ./... && go test ./..."
 	},
 	"dependencies": {
 		"class-variance-authority": "^0.7.0",
