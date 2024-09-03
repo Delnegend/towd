@@ -21,18 +21,17 @@ const MasterEventIDCtxKey MasterEventIDCtxKeyType = "master-event-ids"
 type MasterEvent struct {
 	bun.BaseModel `bun:"table:master_events"`
 
-	ID          string `bun:"id,pk,notnull,unique"`
-	CalendarID  string `bun:"calendar_id,notnull"`
-	Summary     string `bun:"summary,notnull"`
+	ID          string `bun:"id,pk"`           // required
+	Summary     string `bun:"summary,notnull"` // required
 	Description string `bun:"description"`
 	Location    string `bun:"location"`
 	URL         string `bun:"url"`
 	Organizer   string `bun:"organizer"`
 
-	StartDate int64 `bun:"start_date,notnull"`
-	EndDate   int64 `bun:"end_date,notnull"`
+	StartDate int64 `bun:"start_date,notnull"` // required
+	EndDate   int64 `bun:"end_date,notnull"`   // required
 
-	CreatedAt int64  `bun:"created_at,notnull"`
+	CreatedAt int64  `bun:"created_at,notnull"` // required
 	UpdatedAt int64  `bun:"updated_at"`
 	Sequence  int    `bun:"sequence"`
 	RRule     string `bun:"rrule"`
@@ -40,8 +39,12 @@ type MasterEvent struct {
 	RDate  string `bun:"rdate"`
 	ExDate string `bun:"exdate"`
 
-	ChannelID string    `bun:"channel_id"`
-	Calendar  *Calendar `bun:"rel:belongs-to,join:calendar_id=id"`
+	ChannelID  string `bun:"channel_id,notnull"`  // required
+	CalendarID string `bun:"calendar_id,notnull"` // required
+
+	Calendar    *Calendar    `bun:"rel:belongs-to,join:calendar_id=id"`
+	Attendees   []Attendee   `bun:"rel:has-many,join:id=event_id"`
+	ChildEvents []ChildEvent `bun:"rel:has-many,join:id=id"`
 }
 
 var _ bun.AfterDeleteHook = (*MasterEvent)(nil)
