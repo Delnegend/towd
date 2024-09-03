@@ -52,39 +52,25 @@ func (c *ChildEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) er
 		return fmt.Errorf("(*ChildEvent).AfterDelete: db is nil")
 	}
 
+	// getting just-deleted-child-event-ids from context
+	childEventIDs := make([]string, 0)
 	switch childEventID := ctx.Value(ChildEventIDCtxKey).(type) {
 	case string:
 		if childEventID == "" {
-			return nil
+			return fmt.Errorf("(*ChildEvent).AfterDelete: deletedChildEventID is blank")
 		}
-
-		// rm related attendees
-		if _, err := query.DB().NewDelete().
-			Model((*Attendee)(nil)).
-			Where("event_id = ?", childEventID).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*ChildEvent).AfterDelete: can't delete attendees: %w", err)
-		}
+		childEventIDs = append(childEventIDs, childEventID)
 	case []string:
 		if len(childEventID) == 0 {
 			return nil
 		}
-
-		// rm related attendees
-		if _, err := query.DB().NewDelete().
-			Model((*Attendee)(nil)).
-			Where("event_id IN (?)", bun.In(childEventID)).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*ChildEvent).AfterDelete: can't delete attendees: %w", err)
-		}
+		childEventIDs = append(childEventIDs, childEventID...)
 	case nil:
 		return fmt.Errorf("(*ChildEvent).AfterDelete: child event ids is nil")
 	default:
 		return fmt.Errorf("(*ChildEvent).AfterDelete: wrong childEventID type | type=%T", childEventID)
 	}
 
-	return nil
-}
 
 // Create a new ChildEvent model from an ical child event
 func (c *ChildEvent) FromIcal(
