@@ -252,8 +252,8 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 		rruleModels := make([]RRule, 0)
 		for date := range parsedUnixDateFromRRule {
 			rruleModels = append(rruleModels, RRule{
-				EventID: e.ID,
-				Date:    date + e.StartDate,
+				EventID:  e.ID,
+				UnixDate: date + e.StartDate,
 			})
 		}
 		if _, err := db.NewInsert().
