@@ -412,10 +412,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 						ChannelID:  interaction.ChannelID,
 					})
 					return nil
-				}); err != nil {
-					return err
-				}
-				return nil
+				})
 			}); err != nil {
 				return err
 			}
