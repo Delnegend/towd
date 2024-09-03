@@ -49,7 +49,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			slog.Warn("can't respond", "handler", "import-calendar", "content", "deferring", "error", err)
 		}
 
-		// parse calendarURL, nameOverride & validate calendarURL
+		// #region - parse calendarURL, nameOverride & validate calendarURL
 		calendarURL, nameOverride, err := func() (string, string, error) {
 			options := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, 0)
 			for _, opt := range i.ApplicationCommandData().Options {
@@ -77,8 +77,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			}
 			return err
 		}
+		// #endregion
 
-		// calendar already exists?
+		// #region - calendar already exists?
 		if exists, err := as.BunDB.
 			NewSelect().
 			Model((*model.Calendar)(nil)).
@@ -94,8 +95,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			}
 			return nil
 		}
+		// #endregion
 
-		// fetch & parse calendar
+		// #region - fetch & parse calendar
 		icalCalendar, err := func() (*ical.Calendar, error) {
 			calCh := make(chan *ical.Calendar)
 			errCh := make(chan error)
@@ -127,8 +129,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			}
 			return err
 		}
+		// #endregion
 
-		// prompt to enter calendar name if not provided & calendar not has one
+		// #region - prompt to enter calendar name if not provided & calendar not has one
 		if isCanceled, isTimedOut, err := func() (bool, bool, error) {
 			if nameOverride != "" {
 				icalCalendar.SetName(nameOverride)
@@ -250,8 +253,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			}
 			return nil
 		}
+		// #endregion
 
-		// ask for confirmation to continue
+		// #region - ask for confirmation to continue
 		if isCanceled, isTimedOut, err := func() (bool, bool, error) {
 			cancelButtonID := "cancel-import-" + icalCalendar.GetID()
 			confirmButtonID := "confirm-import-" + icalCalendar.GetID()
@@ -336,8 +340,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			}
 			return nil
 		}
+		// #endregion
 
-		// insert to DB
+		// #region - insert to DB
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			// create new calendar model and insert to DB
 			hash, err := utils.GetFileHash(calendarURL)
@@ -416,6 +421,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			}
 			return err
 		}
+		// #endregion
 
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
