@@ -280,7 +280,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 					}
 					IDs := make([]string, 0)
 					for _, childEventModel := range childEventModels {
-						IDs = append(IDs, childEventModel.ID)
+						IDs = append(IDs, childEventModel.MasterEventID)
 					}
 					return IDs
 				}()),
@@ -306,7 +306,7 @@ func (e *MasterEvent) Upsert(ctx context.Context, db bun.IDB) error {
 				}
 				IDs := make([]string, 0)
 				for _, childEventModel := range childEventModels {
-					IDs = append(IDs, childEventModel.ID)
+					IDs = append(IDs, childEventModel.MasterEventID)
 				}
 				return IDs
 			}()),
