@@ -52,97 +52,34 @@ var _ bun.AfterDeleteHook = (*MasterEvent)(nil)
 // Cleanup child events, attendees, and parsed rrules
 func (m *MasterEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) error {
 	if query.DB() == nil {
-		return fmt.Errorf("MasterEvent.AfterDelete: db is nil")
+		return fmt.Errorf("(*MasterEvent).AfterDelete: db is nil")
 	}
 
+	masterEventIDs := make([]string, 0)
 	switch masterEventID := ctx.Value(MasterEventIDCtxKey).(type) {
 	case string:
 		if masterEventID == "" {
-			return fmt.Errorf("MasterEvent.AfterDelete: deletedMasterEventID is blank")
+			return fmt.Errorf("(*MasterEvent).AfterDelete: deletedMasterEventID is blank")
 		}
-
-		// rm related rrule
-		if _, err := query.DB().NewDelete().
-			Model((*RRule)(nil)).
-			Where("event_id = ?", masterEventID).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't delete rrule: %w", err)
-		}
-
-		// rm related attendees
-		if _, err := query.DB().NewDelete().
-			Model((*Attendee)(nil)).
-			Where("event_id = ?", masterEventID).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't delete attendees: %w", err)
-		}
-
-		// rm related child events
-		if _, err := query.DB().NewDelete().
-			Model((*ChildEvent)(nil)).
-			Where("id = ?", masterEventID).
-			Exec(context.WithValue(ctx, ChildEventIDCtxKey, func() []string {
-				childEventIDs := []string{}
-				if err := query.DB().NewSelect().
-					Model((*ChildEvent)(nil)).
-					Column("id").
-					Where("id = ?", masterEventID).
-					Scan(ctx, &childEventIDs); err != nil {
-					slog.Warn("MasterEvent.AfterDelete: can't get child event ids to inject to context", "error", err)
-					return []string{}
-				}
-				return childEventIDs
-			}())); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't delete child events: %w", err)
-		}
+		masterEventIDs = append(masterEventIDs, masterEventID)
 	case []string:
 		if len(masterEventID) == 0 {
-			return fmt.Errorf("MasterEvent.AfterDelete: deletedMasterEventID is empty")
+			return nil
 		}
-
-		// rm related attendees
-		if _, err := query.DB().NewDelete().
-			Model((*Attendee)(nil)).
-			Where("event_id IN (?)", bun.In(masterEventID)).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't delete attendees: %w", err)
-		}
-
-		// rm related rrule
-		if _, err := query.DB().NewDelete().
-			Model((*RRule)(nil)).
-			Where("event_id IN (?)", bun.In(masterEventID)).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't delete rrule: %w", err)
-		}
-
-		// rm related child events
-		if _, err := query.DB().NewDelete().
-			Model((*ChildEvent)(nil)).
-			Where("id IN (?)", bun.In(masterEventID)).
-			Exec(context.WithValue(ctx, ChildEventIDCtxKey, func() []string {
-				childEventIDs := []string{}
-				if err := query.DB().NewSelect().
-					Model((*ChildEvent)(nil)).
-					Column("id").
-					Where("id IN (?)", bun.In(masterEventID)).
-					Scan(ctx, &childEventIDs); err != nil {
-					slog.Warn("MasterEvent.AfterDelete: can't get child event ids to inject to context", "error", err)
-					return []string{}
-				}
-				return childEventIDs
-
-			})); err != nil {
-			return fmt.Errorf("MasterEvent.AfterDelete: can't delete child events: %w", err)
-		}
+		masterEventIDs = append(masterEventIDs, masterEventID...)
 	case nil:
-		return fmt.Errorf("MasterEvent.AfterDelete: master event id is nil")
+		return fmt.Errorf("(*MasterEvent).AfterDelete: masterEventID is nil")
 	default:
-		return fmt.Errorf("MasterEvent.AfterDelete: wrong master event id type | type=%T", masterEventID)
+		return fmt.Errorf("(*MasterEvent).AfterDelete: wrong masterEventID type | type=%T", masterEventID)
 	}
 
-	return nil
-}
+	// delete all related RRule models
+	if _, err := query.DB().NewDelete().
+		Model((*RRule)(nil)).
+		Where("event_id IN (?)", bun.In(masterEventIDs)).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("(*MasterEvent).AfterDelete: can't delete rrule: %w", err)
+	}
 
 // Create a new MasterEvent from an ical master event
 func (m *MasterEvent) FromIcal(
@@ -153,6 +90,12 @@ func (m *MasterEvent) FromIcal(
 ) error {
 	if db == nil {
 		return fmt.Errorf("FromIcal: db is nil")
+	// delete all related Attendee models
+	if _, err := query.DB().NewDelete().
+		Model((*Attendee)(nil)).
+		Where("event_id IN (?)", bun.In(masterEventIDs)).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("(*MasterEvent).AfterDelete: can't delete attendees: %w", err)
 	}
 
 	m.ID = masterEvent.GetID()
@@ -182,6 +125,27 @@ func (m *MasterEvent) FromIcal(
 			exdates = append(exdates, fmt.Sprintf("%d", unixTime))
 		})
 		m.ExDate = strings.Join(exdates, ",")
+	// delete all related ChildEvent models
+	if _, err := query.DB().NewDelete().
+		Model((*ChildEvent)(nil)).
+		Where("master_event_id IN (?)", bun.In(masterEventIDs)).
+		Exec(context.WithValue(ctx, ChildEventIDCtxKey, func() []string {
+			childEventModels := make([]ChildEvent, 0)
+			if err := query.DB().NewSelect().
+				Model(&childEventModels).
+				Column("id").
+				Where("master_event_id IN (?)", bun.In(masterEventIDs)).
+				Scan(ctx); err != nil {
+				slog.Warn("(*MasterEvent).AfterDelete: can't get child event ids to inject to context", "error", err)
+				return []string{}
+			}
+			childEventIDs := make([]string, 0)
+			for _, childEventModel := range childEventModels {
+				childEventIDs = append(childEventIDs, childEventModel.ID)
+			}
+			return childEventIDs
+		}())); err != nil {
+		return fmt.Errorf("(*MasterEvent).AfterDelete: can't delete child events: %w", err)
 	}
 
 	return nil
