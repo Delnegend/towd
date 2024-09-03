@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"towd/src-server/ical/event"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/uptrace/bun"
@@ -81,15 +80,6 @@ func (m *MasterEvent) AfterDelete(ctx context.Context, query *bun.DeleteQuery) e
 		return fmt.Errorf("(*MasterEvent).AfterDelete: can't delete rrule: %w", err)
 	}
 
-// Create a new MasterEvent from an ical master event
-func (m *MasterEvent) FromIcal(
-	ctx context.Context,
-	db bun.IDB,
-	masterEvent *event.MasterEvent,
-	calendarID string,
-) error {
-	if db == nil {
-		return fmt.Errorf("FromIcal: db is nil")
 	// delete all related Attendee models
 	if _, err := query.DB().NewDelete().
 		Model((*Attendee)(nil)).
@@ -98,33 +88,6 @@ func (m *MasterEvent) FromIcal(
 		return fmt.Errorf("(*MasterEvent).AfterDelete: can't delete attendees: %w", err)
 	}
 
-	m.ID = masterEvent.GetID()
-	m.CalendarID = calendarID
-	m.Summary = masterEvent.GetSummary()
-	m.Description = masterEvent.GetDescription()
-	m.Location = masterEvent.GetLocation()
-	m.URL = masterEvent.GetURL()
-	m.Organizer = masterEvent.GetOrganizer()
-
-	m.StartDate = masterEvent.GetStartDate()
-	m.EndDate = masterEvent.GetEndDate()
-
-	m.CreatedAt = masterEvent.GetCreatedAt()
-	m.UpdatedAt = masterEvent.GetUpdatedAt()
-	m.Sequence = masterEvent.GetSequence()
-
-	if masterEvent.GetRRuleSet() != nil {
-		m.RRule = masterEvent.GetRRuleSet().String()
-		var rdates []string
-		masterEvent.IterateRDates(func(unixTime int64) {
-			rdates = append(rdates, fmt.Sprintf("%d", unixTime))
-		})
-		m.RDate = strings.Join(rdates, ",")
-		var exdates []string
-		masterEvent.IterateExDates(func(unixTime int64) {
-			exdates = append(exdates, fmt.Sprintf("%d", unixTime))
-		})
-		m.ExDate = strings.Join(exdates, ",")
 	// delete all related ChildEvent models
 	if _, err := query.DB().NewDelete().
 		Model((*ChildEvent)(nil)).
