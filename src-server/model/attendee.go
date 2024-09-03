@@ -9,4 +9,7 @@ type Attendee struct {
 
 	EventID string `bun:"event_id,notnull"` // required
 	Data    string `bun:"data,notnull"`     // required
+
+	MasterEvent *MasterEvent `bun:"rel:belongs-to,join:event_id=id"`
+	ChildEvent  *ChildEvent  `bun:"rel:belongs-to,join:event_id=id"`
 }
