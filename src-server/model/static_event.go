@@ -23,11 +23,11 @@ import (
 // StaticEvent represents a fully parsed event (no recurrence rule or
 // master/child events) for displaying on Discord or the web client.
 type StaticEvent struct {
-	ID          string    `json:"id"`
-	StartDate   int64     `json:"start_date"`
-	EndDate     int64     `json:"end_date"`
+	ID          string    `json:"id"`         // required
+	StartDate   int64     `json:"start_date"` // required
+	EndDate     int64     `json:"end_date"`   // required
 	IsWholeDay  bool      `json:"is_whole_day"`
-	Title       string    `json:"title"`
+	Title       string    `json:"title"` // required
 	Description string    `json:"description"`
 	Location    string    `json:"location"`
 	URL         string    `json:"url"`
