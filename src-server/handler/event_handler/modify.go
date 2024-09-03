@@ -617,7 +617,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					if _, err := tx.
 						NewDelete().
 						Model((*model.Attendee)(nil)).
-						Where("event_id = ?", oldEvent.ID).
+						Where("event_id = ?", oldEvent.MasterEventID).
 						Exec(ctx); err != nil {
 						return err
 					}
@@ -626,7 +626,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 							var attendeeModels []model.Attendee
 							for _, attendee := range *newEvent.Attendees {
 								attendeeModel := new(model.Attendee)
-								attendeeModel.EventID = oldEvent.ID
+								attendeeModel.EventID = oldEvent.MasterEventID
 								attendeeModel.Data = attendee
 								attendeeModels = append(attendeeModels, *attendeeModel)
 							}
