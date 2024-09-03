@@ -13,23 +13,6 @@ import (
 	"github.com/uptrace/bun"
 )
 
-func Create_(as *utils.AppState) {
-	id := "event-create"
-	as.AddAppCmdHandler(id, createHandler(as))
-	as.AddAppCmdInfo(id, &discordgo.ApplicationCommand{
-		Name:        id,
-		Description: "Create an event.",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "content",
-				Description: "Describe the event in detail.",
-				Required:    true,
-			},
-		},
-	})
-}
-
 func create(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cmdHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error) {
 	id := "create"
 	*cmdInfo = append(*cmdInfo, &discordgo.ApplicationCommandOption{
