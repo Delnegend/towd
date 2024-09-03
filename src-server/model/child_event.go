@@ -110,7 +110,7 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	// #region - check if master event exists
 	exist, err := db.NewSelect().
 		Model(&MasterEvent{}).
-		Where("id = ?", e.ID).
+		Where("id = ?", e.MasterEventID).
 		Exists(context.Background())
 	if err != nil {
 		return fmt.Errorf("(*ChildEvent).Upsert: %w", err)
@@ -124,7 +124,7 @@ func (e *ChildEvent) Upsert(ctx context.Context, db bun.IDB) error {
 	masterEventModal := new(MasterEvent)
 	if err := db.NewSelect().
 		Model(masterEventModal).
-		Where("id = ?", e.ID).
+		Where("id = ?", e.MasterEventID).
 		Scan(ctx, masterEventModal); err != nil {
 		return fmt.Errorf("(*ChildEvent).Upsert: can't get master event: %w", err)
 	}
@@ -169,7 +169,7 @@ func (e *ChildEvent) ToDiscordEmbed(ctx context.Context, db bun.IDB) []*discordg
 			},
 			{
 				Name:  "Master Event's ID",
-				Value: fmt.Sprintf("<t:%s:f>", e.ID),
+				Value: fmt.Sprintf("<t:%s:f>", e.MasterEventID),
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
