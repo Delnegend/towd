@@ -2,7 +2,6 @@ package routes
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -10,11 +9,11 @@ import (
 	"towd/src-server/utils"
 )
 
-type UserModelCtxKeyType string
+type SessionCtxKeyType string
 
-const UserModelCtxKey UserModelCtxKeyType = "user-model"
+const SessionCtxKey SessionCtxKeyType = "session"
 
-func AuthMiddleware(as *utils.AppState, orig func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// extract session secret
 		sessionSecret := func() string {
@@ -26,47 +25,28 @@ func AuthMiddleware(as *utils.AppState, orig func(http.ResponseWriter, *http.Req
 		}()
 		if sessionSecret == "" {
 			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"description": "Session secret cookie not found"}`))
 			return
 		}
 
-		// get session token model
-		sessionTokenModel := new(model.SessionToken)
+		session := new(model.Session)
 		if err := as.BunDB.
 			NewSelect().
-			Model(sessionTokenModel).
+			Model(session).
 			Where("secret = ?", sessionSecret).
+			Where("type = ?", "session").
 			Scan(r.Context()); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"description": "Can't find session token to validate session secret"}`))
-			return
-		}
-
-		// invalidate if older than 1 week
-		createdAt := time.Unix(sessionTokenModel.CreatedAtUnix, 0).UTC()
-		if time.Now().UTC().Sub(createdAt) > time.Hour*24*7 {
-			if _, err := as.BunDB.NewDelete().
-				Model((*model.SessionToken)(nil)).
-				Where("secret = ?", sessionSecret).
-				Exec(context.Background()); err != nil {
-				slog.Warn("can't delete session token", "where", "routes/middleware.go", "err", err)
-			}
-
 			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"description": "Session secret not found"}`))
+			return
+		}
+		if session.CreatedAt.Add(time.Hour * 24 * 7).Before(time.Now()) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"description": "Session expired"}`))
 			return
 		}
 
-		userModel := new(model.User)
-		if err := as.BunDB.
-			NewSelect().
-			Model(userModel).
-			Where("id = ?", sessionTokenModel.UserID).
-			Scan(r.Context()); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"description": "Can't find user to validate session token"}`))
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), UserModelCtxKey, userModel)
-		orig(w, r.WithContext(ctx))
+		ctx := context.WithValue(r.Context(), SessionCtxKey, session)
+		next(w, r.WithContext(ctx))
 	}
 }

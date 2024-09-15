@@ -2,20 +2,16 @@ package routes
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
 	"github.com/google/uuid"
-	"github.com/pquerna/otp/totp"
+	"github.com/uptrace/bun"
 )
-
-type AuthRequestBody struct {
-	UID  string `json:"uid"`
-	TOTP string `json:"totp_code"`
-}
 
 func Auth(muxer *http.ServeMux, as *utils.AppState) {
 	// logout
@@ -27,59 +23,81 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 	})
 
 	// login
-	muxer.HandleFunc("POST /auth", func(w http.ResponseWriter, r *http.Request) {
-		var reqBody AuthRequestBody
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+	newSessionSecret := uuid.NewString()
+	muxer.HandleFunc("POST /auth/:tempKey", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("tempKey") == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"description": "Invalid request body"}`))
-			return
-		}
-		if reqBody.TOTP == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"description": "Please provide a TOTP code"}`))
-			return
-		}
-		if reqBody.UID == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"description": "Please provide a UID"}`))
+			w.Write([]byte(`{"description": "Please provide a temp key"}`))
 			return
 		}
 
-		userModel := new(model.User)
-		if err := as.BunDB.
-			NewSelect().
-			Model(userModel).
-			Where("id = ?", reqBody.UID).
-			Scan(context.Background()); err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"description": "User not found"}`))
-			return
-		}
-		if !totp.Validate(reqBody.TOTP, userModel.TotpSecret) {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"description": "Invalid TOTP code"}`))
+		err := as.BunDB.RunInTx(r.Context(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			exists, err := as.BunDB.
+				NewSelect().
+				Model((*model.Session)(nil)).
+				Where("secret = ?", r.PathValue("tempKey")).
+				Where("type = ?", "temp").
+				Exists(r.Context())
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"description": "Can't find temp key"}`))
+				return fmt.Errorf("can't find temp key: %w", err)
+			}
+			if !exists {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"description": "Invalid temp key"}`))
+				return fmt.Errorf("invalid temp key")
+			}
+
+			tempKeyInDatabase := new(model.Session)
+			if err := as.BunDB.
+				NewSelect().
+				Model(tempKeyInDatabase).
+				Where("secret = ?", r.PathValue("tempKey")).
+				Scan(r.Context()); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"description": "Can't find temp key"}`))
+				return fmt.Errorf("can't find temp key: %w", err)
+			}
+
+			if tempKeyInDatabase.CreatedAt.Add(time.Minute * 5).Before(time.Now()) {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"description": "Temp key expired"}`))
+				return fmt.Errorf("temp key expired")
+			}
+
+			if _, err := as.BunDB.
+				NewDelete().
+				Model((*model.Session)(nil)).
+				Where("secret = ?", r.PathValue("tempKey")).
+				Exec(r.Context()); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"description": "Can't delete temp key"}`))
+				return fmt.Errorf("can't delete temp key: %w", err)
+			}
+
+			newSession := model.Session{
+				Secret:    newSessionSecret,
+				Type:      "session",
+				UserID:    tempKeyInDatabase.UserID,
+				ChannelID: tempKeyInDatabase.ChannelID,
+				CreatedAt: time.Now(),
+			}
+			if _, err := as.BunDB.
+				NewInsert().
+				Model(&newSession).
+				Exec(r.Context()); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"description": "Can't create session"}`))
+				return fmt.Errorf("can't create session: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
 			return
 		}
 
-		sessionSecret := uuid.NewString()
-		sessionTokenModel := model.SessionToken{
-			Secret:        sessionSecret,
-			UserID:        reqBody.UID,
-			CreatedAtUnix: time.Now().Unix(),
-			IpAddress:     r.RemoteAddr,
-			UserAgent:     r.UserAgent(),
-		}
-		if _, err := as.BunDB.
-			NewInsert().
-			Model(sessionTokenModel).
-			Exec(r.Context()); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"description": "Can't create session token"}`))
-			return
-		}
-
-		w.Header().Set("Set-Cookie", "session-secret="+sessionSecret+"; Path=/; HttpOnly; SameSite=Lax")
+		w.Header().Set("Set-Cookie", "session-secret="+newSessionSecret+"; Path=/; HttpOnly; SameSite=Lax")
 		w.WriteHeader(http.StatusOK)
 	})
 }
