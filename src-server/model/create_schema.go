@@ -16,8 +16,6 @@ func CreateSchema(db *bun.DB) error {
 			(*KanbanTable)(nil),
 			(*KanbanGroup)(nil),
 			(*KanbanItem)(nil),
-			(*RRule)(nil),
-			(*SessionToken)(nil),
 			(*Event)(nil),
 		} {
 			if _, err := tx.
