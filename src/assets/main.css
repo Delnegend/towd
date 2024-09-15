@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--background: hsl(0 0% 100%);
+		--foreground: hsl(222.2 84% 4.9%);
+
+		--muted: hsl(210 40% 96.1%);
+		--muted-foreground: hsl(215.4 16.3% 46.9%);
+
+		--popover: hsl(0 0% 100%);
+		--popover-foreground: hsl(222.2 84% 4.9%);
+
+		--card: hsl(0 0% 100%);
+		--card-foreground: hsl(222.2 84% 4.9%);
+
+		--border: hsl(214.3 31.8% 91.4%);
+		--input: hsl(214.3 31.8% 91.4%);
+
+		--primary: hsl(222.2 47.4% 11.2%);
+		--primary-foreground: hsl(210 40% 98%);
+
+		--secondary: hsl(210 40% 96.1%);
+		--secondary-foreground: hsl(222.2 47.4% 11.2%);
+
+		--accent: hsl(210 40% 96.1%);
+		--accent-foreground: hsl(222.2 47.4% 11.2%);
+
+		--destructive: hsl(0 84.2% 60.2%);
+		--destructive-foreground: hsl(210 40% 98%);
+
+		--ring: hsl(222.2 84% 4.9%);
+
+		--radius: 0.5rem;
+	}
+
+	.dark {
+		--background: hsl(222.2 84% 4.9%);
+		--foreground: hsl(210 40% 98%);
+
+		--muted: hsl(217.2 32.6% 17.5%);
+		--muted-foreground: hsl(215 20.2% 65.1%);
+
+		--popover: hsl(222.2 84% 4.9%);
+		--popover-foreground: hsl(210 40% 98%);
+
+		--card: hsl(222.2 84% 4.9%);
+		--card-foreground: hsl(210 40% 98%);
+
+		--border: hsl(217.2 32.6% 17.5%);
+		--input: hsl(217.2 32.6% 17.5%);
+
+		--primary: hsl(210 40% 98%);
+		--primary-foreground: hsl(222.2 47.4% 11.2%);
+
+		--secondary: hsl(217.2 32.6% 17.5%);
+		--secondary-foreground: hsl(210 40% 98%);
+
+		--accent: hsl(217.2 32.6% 17.5%);
+		--accent-foreground: hsl(210 40% 98%);
+
+		--destructive: hsl(0 62.8% 30.6%);
+		--destructive-foreground: hsl(210 40% 98%);
+
+		--ring: hsl(212.7 26.8% 83.9%);
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+		font-family: 'Nunito', sans-serif;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+
+/* nunito-regular - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 400;
+	src: url('/nunito/regular.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-italic - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: italic;
+	font-weight: 400;
+	src: url('/nunito/italic.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-500 - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 500;
+	src: url('/nunito/500.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-500italic - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: italic;
+	font-weight: 500;
+	src: url('/nunito/500italic.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-600 - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 600;
+	src: url('/nunito/600.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-600italic - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: italic;
+	font-weight: 600;
+	src: url('/nunito/600italic.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-700 - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 700;
+	src: url('/nunito/700.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-700italic - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: italic;
+	font-weight: 700;
+	src: url('/nunito/700italic.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
+/* nunito-800 - latin_vietnamese */
+@font-face {
+	font-display: swap;
+	/* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+	font-family: 'Nunito';
+	font-style: normal;
+	font-weight: 800;
+	src: url('/nunito/800.woff2') format('woff2');
+	/* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
