@@ -18,8 +18,8 @@ type KanbanTable struct {
 	Name      string `bun:"name,pk"`                   // required
 	ChannelID string `bun:"channel_id,notnull,unique"` // required
 
-	Groups []KanbanGroup `bun:"rel:has-many,join:channel_id=channel_id"`
-	Items  []KanbanItem  `bun:"rel:has-many,join:channel_id=channel_id"`
+	Groups []*KanbanGroup `bun:"rel:has-many,join:channel_id=channel_id"`
+	Items  []*KanbanItem  `bun:"rel:has-many,join:channel_id=channel_id"`
 }
 
 var _ bun.AfterDeleteHook = (*KanbanTable)(nil)
