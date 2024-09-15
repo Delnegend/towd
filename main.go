@@ -15,7 +15,7 @@ import (
 	"towd/src-server/handler/event_handler"
 	"towd/src-server/handler/kanban_handler"
 	"towd/src-server/model"
-	"towd/src-server/routes"
+	"towd/src-server/route"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
