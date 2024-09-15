@@ -11,8 +11,9 @@ import (
 type KanbanItem struct {
 	bun.BaseModel `bun:"table:kanban_items"`
 
-	ID        int64  `bun:"id,pk,autoincrement"`
-	Content   string `bun:"content,notnull"`    // required
+	ID      int64  `bun:"id,pk,autoincrement"`
+	Content string `bun:"content,notnull"` // required
+
 	GroupName string `bun:"group_name,notnull"` // required
 	ChannelID string `bun:"channel_id,notnull"` // required
 
