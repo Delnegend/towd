@@ -13,15 +13,32 @@ import (
 type MasterEvent struct {
 	EventInfo
 
-	rrule       *rrule.Set
+	rruleString string
 	exDates     []int64
 	rDates      []int64
 	childEvents []*ChildEvent
 }
 
 // Get the recurrence rule
-func (e *MasterEvent) GetRRuleSet() *rrule.Set {
-	return e.rrule
+func (e *MasterEvent) GetRRuleSet() (*rrule.Set, error) {
+	if e.rruleString == "" {
+		return nil, nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(utils.Unix2Datetime(e.startDate) + "\n")
+	sb.WriteString(e.rruleString + "\n")
+	for _, exdate := range e.exDates {
+		sb.WriteString("EXDATE:" + utils.Unix2Datetime(exdate) + "\n")
+	}
+	for _, rdate := range e.rDates {
+		sb.WriteString("RDATE:" + utils.Unix2Datetime(rdate) + "\n")
+	}
+	rruleSet, err := rrule.StrToRRuleSet(sb.String())
+	if err != nil {
+		return nil, fmt.Errorf("(*MasterEvent).GetRRuleSet: %w", err)
+	}
+	return rruleSet, nil
 }
 
 // Iterate over the exdates and apply a function to each
@@ -40,22 +57,25 @@ func (e *MasterEvent) IterateRDates(fn func(int64)) {
 
 // Add a child event to the master event
 func (e *MasterEvent) AddChildEvent(childEvent *ChildEvent) error {
-	if e.rrule == nil {
-		return fmt.Errorf("MasterEvent.AddChildEvent: master event does not have a rrule, child event cannot be added")
+	rruleSet, err := e.GetRRuleSet()
+	if err != nil {
+		return fmt.Errorf("(*MasterEvent).AddChildEvent: %w", err)
 	}
-
-	unixDatesFromRRule := func() map[int64]struct{} {
-		unixDatesFromRRule := make(map[int64]struct{})
-		for _, date := range e.rrule.All() {
-			unixDatesFromRRule[date.UTC().Unix()] = struct{}{}
+	if rruleSet == nil {
+		return fmt.Errorf("(*MasterEvent).AddChildEvent: master event does not have a rrule, child event cannot be added")
+	}
+	allDates := func() map[int64]struct{} {
+		allDates := make(map[int64]struct{})
+		for _, date := range rruleSet.All() {
+			allDates[date.Unix()] = struct{}{}
 		}
-		return unixDatesFromRRule
+		return allDates
 	}()
 
-	if _, ok := unixDatesFromRRule[childEvent.GetRecurrenceID()]; !ok {
+	if _, ok := allDates[childEvent.GetRecurrenceID()]; !ok {
 		return fmt.Errorf("MasterEvent.AddChildEvent: rec-id (%d) not in rrule (%s)", childEvent.GetRecurrenceID(), func() string {
 			var parsedRRuleSet []string
-			for date := range unixDatesFromRRule {
+			for date := range allDates {
 				parsedRRuleSet = append(parsedRRuleSet, fmt.Sprintf("%d", date))
 			}
 			return strings.Join(parsedRRuleSet, ",")
@@ -77,10 +97,10 @@ func (e *MasterEvent) IterateChildEvents(fn func(id string, event *ChildEvent) e
 // Turn a MasterEvent into an UndecidedEvent for modification
 func (e *MasterEvent) ToUndecidedEvent() UndecidedEvent {
 	return UndecidedEvent{
-		EventInfo: e.EventInfo,
-		rruleSet:  e.rrule,
-		exDate:    e.exDates,
-		rDate:     e.rDates,
+		EventInfo:   e.EventInfo,
+		rruleString: e.rruleString,
+		exDate:      e.exDates,
+		rDate:       e.rDates,
 	}
 }
 
@@ -95,8 +115,8 @@ func (e *MasterEvent) ToIcal(writer func(string)) {
 	}
 
 	// recurrence
-	if e.rrule != nil {
-		writer("RRULE:" + e.rrule.GetRRule().String() + "\n")
+	if e.rruleString != "" {
+		writer("RRULE:" + e.rruleString + "\n")
 	}
 	for _, exdate := range e.exDates {
 		writer("EXDATE:" + utils.Unix2Datetime(exdate) + "\n")

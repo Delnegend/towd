@@ -9,14 +9,13 @@ import (
 	"towd/src-server/ical/utils"
 
 	"github.com/google/uuid"
-	"github.com/xyedo/rrule"
 )
 
 // Holds everything an event could possibly hold
 type UndecidedEvent struct {
 	EventInfo
 
-	rruleSet     *rrule.Set
+	rruleString  string
 	exDate       []int64
 	rDate        []int64
 	recurrenceID int64
@@ -134,8 +133,8 @@ func (e *UndecidedEvent) AddCustomProperty(property string) *UndecidedEvent {
 }
 
 // Set the event rrule set
-func (e *UndecidedEvent) SetRRuleSet(rruleSet *rrule.Set) *UndecidedEvent {
-	e.rruleSet = rruleSet
+func (e *UndecidedEvent) SetRRuleSet(rruleSet string) *UndecidedEvent {
+	e.rruleString = rruleSet
 	return e
 }
 
@@ -274,13 +273,7 @@ func (e *UndecidedEvent) AddIcalProperty(property string) error {
 		case e.recurrenceID != 0:
 			return fmt.Errorf("RRULE and RECURRENCE-ID are mutually exclusive")
 		}
-		rruleSet, err := rrule.StrToRRuleSet(
-			"DTSTART:" + utils.Unix2Datetime(e.startDate) + "\nRRULE:" + val,
-		)
-		if err != nil {
-			return err
-		}
-		e.rruleSet = rruleSet
+		e.rruleString = val
 	default:
 		e.customProperties = append(e.customProperties, property)
 	}
@@ -295,30 +288,30 @@ func (e *UndecidedEvent) DecideEventType() (interface{}, error) {
 
 	switch {
 	// expect to be a child event has a more strict condition
-	case e.recurrenceID != 0 && e.rruleSet != nil:
+	case e.recurrenceID != 0 && e.rruleString != "":
 		return nil, fmt.Errorf("seems like a child event, but rruleSet is set")
 	case e.recurrenceID != 0 && len(e.exDate) > 0:
 		return nil, fmt.Errorf("seems like a child event, but exdate is set")
 	case e.recurrenceID != 0 && len(e.rDate) > 0:
 		return nil, fmt.Errorf("seems like a child event, but rdate is set")
 
-	case (e.rruleSet == nil && len(e.exDate) > 0):
+	case (e.rruleString == "" && len(e.exDate) > 0):
 		return nil, fmt.Errorf("exdate only works with recurring events")
-	case (e.rruleSet == nil && len(e.rDate) > 0):
+	case (e.rruleString == "" && len(e.rDate) > 0):
 		return nil, fmt.Errorf("rdate only works with recurring events")
 
 	case e.recurrenceID == 0:
 		return MasterEvent{
-			EventInfo: e.EventInfo,
-			rrule:     e.rruleSet,
-			exDates:   e.exDate,
-			rDates:    e.rDate,
+			EventInfo:   e.EventInfo,
+			rruleString: e.rruleString,
+			exDates:     e.exDate,
+			rDates:      e.rDate,
 		}, nil
 
 	// to be a child event has a more strict condition; the template event
 	// needs to have a recurrence-id and must not have exdate, rdate or rruleSet
 	// since all of them are master's properties, although they are optional
-	case e.recurrenceID != 0 && (e.rruleSet == nil) &&
+	case e.recurrenceID != 0 && (e.rruleString == "") &&
 		(len(e.exDate) == 0) && (len(e.rDate) == 0):
 		return ChildEvent{
 			EventInfo:    e.EventInfo,
