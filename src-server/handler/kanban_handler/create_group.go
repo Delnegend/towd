@@ -32,6 +32,9 @@ func createGroup(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOpt
 func createGroupHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
+		if err := ensureKanbantableExists(as, s, i); err != nil {
+			return err
+		}
 
 		// #region - get the group name from param
 		groupName, err := func() (string, error) {
@@ -123,6 +126,7 @@ func createGroupHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 		}
 		// #endregion
 
+		// insert group to db
 		if _, err := as.BunDB.NewInsert().
 			Model(&model.KanbanGroup{
 				Name:      groupName,
