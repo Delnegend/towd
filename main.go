@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 	"towd/src-server/handler"
-	"towd/src-server/handler/auth_handler"
 	"towd/src-server/handler/event_handler"
 	"towd/src-server/model"
 	"towd/src-server/routes"
@@ -49,7 +48,6 @@ func main() {
 
 	// injecting interaction handlers into appCmdInfo, appCmdHandler in AppState
 	event_handler.Init(as)
-	auth_handler.Init(as)
 	handler.ImportCalendar(as)
 	handler.Ping(as)
 
