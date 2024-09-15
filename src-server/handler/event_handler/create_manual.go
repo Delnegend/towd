@@ -78,13 +78,12 @@ func createManual(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOp
 func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
-		eventID := uuid.New().String()
 
 		// #region - collect data
-		staticEvent, err := func() (*model.StaticEvent, error) {
-			staticEvent := new(model.StaticEvent)
-			staticEvent.Attendees = new([]string)
-			staticEvent.ID = eventID
+		var attendeeModels []model.Attendee
+		eventModel, err := func() (*model.Event, error) {
+			eventModel := new(model.Event)
+			eventModel.ID = uuid.NewString()
 
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
@@ -95,50 +94,56 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			}
 
 			if value, ok := optionMap["title"]; ok {
-				staticEvent.Title = utils.CleanupString(value.StringValue())
+				eventModel.Summary = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["description"]; ok {
-				staticEvent.Description = utils.CleanupString(value.StringValue())
+				eventModel.Description = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["start"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
 					return nil, fmt.Errorf("can't parse start date: %w", err)
 				}
-				staticEvent.StartDate = result.Time.UTC().Unix()
+				eventModel.StartDate = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["end"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
 					return nil, fmt.Errorf("can't parse end date: %w", err)
 				}
-				staticEvent.EndDate = result.Time.UTC().Unix()
+				eventModel.EndDate = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["location"]; ok {
-				staticEvent.Location = utils.CleanupString(value.StringValue())
+				eventModel.Location = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["url"]; ok {
-				staticEvent.URL = utils.CleanupString(value.StringValue())
+				eventModel.URL = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["invitees"]; ok {
 				rawString := value.StringValue()
 				for _, attendee := range strings.Split(rawString, ",") {
-					*staticEvent.Attendees = append(*staticEvent.Attendees, strings.TrimSpace(attendee))
+					attendee := strings.TrimSpace(attendee)
+					if attendee != "" {
+						attendeeModels = append(attendeeModels, model.Attendee{
+							EventID: eventModel.ID,
+							Data:    attendee,
+						})
+					}
 				}
 			}
 			if value, ok := optionMap["whole-day"]; ok {
-				staticEvent.IsWholeDay = value.BoolValue()
-				startDate := time.Unix(staticEvent.StartDate, 0)
-				endDate := time.Unix(staticEvent.EndDate, 0)
-				if staticEvent.IsWholeDay {
+				eventModel.IsWholeDay = value.BoolValue()
+				startDate := time.Unix(eventModel.StartDate, 0)
+				endDate := time.Unix(eventModel.EndDate, 0)
+				if eventModel.IsWholeDay {
 					startDate = startDate.Truncate(24 * time.Hour)
 					endDate = endDate.Truncate(24 * time.Hour)
 				}
-				staticEvent.StartDate = startDate.UTC().Unix()
-				staticEvent.EndDate = endDate.UTC().Unix()
+				eventModel.StartDate = startDate.UTC().Unix()
+				eventModel.EndDate = endDate.UTC().Unix()
 			}
 
-			return staticEvent, nil
+			return eventModel, nil
 		}()
 		if err != nil {
 			// respond to original request
@@ -154,34 +159,8 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 		}
 		// #endregion
 
-		// static event -> event model
-		eventModel := func() *model.MasterEvent {
-			eventModel := new(model.MasterEvent)
-			eventModel.ID = staticEvent.ID
-			eventModel.Organizer = i.Member.User.Username
-			eventModel.CalendarID = i.GuildID
-
-			eventModel.Summary = staticEvent.Title
-			eventModel.Description = staticEvent.Description
-			eventModel.Location = staticEvent.Location
-			startDate, endDate := func() (int64, int64) {
-				startDate := time.Unix(staticEvent.StartDate, 0)
-				endDate := time.Unix(staticEvent.EndDate, 0)
-				if staticEvent.IsWholeDay {
-					startDate = startDate.Truncate(24 * time.Hour)
-					endDate = endDate.Truncate(24 * time.Hour)
-				}
-				return startDate.Unix(), endDate.Unix()
-			}()
-			eventModel.StartDate = startDate
-			eventModel.EndDate = endDate
-			eventModel.URL = staticEvent.URL
-
-			return eventModel
-		}()
-
-		// ask for confirmation
-		if isContinue, timeout, err := func() (bool, bool, error) {
+		// #region - ask for confirmation
+		isContinue, timeout, err := func() (bool, bool, error) {
 			yesCustomId := "yes-" + eventModel.ID
 			cancelCustomId := "cancel-" + eventModel.ID
 			confirmCh := make(chan struct{})
@@ -192,7 +171,9 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Is this correct?",
-					Embeds:  eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
+					Embeds: []*discordgo.MessageEmbed{
+						eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
+					},
 					Components: []discordgo.MessageComponent{
 						discordgo.ActionsRow{
 							Components: []discordgo.MessageComponent{
@@ -245,7 +226,9 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			case <-confirmCh:
 				return true, false, nil
 			}
-		}(); err != nil {
+		}()
+		switch {
+		case err != nil:
 			// respond to original request
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -256,12 +239,12 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 				slog.Warn("can't respond", "handler", "create-event", "content", "create-event-error", "error", err)
 			}
 			return fmt.Errorf("can't create static event: %w", err)
-		} else if timeout {
+		case timeout:
 			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
 				slog.Warn("can't respond", "handler", "create-event", "content", "timed-out", "error", err)
 			}
 			return nil
-		} else if !isContinue {
+		case !isContinue:
 			msg := "Event creation canceled."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
@@ -270,19 +253,13 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			}
 			return nil
 		}
+		// #endregion
 
-		// insert to db
+		// #region - insert to db
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			eventModel.CreatedAt = time.Now().UTC().Unix()
 			if err := eventModel.Upsert(ctx, tx); err != nil {
 				return err
-			}
-			attendeeModels := make([]model.Attendee, len(*staticEvent.Attendees))
-			for i, invitee := range *staticEvent.Attendees {
-				attendeeModels[i] = model.Attendee{
-					EventID: eventModel.ID,
-					Data:    invitee,
-				}
 			}
 			if _, err := tx.NewInsert().
 				Model(&attendeeModels).
@@ -302,6 +279,7 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			}
 			return fmt.Errorf("can't insert event: %w", err)
 		}
+		// #endregion
 
 		// respond to button
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{

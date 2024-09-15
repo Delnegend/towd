@@ -38,13 +38,12 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
-		// #region - response to the original request
+		// response to the original request
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			slog.Warn("can't respond", "handler", "events", "content", "deferring", "error", err)
 		}
-		// #endregion
 
 		// #region - parse date and get the start/end start date range
 		searchDate := "today"
@@ -93,27 +92,26 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 		// #endregion
 
 		// #region - get all events
-		staticEvents, err := model.
-			GetStaticEventInRange(
-				context.Background(),
-				as.BunDB,
-				startStartDateRange.Unix(),
-				endStartDateRange.Unix(),
-				interaction.ChannelID,
-			)
-		if err != nil {
+		var eventModels []model.Event
+		if err := as.BunDB.
+			NewSelect().
+			Model(&eventModels).
+			Where("start_date >= ?", startStartDateRange.Unix()).
+			Where("end_date <= ?", endStartDateRange.Unix()).
+			Where("channel_id = ?", interaction.ChannelID).
+			Scan(context.Background()); err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't get events in range\n```\n%s```", err.Error())
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			})
-			return err
+			return nil
 		}
 		// #endregion
 
 		// #region - compose & send the message
 		embeds := []*discordgo.MessageEmbed{}
-		for _, event := range *staticEvents {
+		for _, event := range eventModels {
 			embeds = append(embeds, event.ToDiscordEmbed(context.Background(), as.BunDB))
 		}
 		// edit the deferred message

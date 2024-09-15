@@ -42,7 +42,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			slog.Warn("can't respond", "handler", "create-event-llm", "content", "deferring", "error", err)
 		}
 
-		// get the content
+		// #region - get the content
 		content, err := func() (string, error) {
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
@@ -76,31 +76,28 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+		// #endregion
 
-		// natural text -> static event
-		staticEvent, err := func() (*model.StaticEvent, error) {
-			staticEvent := new(model.StaticEvent)
-			staticEvent.Attendees = new([]string)
-			if err := staticEvent.FromNaturalText(context.Background(), as, content); err != nil {
-				return nil, err
-			}
-			return staticEvent, err
-		}()
+		// #region - natural text -> event model
+		eventModel := new(model.Event)
+		attendeeModels, err := eventModel.FromNaturalText(context.Background(), as, content)
 		if err != nil {
 			// edit the deferred message
-			msg := fmt.Sprintf("Can't create event\n```%s```", err.Error())
+			msg := fmt.Sprintf("Can't create event\n```\n%s\n```", err.Error())
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Error("can't respond", "handler", "modify-event", "content", "event-create-error", "error", err)
+				slog.Warn("can't respond", "handler", "create-event-llm", "content", "can't-create-event", "error", err)
+				return nil
 			}
-			return err
+			return nil
 		}
+		// #endregion
 
-		// ask for confirmation
-		if isContinue, timeout, err := func() (bool, bool, error) {
-			yesCustomId := "yes-" + staticEvent.ID
-			cancelCustomId := "cancel-" + staticEvent.ID
+		// #region - ask for confirmation
+		isContinue, timeout, err := func() (bool, bool, error) {
+			yesCustomId := "yes-" + eventModel.ID
+			cancelCustomId := "cancel-" + eventModel.ID
 			confirmCh := make(chan struct{})
 			cancelCh := make(chan struct{})
 			defer close(confirmCh)
@@ -111,7 +108,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds: &[]*discordgo.MessageEmbed{
-					staticEvent.ToDiscordEmbed(context.Background(), as.BunDB),
+					eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
 				},
 				Components: &[]discordgo.MessageComponent{
 					discordgo.ActionsRow{
@@ -155,7 +152,9 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			case <-time.After(time.Minute * 2):
 				return false, false, fmt.Errorf("timeout waiting for confirmation")
 			}
-		}(); err != nil {
+		}()
+		switch {
+		case err != nil:
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't ask for confirmation, can't continue: %s", err.Error())
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
@@ -164,12 +163,12 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				slog.Warn("can't respond", "handler", "modify-event", "content", "ask-for-confirmation", "error", err)
 			}
 			return err
-		} else if timeout {
+		case timeout:
 			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
 				slog.Warn("can't respond", "handler", "modify-event", "content", "timeout", "error", err)
 			}
 			return nil
-		} else if !isContinue {
+		case !isContinue:
 			// respond to button request
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -181,32 +180,12 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+		// #endregion
 
-		// insert the event
+		// #region - insert to db
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
-			// main model
-			eventModel := new(model.MasterEvent)
-			eventModel.CalendarID = i.GuildID
-			eventModel.ID = staticEvent.ID
-			eventModel.Summary = staticEvent.Title
-			eventModel.Description = staticEvent.Description
-			eventModel.StartDate = staticEvent.StartDate
-			eventModel.EndDate = staticEvent.EndDate
-			eventModel.Location = staticEvent.Location
-			eventModel.URL = staticEvent.URL
-			eventModel.Organizer = i.Member.User.Username
-			eventModel.CreatedAt = time.Now().Unix()
 			if err := eventModel.Upsert(ctx, tx); err != nil {
 				return err
-			}
-
-			// attendee models
-			attendeeModels := make([]model.Attendee, len(*staticEvent.Attendees))
-			for i, invitee := range *staticEvent.Attendees {
-				attendeeModels[i] = model.Attendee{
-					EventID: eventModel.ID,
-					Data:    invitee,
-				}
 			}
 			if len(attendeeModels) > 0 {
 				if _, err := tx.NewInsert().
@@ -228,6 +207,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return fmt.Errorf("can't create event: %w", err)
 		}
+		// #endregion
 
 		// respond to button request
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{

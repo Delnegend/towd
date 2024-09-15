@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 	"towd/src-server/model"
@@ -93,10 +92,10 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			return fmt.Errorf("can't respond deferring msg, can't continue: %w", err)
 		}
 
-		// get new event data
-		newEvent, err := func() (*model.StaticEvent, error) {
-			newEvent := new(model.StaticEvent)
-			newEvent.Attendees = new([]string)
+		// #region - get new event data
+		attendeeModels := make([]model.Attendee, 0)
+		newEventModel, err := func() (*model.Event, error) {
+			newEventModel := new(model.Event)
 
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
@@ -107,56 +106,62 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 
 			if value, ok := optionMap["event-id"]; ok {
-				newEvent.ID = value.StringValue()
+				newEventModel.ID = value.StringValue()
 			}
 			if value, ok := optionMap["title"]; ok {
-				newEvent.Title = utils.CleanupString(value.StringValue())
+				newEventModel.Summary = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["description"]; ok {
-				newEvent.Description = utils.CleanupString(value.StringValue())
+				newEventModel.Description = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["start"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
 					return nil, fmt.Errorf("can't parse start date: %w", err)
 				}
-				newEvent.StartDate = result.Time.UTC().Unix()
+				newEventModel.StartDate = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["end"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
 					return nil, fmt.Errorf("can't parse end date: %w", err)
 				}
-				newEvent.EndDate = result.Time.UTC().Unix()
+				newEventModel.EndDate = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["location"]; ok {
-				newEvent.Location = utils.CleanupString(value.StringValue())
+				newEventModel.Location = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["url"]; ok {
 				if _, err := url.ParseRequestURI(value.StringValue()); err != nil {
 					return nil, fmt.Errorf("invalid URL: %w", err)
 				}
-				newEvent.URL = utils.CleanupString(value.StringValue())
+				newEventModel.URL = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["invitees"]; ok {
 				rawString := value.StringValue()
 				for _, attendee := range strings.Split(rawString, ",") {
-					*newEvent.Attendees = append(*newEvent.Attendees, strings.TrimSpace(attendee))
+					attendee := strings.TrimSpace(attendee)
+					if attendee != "" {
+						attendeeModels = append(attendeeModels, model.Attendee{
+							EventID: newEventModel.ID,
+							Data:    attendee,
+						})
+					}
 				}
 			}
 			if value, ok := optionMap["whole-day"]; ok {
-				newEvent.IsWholeDay = value.BoolValue()
-				startDate := time.Unix(newEvent.StartDate, 0)
-				endDate := time.Unix(newEvent.EndDate, 0)
-				if newEvent.IsWholeDay {
+				newEventModel.IsWholeDay = value.BoolValue()
+				startDate := time.Unix(newEventModel.StartDate, 0)
+				endDate := time.Unix(newEventModel.EndDate, 0)
+				if newEventModel.IsWholeDay {
 					startDate = startDate.Truncate(24 * time.Hour)
 					endDate = endDate.Truncate(24 * time.Hour)
 				}
-				newEvent.StartDate = startDate.UTC().Unix()
-				newEvent.EndDate = endDate.UTC().Unix()
+				newEventModel.StartDate = startDate.UTC().Unix()
+				newEventModel.EndDate = endDate.UTC().Unix()
 			}
 
-			return newEvent, nil
+			return newEventModel, nil
 		}()
 		if err != nil {
 			// edit the deferred message
@@ -168,82 +173,25 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+		// #endregion
 
-		// is modifying a master/child event? | is event exists?
-		oldEvent, exist, err := func() (interface{}, bool, error) {
-			switch regexp.MustCompile(`^[0-9]+$`).MatchString(newEvent.ID) {
-			case true: // child event
-				exist, err := as.BunDB.
-					NewSelect().
-					Model((*model.ChildEvent)(nil)).
-					Where("recurrence_id = ?", newEvent.ID).
-					Exists(context.Background())
-				if err != nil {
-					return false, false, fmt.Errorf("can't check if event exists: %w", err)
-				}
-				if !exist {
-					return false, false, nil
-				}
-				eventModel := new(model.ChildEvent)
-				if err := as.BunDB.
-					NewSelect().
-					Model(eventModel).
-					Where("recurrence_id = ?", newEvent.ID).
-					Scan(context.Background()); err != nil {
-					return nil, false, err
-				}
-				return eventModel, exist, nil
-			default: // master event
-				exist, err := as.BunDB.
-					NewSelect().
-					Model((*model.MasterEvent)(nil)).
-					Where("id = ?", newEvent.ID).
-					Exists(context.Background())
-				if err != nil {
-					return false, false, fmt.Errorf("can't check if event exists: %w", err)
-				}
-				if !exist {
-					return false, false, nil
-				}
-				eventModel := new(model.MasterEvent)
-				if err := as.BunDB.
-					NewSelect().
-					Model(eventModel).
-					Where("id = ?", newEvent.ID).
-					Scan(context.Background()); err != nil {
-					return nil, false, err
-				}
-				return eventModel, exist, nil
-			}
-		}()
-		if err != nil {
-			// edit the deferred message
-			msg := fmt.Sprintf("Can't check if event exists\n```%s```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-			}); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "event-not-found", "error", err)
-			}
-			return err
-		} else if !exist {
-			// edit the deferred message
-			msg := "Event not found."
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-			}); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "event-not-found", "error", err)
-			}
-			return nil
-		}
-
-		// ask for confirmation
-		if isContinue, timeout, err := func() (bool, bool, error) {
-			yesCustomId := "yes-" + newEvent.ID
-			cancelCustomId := "cancel-" + newEvent.ID
+		// #region - ask for confirmation
+		isContinue, timeout, err := func() (bool, bool, error) {
+			yesCustomId := "yes-" + newEventModel.ID
+			cancelCustomId := "cancel-" + newEventModel.ID
 			confirmCh := make(chan struct{})
 			cancelCh := make(chan struct{})
 			defer close(confirmCh)
 			defer close(cancelCh)
+
+			oldEvent := new(model.Event)
+			if err := as.BunDB.
+				NewSelect().
+				Model(oldEvent).
+				Where("id = ?", newEventModel.ID).
+				Scan(context.Background()); err != nil {
+				return false, false, fmt.Errorf("can't get old event: %w", err)
+			}
 
 			// these variables are only for the embed msg
 			var title string
@@ -253,167 +201,91 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			url := "`None` `[unchanged]`"
 			location := "`None` `[unchanged]`"
 			attendees := "`None` `[unchanged]`"
-			switch oldEvent := oldEvent.(type) {
-			case *model.MasterEvent:
-				switch newExist, oldExist := newEvent.Title != "", oldEvent.Summary != ""; {
-				case newExist && oldExist:
-					title = fmt.Sprintf("%s `[old value: %s]`", newEvent.Title, oldEvent.Summary)
-				case newExist && !oldExist:
-					title = fmt.Sprintf("%s `[old value: None]`", newEvent.Title)
-				case !newExist && oldExist:
-					title = fmt.Sprintf("%s `[unchanged]`", oldEvent.Summary)
-				}
 
-				switch newExist, oldExist := newEvent.Description != "", oldEvent.Description != ""; {
-				case newExist && oldExist:
-					description = fmt.Sprintf("%s `[old value: %s]`", newEvent.Description, oldEvent.Description)
-				case newExist && !oldExist:
-					description = fmt.Sprintf("%s `[old value: None]`", newEvent.Description)
-				case !newExist && oldExist:
-					description = fmt.Sprintf("%s `[unchanged]`", oldEvent.Description)
-				}
+			switch newExist, oldExist := newEventModel.Summary != "", oldEvent.Summary != ""; {
+			case newExist && oldExist:
+				title = fmt.Sprintf("%s `[old value: %s]`", newEventModel.Summary, oldEvent.Summary)
+			case newExist && !oldExist:
+				title = fmt.Sprintf("%s `[old value: None]`", newEventModel.Summary)
+			case !newExist && oldExist:
+				title = fmt.Sprintf("%s `[unchanged]`", oldEvent.Summary)
+			}
 
-				switch newExist, oldExist := newEvent.StartDate != 0, oldEvent.StartDate != 0; {
-				case newExist && oldExist:
-					startDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEvent.StartDate, oldEvent.StartDate)
-				case newExist && !oldExist:
-					startDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEvent.StartDate)
-				case !newExist && oldExist:
-					startDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.StartDate)
-				}
+			switch newExist, oldExist := newEventModel.Description != "", oldEvent.Description != ""; {
+			case newExist && oldExist:
+				description = fmt.Sprintf("%s `[old value: %s]`", newEventModel.Description, oldEvent.Description)
+			case newExist && !oldExist:
+				description = fmt.Sprintf("%s `[old value: None]`", newEventModel.Description)
+			case !newExist && oldExist:
+				description = fmt.Sprintf("%s `[unchanged]`", oldEvent.Description)
+			}
 
-				switch newExist, oldExist := newEvent.EndDate != 0, oldEvent.EndDate != 0; {
-				case newExist && oldExist:
-					endDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEvent.EndDate, oldEvent.EndDate)
-				case newExist && !oldExist:
-					endDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEvent.EndDate)
-				case !newExist && oldExist:
-					endDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.EndDate)
-				}
+			switch newExist, oldExist := newEventModel.StartDate != 0, oldEvent.StartDate != 0; {
+			case newExist && oldExist:
+				startDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.StartDate, oldEvent.StartDate)
+			case newExist && !oldExist:
+				startDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.StartDate)
+			case !newExist && oldExist:
+				startDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.StartDate)
+			}
 
-				switch newExist, oldExist := newEvent.URL != "", oldEvent.URL != ""; {
-				case newExist && oldExist:
-					url = fmt.Sprintf("%s `[old value: %s]`", newEvent.URL, oldEvent.URL)
-				case newExist && !oldExist:
-					url = fmt.Sprintf("%s `[old value: None]`", newEvent.URL)
-				case !newExist && oldExist:
-					url = fmt.Sprintf("%s `[unchanged]`", oldEvent.URL)
-				}
+			switch newExist, oldExist := newEventModel.EndDate != 0, oldEvent.EndDate != 0; {
+			case newExist && oldExist:
+				endDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.EndDate, oldEvent.EndDate)
+			case newExist && !oldExist:
+				endDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.EndDate)
+			case !newExist && oldExist:
+				endDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.EndDate)
+			}
 
-				switch newExist, oldExist := newEvent.Location != "", oldEvent.Location != ""; {
-				case newExist && oldExist:
-					location = fmt.Sprintf("%s `[old value: %s]`", newEvent.Location, oldEvent.Location)
-				case newExist && !oldExist:
-					location = fmt.Sprintf("%s `[old value: None]`", newEvent.Location)
-				case !newExist && oldExist:
-					location = fmt.Sprintf("%s `[unchanged]`", oldEvent.Location)
-				}
+			switch newExist, oldExist := newEventModel.URL != "", oldEvent.URL != ""; {
+			case newExist && oldExist:
+				url = fmt.Sprintf("%s `[old value: %s]`", newEventModel.URL, oldEvent.URL)
+			case newExist && !oldExist:
+				url = fmt.Sprintf("%s `[old value: None]`", newEventModel.URL)
+			case !newExist && oldExist:
+				url = fmt.Sprintf("%s `[unchanged]`", oldEvent.URL)
+			}
 
-				oldAttendees := func() string {
-					var attendeeModels []model.Attendee
-					if err := as.BunDB.
-						NewSelect().
-						Model(&attendeeModels).
-						Where("event_id = ?", oldEvent.ID).
-						Scan(context.Background()); err != nil {
-						slog.Warn("can't get attendees", "handler", "modify-event", "purpose", "display-changes", "error", err)
-						return ""
-					}
-					attendees := make([]string, len(attendeeModels))
-					for i, attendee := range attendeeModels {
-						attendees[i] = attendee.Data
-					}
-					return strings.Join(attendees, ", ")
-				}()
-				newAttendees := strings.Join(*newEvent.Attendees, ", ")
-				switch newExist, oldExist := newAttendees != "", oldAttendees != ""; {
-				case newExist && oldExist:
-					attendees = fmt.Sprintf("%s `[old value: %s]`", newAttendees, oldAttendees)
-				case newExist && !oldExist:
-					attendees = fmt.Sprintf("%s `[old value: None]`", newAttendees)
-				case !newExist && oldExist:
-					attendees = fmt.Sprintf("%s `[unchanged]`", oldAttendees)
-				}
-			case *model.ChildEvent:
-				switch newExist, oldExist := newEvent.Title != "", oldEvent.Summary != ""; {
-				case newExist && oldExist:
-					title = fmt.Sprintf("%s `[old value: %s]`", newEvent.Title, oldEvent.Summary)
-				case newExist && !oldExist:
-					title = fmt.Sprintf("%s `[old value: None]`", newEvent.Title)
-				case !newExist && oldExist:
-					title = fmt.Sprintf("%s `[unchanged]`", oldEvent.Summary)
-				}
+			switch newExist, oldExist := newEventModel.Location != "", oldEvent.Location != ""; {
+			case newExist && oldExist:
+				location = fmt.Sprintf("%s `[old value: %s]`", newEventModel.Location, oldEvent.Location)
+			case newExist && !oldExist:
+				location = fmt.Sprintf("%s `[old value: None]`", newEventModel.Location)
+			case !newExist && oldExist:
+				location = fmt.Sprintf("%s `[unchanged]`", oldEvent.Location)
+			}
 
-				switch newExist, oldExist := newEvent.Description != "", oldEvent.Description != ""; {
-				case newExist && oldExist:
-					description = fmt.Sprintf("%s `[old value: %s]`", newEvent.Description, oldEvent.Description)
-				case newExist && !oldExist:
-					description = fmt.Sprintf("%s `[old value: None]`", newEvent.Description)
-				case !newExist && oldExist:
-					description = fmt.Sprintf("%s `[unchanged]`", oldEvent.Description)
+			oldAttendees := func() string {
+				var attendeeModels []model.Attendee
+				if err := as.BunDB.
+					NewSelect().
+					Model(&attendeeModels).
+					Where("event_id = ?", oldEvent.ID).
+					Scan(context.Background()); err != nil {
+					slog.Warn("can't get attendees", "handler", "modify-event", "purpose", "display-changes", "error", err)
+					return ""
 				}
-
-				switch newExist, oldExist := newEvent.StartDate != 0, oldEvent.StartDate != 0; {
-				case newExist && oldExist:
-					startDate = fmt.Sprintf("<t:%d:f> [old value: <t:%d:f>]", newEvent.StartDate, oldEvent.StartDate)
-				case newExist && !oldExist:
-					startDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEvent.StartDate)
-				case !newExist && oldExist:
-					startDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.StartDate)
+				attendees := make([]string, len(attendeeModels))
+				for i, attendee := range attendeeModels {
+					attendees[i] = attendee.Data
 				}
-
-				switch newExist, oldExist := newEvent.EndDate != 0, oldEvent.EndDate != 0; {
-				case newExist && oldExist:
-					endDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEvent.EndDate, oldEvent.EndDate)
-				case newExist && !oldExist:
-					endDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEvent.EndDate)
-				case !newExist && oldExist:
-					endDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.EndDate)
+				return strings.Join(attendees, ", ")
+			}()
+			newAttendees := func() string {
+				var attendees []string
+				for _, attendeeModel := range attendeeModels {
+					attendees = append(attendees, attendeeModel.Data)
 				}
-
-				switch newExist, oldExist := newEvent.URL != "", oldEvent.URL != ""; {
-				case newExist && oldExist:
-					url = fmt.Sprintf("%s `[old value: %s]`", newEvent.URL, oldEvent.URL)
-				case newExist && !oldExist:
-					url = fmt.Sprintf("%s `[old value: None]`", newEvent.URL)
-				case !newExist && oldExist:
-					url = fmt.Sprintf("%s `[unchanged]`", oldEvent.URL)
-				}
-
-				switch newExist, oldExist := newEvent.Location != "", oldEvent.Location != ""; {
-				case newExist && oldExist:
-					location = fmt.Sprintf("%s `[old value: %s]`", newEvent.Location, oldEvent.Location)
-				case newExist && !oldExist:
-					location = fmt.Sprintf("%s `[old value: None]`", newEvent.Location)
-				case !newExist && oldExist:
-					location = fmt.Sprintf("%s `[unchanged]`", oldEvent.Location)
-				}
-
-				oldAttendees := func() string {
-					var attendeeModels []model.Attendee
-					if err := as.BunDB.
-						NewSelect().
-						Model(&attendeeModels).
-						Where("event_id = ?", oldEvent.RecurrenceID).
-						Scan(context.Background()); err != nil {
-						slog.Warn("can't get attendees", "handler", "modify-event", "purpose", "display-changes", "error", err)
-						return ""
-					}
-					attendees := make([]string, len(attendeeModels))
-					for i, attendee := range attendeeModels {
-						attendees[i] = attendee.Data
-					}
-					return strings.Join(attendees, ", ")
-				}()
-				newAttendees := strings.Join(*newEvent.Attendees, ", ")
-				switch newExist, oldExist := newAttendees != "", oldAttendees != ""; {
-				case newExist && oldExist:
-					attendees = fmt.Sprintf("%s `[old value: %s]`", newAttendees, oldAttendees)
-				case newExist && !oldExist:
-					attendees = fmt.Sprintf("%s `[old value: None]`", newAttendees)
-				case !newExist && oldExist:
-					attendees = fmt.Sprintf("%s `[unchanged]`", oldAttendees)
-				}
+				return strings.Join(attendees, ", ")
+			}()
+			switch newExist, oldExist := newAttendees != "", oldAttendees != ""; {
+			case newExist && oldExist:
+				attendees = fmt.Sprintf("%s `[old value: %s]`", newAttendees, oldAttendees)
+			case newExist && !oldExist:
+				attendees = fmt.Sprintf("%s `[old value: None]`", newAttendees)
+			case !newExist && oldExist:
+				attendees = fmt.Sprintf("%s `[unchanged]`", oldAttendees)
 			}
 
 			msg := "Is this correct?"
@@ -449,7 +321,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 							},
 						},
 						Footer: &discordgo.MessageEmbedFooter{
-							Text: newEvent.ID,
+							Text: newEventModel.ID,
 						},
 						Author: &discordgo.MessageEmbedAuthor{
 							Name: i.Member.User.Username,
@@ -496,7 +368,9 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			case <-confirmCh:
 				return true, false, nil
 			}
-		}(); err != nil {
+		}()
+		switch {
+		case err != nil:
 			// respond to button request
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -507,13 +381,13 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				slog.Warn("can't respond", "handler", "modify-event", "content", "can't-ask-confirm", "error", err)
 			}
 			return err
-		} else if timeout {
+		case timeout:
 			// respond to nothing
 			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
 				slog.Warn("can't respond", "handler", "modify-event", "content", "timed-out", "error", err)
 			}
 			return nil
-		} else if !isContinue {
+		case !isContinue:
 			// respond to button request
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -525,131 +399,42 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+		// #endregion
 
-		// update event
-		switch oldEvent := oldEvent.(type) {
-		case *model.MasterEvent:
-			if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
-				if newEvent.Title != "" {
-					oldEvent.Summary = newEvent.Title
-				}
-				if newEvent.Description != "" {
-					oldEvent.Description = newEvent.Description
-				}
-				if newEvent.StartDate != 0 {
-					oldEvent.StartDate = newEvent.StartDate
-				}
-				if newEvent.EndDate != 0 {
-					oldEvent.EndDate = newEvent.EndDate
-				}
-				if newEvent.Location != "" {
-					oldEvent.Location = newEvent.Location
-				}
-				if newEvent.URL != "" {
-					oldEvent.URL = newEvent.URL
-				}
-				oldEvent.UpdatedAt = time.Now().UTC().Unix()
-				if err := oldEvent.Upsert(ctx, tx); err != nil {
-					return err
-				}
-
-				if len(*newEvent.Attendees) > 0 {
-					if _, err := tx.
-						NewDelete().
-						Model((*model.Attendee)(nil)).
-						Where("event_id = ?", newEvent.ID).
-						Exec(ctx); err != nil {
-						return err
-					}
-					if _, err := tx.NewInsert().
-						Model(func() *[]model.Attendee {
-							attendeeModels := make([]model.Attendee, len(*newEvent.Attendees))
-							for _, attendee := range *newEvent.Attendees {
-								attendeeModel := new(model.Attendee)
-								attendeeModel.EventID = oldEvent.ID
-								attendeeModel.Data = attendee
-								attendeeModels = append(attendeeModels, *attendeeModel)
-							}
-							return &attendeeModels
-						}()).
-						Exec(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			}); err != nil {
-				// respond to button request
-				if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
-					},
-				}); err != nil {
-					slog.Warn("can't respond", "handler", "modify-event", "content", "event-update-error", "error", err)
-				}
+		// #region - update event
+		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			newEventModel.UpdatedAt = time.Now().UTC().Unix()
+			if err := newEventModel.Upsert(ctx, tx); err != nil {
 				return err
 			}
-		case *model.ChildEvent:
-			if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
-				if newEvent.Title != "" {
-					oldEvent.Summary = newEvent.Title
-				}
-				if newEvent.Description != "" {
-					oldEvent.Description = newEvent.Description
-				}
-				if newEvent.StartDate != 0 {
-					oldEvent.StartDate = newEvent.StartDate
-				}
-				if newEvent.EndDate != 0 {
-					oldEvent.EndDate = newEvent.EndDate
-				}
-				if newEvent.Location != "" {
-					oldEvent.Location = newEvent.Location
-				}
-				if newEvent.URL != "" {
-					oldEvent.URL = newEvent.URL
-				}
-				if err := oldEvent.Upsert(ctx, tx); err != nil {
-					return err
-				}
-
-				if len(*newEvent.Attendees) > 0 {
-					if _, err := tx.
-						NewDelete().
-						Model((*model.Attendee)(nil)).
-						Where("event_id = ?", oldEvent.MasterEventID).
-						Exec(ctx); err != nil {
-						return err
-					}
-					if _, err := tx.NewInsert().
-						Model(func() *[]model.Attendee {
-							var attendeeModels []model.Attendee
-							for _, attendee := range *newEvent.Attendees {
-								attendeeModel := new(model.Attendee)
-								attendeeModel.EventID = oldEvent.MasterEventID
-								attendeeModel.Data = attendee
-								attendeeModels = append(attendeeModels, *attendeeModel)
-							}
-							return &attendeeModels
-						}()).
-						Exec(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-
-			}); err != nil {
-				if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
-					},
-				}); err != nil {
-					slog.Warn("can't respond", "handler", "modify-event", "content", "event-update-error", "error", err)
-				}
+			if _, err := tx.
+				NewDelete().
+				Model((*model.Attendee)(nil)).
+				Where("event_id = ?", newEventModel.ID).
+				Exec(ctx); err != nil {
 				return err
 			}
+			if len(attendeeModels) > 0 {
+				if _, err := tx.NewInsert().
+					Model(&attendeeModels).
+					Exec(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			// respond to button request
+			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
+				},
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "modify-event", "content", "event-update-error", "error", err)
+			}
+			return err
 		}
+		// #endregion
 
 		// respond to button request
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{

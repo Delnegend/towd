@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
@@ -58,7 +57,8 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			slog.Warn("can't respond", "handler", "delete-event", "content", "deferring", "error", err)
 		}
 
-		eventID, err := func() (string, error) {
+		// #region - get the event ID
+		eventID := func() string {
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
 				map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options),
@@ -70,7 +70,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if opt, ok := optionMap["event-id"]; ok {
 				eventID = opt.StringValue()
 			}
-			return eventID, nil
+			return eventID
 		}()
 		if eventID == "" {
 			// edit the deferred message
@@ -82,65 +82,25 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+		// #endregion
 
-		eventModel, exist, err := func() (interface{}, bool, error) {
-			switch regexp.MustCompile(`^[0-9]+$`).MatchString(eventID) {
-			case true: // child event
-				fmt.Println("child event")
-				exist, err := as.BunDB.
-					NewSelect().
-					Model((*model.ChildEvent)(nil)).
-					Where("recurrence_id = ?", eventID).
-					Exists(context.Background())
-				if err != nil {
-					return nil, false, err
-				}
-				if !exist {
-					return nil, false, nil
-				}
-				eventModel := new(model.ChildEvent)
-				if err := as.BunDB.
-					NewSelect().
-					Model(eventModel).
-					Where("recurrence_id = ?", eventID).
-					Scan(context.Background()); err != nil {
-					return nil, false, fmt.Errorf("can't get child event: %w", err)
-				}
-				return eventModel, true, nil
-			default: // master event
-				fmt.Println("master event", eventID)
-				exist, err := as.BunDB.
-					NewSelect().
-					Model((*model.MasterEvent)(nil)).
-					Where("id = ?", eventID).
-					Exists(context.Background())
-				if err != nil {
-					return nil, false, err
-				}
-				if !exist {
-					return nil, false, nil
-				}
-				eventModel := new(model.MasterEvent)
-				if err := as.BunDB.
-					NewSelect().
-					Model(eventModel).
-					Where("id = ?", eventID).
-					Scan(context.Background()); err != nil {
-					return nil, false, fmt.Errorf("can't get master event: %w", err)
-				}
-				return eventModel, true, nil
-			}
-		}()
-		if err != nil {
+		// #region - check if event exists
+		exists, err := as.BunDB.
+			NewSelect().
+			Model((*model.Event)(nil)).
+			Where("id = ?", eventID).
+			Exists(context.Background())
+		switch {
+		case err != nil:
 			// edit the deferred message
-			msg := fmt.Sprintf("Can't check if event exists\n```%s```", err.Error())
+			msg := fmt.Sprintf("Can't check if event exists\n```\n%s\n```", err.Error())
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("can't respond", "handler", "delete-event", "content", "event-delete-error", "error", err)
 			}
 			return err
-		} else if !exist {
+		case !exists:
 			// edit the deferred message
 			msg := "Event not found."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
@@ -150,8 +110,28 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+		// #endregion
 
-		if isContinue, timeout, err := func() (bool, bool, error) {
+		// #region - get the event model
+		eventModel := new(model.Event)
+		if err := as.BunDB.
+			NewSelect().
+			Model(eventModel).
+			Where("id = ?", eventID).
+			Scan(context.Background()); err != nil {
+			// edit the deferred message
+			msg := fmt.Sprintf("Can't get event\n```\n%s\n```", err.Error())
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "delete-event", "content", "event-delete-error", "error", err)
+			}
+			return err
+		}
+		// #endregion
+
+		// #region - ask for confirmation
+		isContinue, timeout, err := func() (bool, bool, error) {
 			yesCustomId := "yes-" + eventID
 			cancelCustomId := "cancel-" + eventID
 			confirmCh := make(chan struct{})
@@ -159,25 +139,13 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			defer close(confirmCh)
 			defer close(cancelCh)
 
-			var embeds []*discordgo.MessageEmbed
-			switch eventModel := eventModel.(type) {
-			case *model.MasterEvent:
-				embeds = eventModel.ToDiscordEmbed(context.Background(), as.BunDB)
-			case *model.ChildEvent:
-				embeds = eventModel.ToDiscordEmbed(context.Background(), as.BunDB)
-			}
-
 			// edit the deferred message
+			msg := "Is this the event you want to delete?"
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: func() *string {
-					if len(embeds) == 1 {
-						msg := "Is this the event you want to delete?"
-						return &msg
-					}
-					msg := "Are these the events you want to delete?"
-					return &msg
-				}(),
-				Embeds: &embeds,
+				Content: &msg,
+				Embeds: &[]*discordgo.MessageEmbed{
+					eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
+				},
 				Components: &[]discordgo.MessageComponent{
 					discordgo.ActionsRow{
 						Components: []discordgo.MessageComponent{
@@ -218,7 +186,9 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			case <-confirmCh:
 				return true, false, nil
 			}
-		}(); err != nil {
+		}()
+		switch {
+		case err != nil:
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't ask for confirmation, can't continue: %s", err.Error())
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
@@ -227,12 +197,12 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				slog.Warn("can't respond", "handler", "delete-event", "content", "ask-for-confirmation", "error", err)
 			}
 			return err
-		} else if timeout {
+		case timeout:
 			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
 				slog.Warn("can't respond", "handler", "delete-event", "content", "timeout", "error", err)
 			}
 			return nil
-		} else if !isContinue {
+		case !isContinue:
 			// respond to button request
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -244,6 +214,8 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
+
+		// #endregion
 
 		msg := "Event deleted."
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
