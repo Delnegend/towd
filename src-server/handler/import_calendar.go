@@ -8,12 +8,10 @@ import (
 	"net/url"
 	"time"
 	"towd/src-server/ical"
-	"towd/src-server/ical/event"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -366,65 +364,21 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 				return err
 			}
 
-			// extract master events and child events
-			masterEventModels := make([]model.MasterEvent, 0)
-			childEventModels := make([]model.ChildEvent, 0)
-			if err := icalCalendar.IterateMasterEvents(func(id string, icalMasterEvent *event.MasterEvent) error {
-				masterEventModels = append(masterEventModels, model.MasterEvent{
-					ID:          id,
-					Summary:     icalMasterEvent.GetSummary(),
-					Description: icalMasterEvent.GetDescription(),
-					Location:    icalMasterEvent.GetLocation(),
-					URL:         icalMasterEvent.GetURL(),
-					Organizer:   icalMasterEvent.GetOrganizer(),
-
-					StartDate: icalMasterEvent.GetStartDate(),
-					EndDate:   icalMasterEvent.GetEndDate(),
-
-					CreatedAt: icalMasterEvent.GetCreatedAt(),
-					UpdatedAt: icalMasterEvent.GetUpdatedAt(),
-					Sequence:  icalMasterEvent.GetSequence(),
-
-					CalendarID: calendarModel.ID,
-					ChannelID:  interaction.ChannelID,
+			eventModels := make([]model.Event, 0)
+			for _, staticEvent := range icalCalendar.ToStaticEvents() {
+				eventModels = append(eventModels, model.Event{
+					ID:          staticEvent.ID,
+					StartDate:   staticEvent.StartDate,
+					EndDate:     staticEvent.EndDate,
+					Summary:     staticEvent.Title,
+					Description: staticEvent.Description,
+					Location:    staticEvent.Location,
+					URL:         staticEvent.URL,
+					Organizer:   staticEvent.Organizer,
 				})
-
-				return icalMasterEvent.IterateChildEvents(func(id string, icalChildEvent *event.ChildEvent) error {
-					childEventModels = append(childEventModels, model.ChildEvent{
-						ID:            uuid.NewString(),
-						MasterEventID: id,
-						RecurrenceID:  icalChildEvent.GetRecurrenceID(),
-
-						Summary:     icalChildEvent.GetSummary(),
-						Description: icalChildEvent.GetDescription(),
-						Location:    icalChildEvent.GetLocation(),
-						URL:         icalChildEvent.GetURL(),
-						Organizer:   icalChildEvent.GetOrganizer(),
-
-						StartDate: icalChildEvent.GetStartDate(),
-						EndDate:   icalChildEvent.GetEndDate(),
-
-						CreatedAt: icalChildEvent.GetCreatedAt(),
-						UpdatedAt: icalChildEvent.GetUpdatedAt(),
-						Sequence:  icalChildEvent.GetSequence(),
-
-						CalendarID: calendarModel.ID,
-						ChannelID:  interaction.ChannelID,
-					})
-					return nil
-				})
-			}); err != nil {
-				return err
-			}
-
-			// insert all events
-			if _, err := tx.NewInsert().
-				Model(&masterEventModels).
-				Exec(ctx); err != nil {
-				return err
 			}
 			if _, err := tx.NewInsert().
-				Model(&childEventModels).
+				Model(&eventModels).
 				Exec(ctx); err != nil {
 				return err
 			}
