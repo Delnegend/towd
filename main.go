@@ -13,6 +13,7 @@ import (
 	"time"
 	"towd/src-server/handler"
 	"towd/src-server/handler/event_handler"
+	"towd/src-server/handler/kanban_handler"
 	"towd/src-server/model"
 	"towd/src-server/routes"
 	"towd/src-server/utils"
@@ -48,6 +49,7 @@ func main() {
 
 	// injecting interaction handlers into appCmdInfo, appCmdHandler in AppState
 	event_handler.Init(as)
+	kanban_handler.Init(as)
 	handler.ImportCalendar(as)
 	handler.Ping(as)
 
