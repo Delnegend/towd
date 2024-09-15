@@ -21,8 +21,8 @@ type Calendar struct {
 	Description string `bun:"description"`
 	Url         string `bun:"url,unique"`
 	Hash        string `bun:"hash,unique"`
+	ChannelID   string `bun:"channel_id"`
 
-	ChannelID    string        `bun:"channel_id"`
 	Events []*Event `bun:"rel:has-many,join:id=calendar_id"`
 }
 
