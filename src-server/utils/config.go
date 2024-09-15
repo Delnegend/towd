@@ -10,9 +10,6 @@ import (
 type Config struct {
 	port string
 
-	jwtSecret string
-	jwtExpire time.Duration
-
 	discordGuildID      string
 	discordAppToken     string
 	discordClientId     string
@@ -37,29 +34,6 @@ func NewConfig() *Config {
 			}
 			slog.Debug("env", "PORT", port)
 			return port
-		}(),
-
-		jwtSecret: func() string {
-			secret := os.Getenv("JWT_SECRET")
-			if secret == "" {
-				slog.Warn("SECRET is not set")
-				secret = "secret"
-			}
-			return secret
-		}(),
-		jwtExpire: func() time.Duration {
-			jwtExpire := os.Getenv("JWT_EXPIRE")
-			if jwtExpire == "" {
-				slog.Warn("JWT_EXPIRE is not set")
-				jwtExpire = "168h" // 1 week
-			}
-			duration, err := time.ParseDuration(jwtExpire)
-			if err != nil {
-				slog.Error("invalid JWT_EXPIRE", "error", err)
-				os.Exit(1)
-			}
-			slog.Debug("env", "JWT_EXPIRE", jwtExpire, "duration", duration)
-			return duration
 		}(),
 
 		discordGuildID: func() string {
@@ -192,16 +166,6 @@ func NewConfig() *Config {
 // Get PORT env, default to 8080
 func (c *Config) GetPort() string {
 	return c.port
-}
-
-// Get JWT_SECRET env
-func (c *Config) GetJWTSecret() string {
-	return c.jwtSecret
-}
-
-// Get JWT_EXPIRE env
-func (c *Config) GetJWTExpire() time.Duration {
-	return c.jwtExpire
 }
 
 // Get DISCORD_GUILD_ID env
