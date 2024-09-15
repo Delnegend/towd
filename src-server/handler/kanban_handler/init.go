@@ -1,6 +1,10 @@
 package kanban_handler
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+	"towd/src-server/model"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
@@ -35,4 +39,65 @@ func Init(as *utils.AppState) {
 		}
 		return nil
 	})
+}
+
+func ensureKanbantableExists(as *utils.AppState, s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	exists, err := as.BunDB.
+		NewSelect().
+		Model((*model.KanbanTable)(nil)).
+		Where("channel_id = ?", i.ChannelID).
+		Exists(context.Background())
+	switch {
+	case err != nil:
+		// edit the deferred message
+		msg := fmt.Sprintf("Can't create kanban board\n```\n%s\n```", err.Error())
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &msg,
+		}); err != nil {
+			slog.Warn("can't respond", "handler", "create-event-llm", "content", "create-event-error", "error", err)
+			return nil
+		}
+		return nil
+	case !exists:
+		channels, err := as.DgSession.GuildChannels(i.GuildID)
+		if err != nil {
+			// edit the deferred message
+			msg := fmt.Sprintf("Can't get channel name to create kanban board\n```\n%s\n```", err.Error())
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "create-event-llm", "content", "create-event-error", "error", err)
+				return nil
+			}
+			return nil
+		}
+		var channelName string
+		for _, channel := range channels {
+			if channel.ID == i.ChannelID {
+				channelName = channel.Name
+				break
+			}
+		}
+		if channelName == "" {
+			channelName = "Untitled"
+		}
+
+		if _, err := as.BunDB.NewInsert().
+			Model(&model.KanbanTable{
+				ChannelID: i.ChannelID,
+				Name:      channelName,
+			}).
+			Exec(context.Background()); err != nil {
+			// edit the deferred message
+			msg := fmt.Sprintf("Can't create kanban board\n```\n%s\n```", err.Error())
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("can't respond", "handler", "create-event-llm", "content", "create-event-error", "error", err)
+				return nil
+			}
+			return nil
+		}
+	}
+	return nil
 }
