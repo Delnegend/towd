@@ -23,7 +23,7 @@ type Calendar struct {
 	Hash        string `bun:"hash,unique"`
 
 	ChannelID    string        `bun:"channel_id"`
-	MasterEvents []MasterEvent `bun:"rel:has-many,join:id=calendar_id"`
+	Events []*Event `bun:"rel:has-many,join:id=calendar_id"`
 }
 
 var _ bun.AfterDeleteHook = (*Calendar)(nil)
@@ -52,12 +52,11 @@ func (c *Calendar) AfterDelete(ctx context.Context, query *bun.DeleteQuery) erro
 		return fmt.Errorf("(*Calendar).AfterDelete: wrong deletedCalendarID type | type=%T", deletedCalendarID)
 	}
 
-	// delete all related master events
 	if _, err := query.DB().NewDelete().
-		Model((*MasterEvent)(nil)).
+		Model((*Event)(nil)).
 		Where("calendar_id IN (?)", bun.In(deletedCalendarIDs)).
-		Exec(context.WithValue(ctx, MasterEventIDCtxKey, func() []string {
-			masterEventModels := make([]MasterEvent, 0)
+		Exec(context.WithValue(ctx, EventIDCtxKey, func() []string {
+			masterEventModels := make([]Event, 0)
 			if err := query.DB().NewSelect().
 				Model(&masterEventModels).
 				Column("id").

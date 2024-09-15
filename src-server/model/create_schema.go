@@ -13,14 +13,13 @@ func CreateSchema(db *bun.DB) error {
 		for _, model := range []interface{}{
 			(*Attendee)(nil),
 			(*Calendar)(nil),
-			(*ChildEvent)(nil),
 			(*KanbanTable)(nil),
 			(*KanbanGroup)(nil),
 			(*KanbanItem)(nil),
-			(*MasterEvent)(nil),
 			(*RRule)(nil),
 			(*SessionToken)(nil),
 			(*User)(nil),
+			(*Event)(nil),
 		} {
 			if _, err := tx.
 				NewCreateTable().
