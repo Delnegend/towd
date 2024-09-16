@@ -15,7 +15,7 @@ func Ical(muxer *http.ServeMux, as *utils.AppState) {
 		calendarID := r.PathValue("calendar_id")
 
 		// getting the calendar model
-		calendalModel := new(model.Calendar)
+		calendalModel := new(model.ExternalCalendar)
 		if err := as.BunDB.NewSelect().
 			Model(calendalModel).
 			Where("id = ?", calendarID).

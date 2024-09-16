@@ -22,7 +22,7 @@ func TestAttendee(t *testing.T) {
 
 	// init tables
 	for _, model := range []interface{}{
-		(*model.Calendar)(nil),
+		(*model.ExternalCalendar)(nil),
 		(*model.Attendee)(nil),
 		(*model.Event)(nil),
 	} {
@@ -32,7 +32,7 @@ func TestAttendee(t *testing.T) {
 	}
 
 	// create models
-	calendarModel := model.Calendar{
+	calendarModel := model.ExternalCalendar{
 		ID:     uuid.NewString(),
 		Name:   "calendar name test",
 		ProdID: uuid.NewString(),

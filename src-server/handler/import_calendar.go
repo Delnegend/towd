@@ -81,7 +81,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 		// #region - calendar already exists?
 		if exists, err := as.BunDB.
 			NewSelect().
-			Model((*model.Calendar)(nil)).
+			Model((*model.ExternalCalendar)(nil)).
 			Where("url = ?", calendarURL).
 			Exists(context.Background()); err != nil {
 			return err
