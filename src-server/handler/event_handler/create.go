@@ -34,6 +34,9 @@ func create(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, 
 func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
+		if err := ensureCalendarExists(as, s, i); err != nil {
+			return err
+		}
 
 		// respond to the original request
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
