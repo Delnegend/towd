@@ -116,14 +116,14 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 				if err != nil {
 					return nil, fmt.Errorf("can't parse start date: %w", err)
 				}
-				eventModel.StartDate = result.Time.UTC().Unix()
+				eventModel.StartDateUnixUTC = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["end"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
 					return nil, fmt.Errorf("can't parse end date: %w", err)
 				}
-				eventModel.EndDate = result.Time.UTC().Unix()
+				eventModel.EndDateUnixUTC = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["invitees"]; ok {
 				rawString := value.StringValue()
@@ -139,14 +139,14 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			}
 			if value, ok := optionMap["whole-day"]; ok {
 				eventModel.IsWholeDay = value.BoolValue()
-				startDate := time.Unix(eventModel.StartDate, 0)
-				endDate := time.Unix(eventModel.EndDate, 0)
+				startDate := time.Unix(eventModel.StartDateUnixUTC, 0)
+				endDate := time.Unix(eventModel.EndDateUnixUTC, 0)
 				if eventModel.IsWholeDay {
 					startDate = startDate.Truncate(24 * time.Hour)
 					endDate = endDate.Truncate(24 * time.Hour)
 				}
-				eventModel.StartDate = startDate.UTC().Unix()
-				eventModel.EndDate = endDate.UTC().Unix()
+				eventModel.StartDateUnixUTC = startDate.UTC().Unix()
+				eventModel.EndDateUnixUTC = endDate.UTC().Unix()
 			}
 
 			return eventModel, nil

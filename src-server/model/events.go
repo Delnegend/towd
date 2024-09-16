@@ -32,9 +32,9 @@ type Event struct {
 	URL         string `bun:"url"`
 	Organizer   string `bun:"organizer"`
 
-	StartDate  int64 `bun:"start_date,notnull"` // required
-	EndDate    int64 `bun:"end_date,notnull"`   // required
-	IsWholeDay bool  `bun:"is_whole_day"`       // required
+	StartDateUnixUTC int64 `bun:"start_date,notnull"` // required
+	EndDateUnixUTC   int64 `bun:"end_date,notnull"`   // required
+	IsWholeDay       bool  `bun:"is_whole_day"`
 
 	CreatedAt int64 `bun:"created_at,notnull"` // required
 	UpdatedAt int64 `bun:"updated_at"`
@@ -90,11 +90,11 @@ func (e *Event) Upsert(ctx context.Context, db bun.IDB) error {
 		return fmt.Errorf("(*Event).Upsert: event id is blank")
 	case e.Summary == "":
 		return fmt.Errorf("(*Event).Upsert: summary is blank")
-	case e.StartDate == 0:
+	case e.StartDateUnixUTC == 0:
 		return fmt.Errorf("(*Event).Upsert: start date is blank")
-	case e.EndDate == 0:
+	case e.EndDateUnixUTC == 0:
 		return fmt.Errorf("(*Event).Upsert: end date is blank")
-	case e.StartDate > e.EndDate:
+	case e.StartDateUnixUTC > e.EndDateUnixUTC:
 		return fmt.Errorf("(*Event).Upsert: start date must be before end date")
 	case e.URL != "":
 		if _, err := url.ParseRequestURI(e.URL); err != nil {
@@ -140,12 +140,12 @@ func (e *Event) ToDiscordEmbed(ctx context.Context, db bun.IDB) *discordgo.Messa
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Start Date",
-				Value:  fmt.Sprintf("<t:%d:f>", e.StartDate),
+				Value:  fmt.Sprintf("<t:%d:f>", e.StartDateUnixUTC),
 				Inline: true,
 			},
 			{
 				Name:   "End Date",
-				Value:  fmt.Sprintf("<t:%d:f>", e.EndDate),
+				Value:  fmt.Sprintf("<t:%d:f>", e.EndDateUnixUTC),
 				Inline: true,
 			},
 		},
@@ -305,12 +305,12 @@ func (e *Event) FromNaturalText(ctx context.Context, as *utils.AppState, text st
 	if err != nil {
 		return nil, fmt.Errorf("FromNaturalText: parse start date: %w", err)
 	}
-	e.StartDate = startDate.Unix()
+	e.StartDateUnixUTC = startDate.Unix()
 	endDate, err := time.ParseInLocation("02/01/2006 15:04", respContent.End, as.Config.GetLocation())
 	if err != nil {
 		return nil, fmt.Errorf("FromNaturalText: parse end date: %w", err)
 	}
-	e.EndDate = endDate.Unix()
+	e.EndDateUnixUTC = endDate.Unix()
 
 	// additional info
 	e.Location = utils.CleanupString(respContent.Location)

@@ -119,14 +119,14 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				if err != nil {
 					return nil, fmt.Errorf("can't parse start date: %w", err)
 				}
-				newEventModel.StartDate = result.Time.UTC().Unix()
+				newEventModel.StartDateUnixUTC = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["end"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
 					return nil, fmt.Errorf("can't parse end date: %w", err)
 				}
-				newEventModel.EndDate = result.Time.UTC().Unix()
+				newEventModel.EndDateUnixUTC = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["location"]; ok {
 				newEventModel.Location = utils.CleanupString(value.StringValue())
@@ -151,14 +151,14 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			if value, ok := optionMap["whole-day"]; ok {
 				newEventModel.IsWholeDay = value.BoolValue()
-				startDate := time.Unix(newEventModel.StartDate, 0)
-				endDate := time.Unix(newEventModel.EndDate, 0)
+				startDate := time.Unix(newEventModel.StartDateUnixUTC, 0)
+				endDate := time.Unix(newEventModel.EndDateUnixUTC, 0)
 				if newEventModel.IsWholeDay {
 					startDate = startDate.Truncate(24 * time.Hour)
 					endDate = endDate.Truncate(24 * time.Hour)
 				}
-				newEventModel.StartDate = startDate.UTC().Unix()
-				newEventModel.EndDate = endDate.UTC().Unix()
+				newEventModel.StartDateUnixUTC = startDate.UTC().Unix()
+				newEventModel.EndDateUnixUTC = endDate.UTC().Unix()
 			}
 
 			return newEventModel, nil
@@ -220,22 +220,22 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				description = fmt.Sprintf("%s `[unchanged]`", oldEvent.Description)
 			}
 
-			switch newExist, oldExist := newEventModel.StartDate != 0, oldEvent.StartDate != 0; {
+			switch newExist, oldExist := newEventModel.StartDateUnixUTC != 0, oldEvent.StartDateUnixUTC != 0; {
 			case newExist && oldExist:
-				startDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.StartDate, oldEvent.StartDate)
+				startDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.StartDateUnixUTC, oldEvent.StartDateUnixUTC)
 			case newExist && !oldExist:
-				startDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.StartDate)
+				startDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.StartDateUnixUTC)
 			case !newExist && oldExist:
-				startDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.StartDate)
+				startDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.StartDateUnixUTC)
 			}
 
-			switch newExist, oldExist := newEventModel.EndDate != 0, oldEvent.EndDate != 0; {
+			switch newExist, oldExist := newEventModel.EndDateUnixUTC != 0, oldEvent.EndDateUnixUTC != 0; {
 			case newExist && oldExist:
-				endDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.EndDate, oldEvent.EndDate)
+				endDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.EndDateUnixUTC, oldEvent.EndDateUnixUTC)
 			case newExist && !oldExist:
-				endDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.EndDate)
+				endDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.EndDateUnixUTC)
 			case !newExist && oldExist:
-				endDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.EndDate)
+				endDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.EndDateUnixUTC)
 			}
 
 			switch newExist, oldExist := newEventModel.URL != "", oldEvent.URL != ""; {
