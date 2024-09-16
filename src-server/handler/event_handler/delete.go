@@ -217,9 +217,11 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 
 		// #endregion
 
-		msg := "Event deleted."
-		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &msg,
+		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Event deleted.",
+			},
 		}); err != nil {
 			slog.Warn("can't respond", "handler", "delete-event", "content", "event-delete-success", "error", err)
 		}
