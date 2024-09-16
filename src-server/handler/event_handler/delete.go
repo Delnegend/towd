@@ -214,7 +214,6 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}
-
 		// #endregion
 
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
@@ -225,7 +224,6 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}); err != nil {
 			slog.Warn("can't respond", "handler", "delete-event", "content", "event-delete-success", "error", err)
 		}
-
 		return nil
 	}
 }
