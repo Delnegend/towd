@@ -32,6 +32,13 @@ func createGroup(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOpt
 func createGroupHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
+
+		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Warn("can't respond", "handler", "kanban-create", "content", "deferring", "error", err)
+		}
+
 		if err := ensureKanbantableExists(as, s, i); err != nil {
 			return err
 		}
