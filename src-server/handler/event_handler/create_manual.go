@@ -87,6 +87,9 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 		eventModel, err := func() (*model.Event, error) {
 			eventModel := new(model.Event)
 			eventModel.ID = uuid.NewString()
+			eventModel.CalendarID = i.ChannelID
+			eventModel.ChannelID = i.ChannelID
+			eventModel.Organizer = i.Member.User.Username
 
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
