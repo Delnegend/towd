@@ -83,6 +83,8 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 
 		// #region - natural text -> event model
 		eventModel := new(model.Event)
+		eventModel.CalendarID = i.ChannelID
+		eventModel.ChannelID = i.ChannelID
 		attendeeModels, err := eventModel.FromNaturalText(context.Background(), as, content)
 		if err != nil {
 			// edit the deferred message
