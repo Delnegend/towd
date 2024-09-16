@@ -105,6 +105,12 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			if value, ok := optionMap["description"]; ok {
 				eventModel.Description = utils.CleanupString(value.StringValue())
 			}
+			if value, ok := optionMap["location"]; ok {
+				eventModel.Location = utils.CleanupString(value.StringValue())
+			}
+			if value, ok := optionMap["url"]; ok {
+				eventModel.URL = utils.CleanupString(value.StringValue())
+			}
 			if value, ok := optionMap["start"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
@@ -118,12 +124,6 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 					return nil, fmt.Errorf("can't parse end date: %w", err)
 				}
 				eventModel.EndDate = result.Time.UTC().Unix()
-			}
-			if value, ok := optionMap["location"]; ok {
-				eventModel.Location = utils.CleanupString(value.StringValue())
-			}
-			if value, ok := optionMap["url"]; ok {
-				eventModel.URL = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["invitees"]; ok {
 				rawString := value.StringValue()
