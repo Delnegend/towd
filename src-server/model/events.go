@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -340,7 +339,6 @@ func (e *Event) FromNaturalText(ctx context.Context, as *utils.AppState, text st
 	e.Description = utils.CleanupString(respContent.Description)
 
 	// datetime related
-	slog.Debug("FromNaturalText", "start", respContent.Start, "end", respContent.End)
 	startDate, err := time.ParseInLocation("02/01/2006 15:04", respContent.Start, as.Config.GetLocation())
 	if err != nil {
 		return nil, fmt.Errorf("FromNaturalText: parse start date: %w", err)
