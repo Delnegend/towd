@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 	"towd/src-server/model"
@@ -24,76 +25,88 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 
 	// login
 	newSessionSecret := uuid.NewString()
-	muxer.HandleFunc("POST /auth/:tempKey", func(w http.ResponseWriter, r *http.Request) {
+	muxer.HandleFunc("GET /auth/:tempKey", func(w http.ResponseWriter, r *http.Request) {
 		if r.PathValue("tempKey") == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"description": "Please provide a temp key"}`))
+			w.Write([]byte("Please provide a temp key"))
 			return
 		}
 
+		allowThrough := false
 		err := as.BunDB.RunInTx(r.Context(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			// check if tempKey exists in DB
 			exists, err := as.BunDB.
 				NewSelect().
 				Model((*model.Session)(nil)).
 				Where("secret = ?", r.PathValue("tempKey")).
 				Where("type = ?", "temp").
 				Exists(r.Context())
-			if err != nil {
+			switch {
+			case err != nil:
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"description": "Can't find temp key"}`))
-				return fmt.Errorf("can't find temp key: %w", err)
-			}
-			if !exists {
+				w.Write([]byte("Can't check if temp key exists in DB"))
+				return fmt.Errorf("can't check if temp key exists in DB: %w", err)
+			case !exists:
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(`{"description": "Invalid temp key"}`))
-				return fmt.Errorf("invalid temp key")
+				w.Write([]byte("Invalid temp key"))
+				return nil
 			}
 
-			tempKeyInDatabase := new(model.Session)
+			// get the sessionModel from tempKey from DB
+			tempKeySessionModel := new(model.Session)
 			if err := as.BunDB.
 				NewSelect().
-				Model(tempKeyInDatabase).
+				Model(tempKeySessionModel).
 				Where("secret = ?", r.PathValue("tempKey")).
+				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_TEMP).
 				Scan(r.Context()); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"description": "Can't find temp key"}`))
+				w.Write([]byte("Can't find temp key in DB"))
 				return fmt.Errorf("can't find temp key: %w", err)
 			}
 
-			if tempKeyInDatabase.CreatedAt.Add(time.Minute * 5).Before(time.Now()) {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(`{"description": "Temp key expired"}`))
-				return fmt.Errorf("temp key expired")
-			}
-
+			// delete the model from DB right away since it's one-time use
 			if _, err := as.BunDB.
 				NewDelete().
 				Model((*model.Session)(nil)).
 				Where("secret = ?", r.PathValue("tempKey")).
 				Exec(r.Context()); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"description": "Can't delete temp key"}`))
-				return fmt.Errorf("can't delete temp key: %w", err)
+				slog.Error("can't delete temp key in DB", "error", err)
 			}
 
-			newSession := model.Session{
-				Secret:    newSessionSecret,
-				Type:      "session",
-				UserID:    tempKeyInDatabase.UserID,
-				ChannelID: tempKeyInDatabase.ChannelID,
-				CreatedAt: time.Now(),
+			// check if tempKey is expired
+			if time.Unix(tempKeySessionModel.CreatedAtUnixUTC, 0).UTC().
+				Add(time.Minute * 5).Before(time.Now()) {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Temp key expired"))
+				return nil
 			}
+
+			// create new sessionModel for session
 			if _, err := as.BunDB.
 				NewInsert().
-				Model(&newSession).
+				Model(&model.Session{
+					Secret:           newSessionSecret,
+					Purpose:          model.SESSION_MODEL_PURPOSE_SESSION,
+					UserID:           tempKeySessionModel.UserID,
+					ChannelID:        tempKeySessionModel.ChannelID,
+					CreatedAtUnixUTC: time.Now().UTC().Unix(),
+				}).
 				Exec(r.Context()); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"description": "Can't create session"}`))
-				return fmt.Errorf("can't create session: %w", err)
+				w.Write([]byte("Can't insert session model to DB"))
+				return fmt.Errorf("can't insert session model to db: %w", err)
 			}
+			allowThrough = true
 			return nil
 		})
-		if err != nil {
+		switch {
+		case err != nil:
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Can't create session"))
+			slog.Error("can't create session", "error", err)
+			return
+		case !allowThrough:
 			return
 		}
 
