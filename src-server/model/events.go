@@ -216,12 +216,45 @@ func (e *Event) FromNaturalText(ctx context.Context, as *utils.AppState, text st
 			Content string `json:"content"`
 		}{
 			{
-				Role:    "system",
-				Content: "create json represent calendar event from user input, contain these fields: success, title, description, start, end, location, url, attendee; attendee always a list, success is boolean, everything else are strings; current time for parse relative datetime provided at begin of input in format DD/MM/YYYY hh:mm, start/end date use the same format (strictly follow the format, do not add seconds); if no end date, assume event ends in 1 hour; for whole-day event, set hh:mm to 00:00; title and start date are required, set success to false if any of them is missing and put the reason in description",
+				Role: "system",
+				Content: `<task>Create a JSON representation of a calendar event from user input.</task>
+<field>
+- success: boolean
+- title: string (required)
+- description: string
+- start: string (required, format: DD/MM/YYYY hh:mm)
+- end: string (format: DD/MM/YYYY hh:mm)
+- location: string
+- url: string
+- attendee: list of strings (anyone mentioned in the content must be included)
+</field>
+<rules>
+- Current time: Provided at the beginning of the input in the format DD/MM/YYYY hh:mm.
+- Date format: Use the format DD/MM/YYYY hh:mm strictly (do not add seconds).
+- End date: If no end date is provided, assume the event ends in 1 hour.
+- Whole-day event: Set hh:mm to 00:00.
+- Required fields: Title and start date are required. Set success to false if any of them is missing and put the reason in the description.
+</rules>
+<example>
+<current-time>15/09/2024 14:00</current-time>
+<input>Meeting with John on 15/09/2024 14:00 at the office</input>
+<output>
+{
+  "success": true,
+  "title": "Meeting with John",
+  "description": "",
+  "start": "15/09/2024 14:00",
+  "end": "15/09/2024 15:00",
+  "location": "office",
+  "url": "",
+  "attendee": ["John"]
+}
+</output>
+</example>`,
 			},
 			{
 				Role:    "user",
-				Content: fmt.Sprintf("It's %s. %s", now, text),
+				Content: fmt.Sprintf("<current-time>%s</current-time>\n<input>%s</input>", now, text),
 			},
 		},
 		Model:       "llama3-8b-8192",
