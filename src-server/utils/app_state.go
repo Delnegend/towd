@@ -33,6 +33,14 @@ type AppState struct {
 	appCmdHandlerMutex sync.RWMutex
 
 	MetricChans *Metric
+
+	// send a signal into this channel to perform graceful shutdown
+	AppCloseSignalChan chan os.Signal
+	// any long-running task that needs to be gracefully shutdown should
+	// add a channel to this list, once a app close signal above is triggered,
+	// all channels in this list will be also sent a signal
+	gracefulShutdownChans      []*chan struct{}
+	gracefulShutdownChansMutex sync.RWMutex
 }
 
 func NewAppState() *AppState {
@@ -83,6 +91,10 @@ func NewAppState() *AppState {
 		appCmdHandlerMutex: sync.RWMutex{},
 
 		MetricChans: NewMetric(),
+
+		AppCloseSignalChan:         make(chan os.Signal, 1),
+		gracefulShutdownChans:      make([]*chan struct{}, 0),
+		gracefulShutdownChansMutex: sync.RWMutex{},
 	}
 }
 
@@ -135,4 +147,33 @@ func (as *AppState) RemoveAppCmdHandler(id string) {
 	as.appCmdHandlerMutex.Lock()
 	defer as.appCmdHandlerMutex.Unlock()
 	delete(as.appCmdHandler, id)
+}
+
+// CreateGracefulShutdownChan creates a channel and adds it to the AppState.
+func (as *AppState) CreateGracefulShutdownChan() *chan struct{} {
+	ch := make(chan struct{})
+	as.gracefulShutdownChansMutex.Lock()
+	defer as.gracefulShutdownChansMutex.Unlock()
+	as.gracefulShutdownChans = append(as.gracefulShutdownChans, &ch)
+	return &ch
+}
+
+// RemoveGracefulShutdownChan removes a channel from the AppState.
+func (as *AppState) RemoveGracefulShutdownChan(ch *chan struct{}) {
+	as.gracefulShutdownChansMutex.Lock()
+	defer as.gracefulShutdownChansMutex.Unlock()
+	for i, c := range as.gracefulShutdownChans {
+		if c == ch {
+			as.gracefulShutdownChans = append(as.gracefulShutdownChans[:i], as.gracefulShutdownChans[i+1:]...)
+			return
+		}
+	}
+}
+
+func (as *AppState) GracefulShutdown() {
+	as.gracefulShutdownChansMutex.Lock()
+	defer as.gracefulShutdownChansMutex.Unlock()
+	for _, ch := range as.gracefulShutdownChans {
+		*ch <- struct{}{}
+	}
 }

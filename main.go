@@ -146,25 +146,25 @@ func main() {
 		}
 	}()
 
-	sc := make(chan os.Signal, 1)
 
 	// http server
 	go func() {
 		muxer := http.NewServeMux()
 		routes.Auth(muxer, as)
 		routes.Ical(muxer, as)
-		routes.SPA(muxer, as, sc)
+		route.SPA(muxer, as)
 		if err := http.ListenAndServe(":"+as.Config.GetPort(), muxer); err != nil {
 			slog.Error("cannot start HTTP server", "error", err)
-			sc <- syscall.SIGTERM
+			as.AppCloseSignalChan <- syscall.SIGTERM
 		}
 	}()
 
 	slog.Info("number of guilds", "guilds", len(as.DgSession.State.Guilds))
 	slog.Info("app is now running, press Ctrl+C to exit")
 
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+	signal.Notify(as.AppCloseSignalChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-as.AppCloseSignalChan
+	as.GracefulShutdown()
 
 	slog.Info("Gracefully shutting down...")
 }
