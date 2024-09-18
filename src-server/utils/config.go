@@ -21,8 +21,9 @@ type Config struct {
 	hostname           string
 	staticWebClientDir string
 
-	eventNotifyInterval    time.Duration
-	calendarUpdateInterval time.Duration
+	eventNotifyInterval      time.Duration
+	calendarUpdateInterval   time.Duration
+	metricCollectionInterval time.Duration
 }
 
 func NewConfig() *Config {
@@ -160,6 +161,20 @@ func NewConfig() *Config {
 			slog.Debug("env", "CALENDAR_UPDATE_INTERVAL", calendarUpdateInterval, "duration", duration)
 			return duration
 		}(),
+		metricCollectionInterval: func() time.Duration {
+			metricCollectionInterval := os.Getenv("METRIC_COLLECTION_INTERVAL")
+			if metricCollectionInterval == "" {
+				slog.Warn("METRIC_COLLECTION_INTERVAL is not set, using default value", "interval", time.Second*5)
+				return time.Second * 2
+			}
+			duration, err := time.ParseDuration(metricCollectionInterval)
+			if err != nil {
+				slog.Error("invalid METRIC_COLLECTION_INTERVAL", "error", err)
+				os.Exit(1)
+			}
+			slog.Debug("env", "METRIC_COLLECTION_INTERVAL", metricCollectionInterval, "duration", duration)
+			return duration
+		}(),
 	}
 }
 
@@ -216,4 +231,9 @@ func (c *Config) GetEventNotifyInterval() time.Duration {
 // Get CALENDAR_UPDATE_INTERVAL env
 func (c *Config) GetCalendarUpdateInterval() time.Duration {
 	return c.calendarUpdateInterval
+}
+
+// Get METRIC_COLLECTION_INTERVAL env
+func (c *Config) GetMetricCollectionInterval() time.Duration {
+	return c.metricCollectionInterval
 }

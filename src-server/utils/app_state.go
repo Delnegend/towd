@@ -31,6 +31,8 @@ type AppState struct {
 	// handling commands from Discord WSAPI
 	appCmdHandler      map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error
 	appCmdHandlerMutex sync.RWMutex
+
+	MetricChans *Metric
 }
 
 func NewAppState() *AppState {
@@ -79,6 +81,8 @@ func NewAppState() *AppState {
 		appCmdInfoMutex:    sync.RWMutex{},
 		appCmdHandler:      make(map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error),
 		appCmdHandlerMutex: sync.RWMutex{},
+
+		MetricChans: NewMetric(),
 	}
 }
 
