@@ -43,8 +43,9 @@ type Event struct {
 	CalendarID string `bun:"calendar_id,notnull"` // required
 	ChannelID  string `bun:"channel_id,notnull"`  // required
 
-	Attendees []*Attendee `bun:"rel:has-many,join:id=event_id"`
-	Calendar  *Calendar   `bun:"rel:belongs-to,join:calendar_id=id"`
+	Attendees        []*Attendee       `bun:"rel:has-many,join:id=event_id"`
+	Calendar         *Calendar         `bun:"rel:belongs-to,join:calendar_id=channel_id"`
+	ExternalCalendar *ExternalCalendar `bun:"rel:belongs-to,join:calendar_id=id"`
 }
 
 var _ bun.AfterDeleteHook = (*Event)(nil)
