@@ -36,7 +36,7 @@ type Event struct {
 	EndDateUnixUTC   int64 `bun:"end_date,notnull"`   // required
 	IsWholeDay       bool  `bun:"is_whole_day"`
 
-	CreatedAt int64 `bun:"created_at,notnull"` // required
+	CreatedAt int64 `bun:"created_at,notnull"`
 	UpdatedAt int64 `bun:"updated_at"`
 	Sequence  int   `bun:"sequence"`
 
@@ -103,6 +103,12 @@ func (e *Event) Upsert(ctx context.Context, db bun.IDB) error {
 	}
 	if e.CreatedAt == 0 {
 		e.CreatedAt = time.Now().UTC().Unix()
+	}
+	startDateDate := time.Unix(e.StartDateUnixUTC, 0)
+	if startDateDate.Hour() == 0 &&
+		startDateDate.Minute() == 0 &&
+		startDateDate.Second() == 0 {
+		e.IsWholeDay = true
 	}
 
 	exists, err := db.NewSelect().
