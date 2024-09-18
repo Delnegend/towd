@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
@@ -36,11 +37,14 @@ func deleteItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discord
 		interaction := i.Interaction
 
 		// respond to the original request
+		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "delete-item", "content", "deferring", "error", err)
+			slog.Warn("deleteItemHandler: can't send defer message", "error", err)
+			return nil
 		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// get the content
 		options := i.ApplicationCommandData().Options[0].Options
@@ -60,30 +64,26 @@ func deleteItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discord
 				if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 					Content: &msg,
 				}); err != nil {
-					slog.Warn("can't respond", "handler", "delete-item", "content", "can't-parse-item-id", "error", err)
+					slog.Warn("deleteItemHandler: can't send message about can't parse item ID", "error", err)
 				}
-				return err
+				return nil
 			}
-		}
-
-		if itemID == 0 {
-			// edit the deferred message
-			msg := "Item ID is required."
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-			}); err != nil {
-				slog.Warn("can't respond", "handler", "delete-item", "content", "item-id-required", "error", err)
-			}
-			return nil
 		}
 
 		// delete the item
+		startTimer = time.Now()
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			if _, err := tx.NewDelete().
 				Model((*model.KanbanItem)(nil)).
 				Where("id = ?", itemID).
 				Exec(ctx); err != nil {
-				return err
+				msg := fmt.Sprintf("Can't delete kanban item\n```\n%s\n```", err.Error())
+				if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+					Content: &msg,
+				}); err != nil {
+					slog.Warn("deleteItemHandler: can't send message about can't delete item", "error", err)
+				}
+				return fmt.Errorf("deleteItemHandler: can't delete item: %w", err)
 			}
 			return nil
 		}); err != nil {
@@ -93,17 +93,18 @@ func deleteItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discord
 					Content: fmt.Sprintf("Can't delete kanban item.\n```\n%s\n```", err.Error()),
 				},
 			}); err2 != nil {
-				slog.Warn("can't respond", "handler", "delete-item", "content", "delete-item-error", "error", err)
+				slog.Warn("deleteItemHandler: can't respond about can't delete item", "error", err)
 			}
-			return err
+			return fmt.Errorf("deleteItemHandler: can't delete item: %w", err)
 		}
+		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 
 		// edit the deferred message
 		content := fmt.Sprintf("Item `%d` deleted.", itemID)
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "delete-item", "content", "delete-item-success", "error", err)
+			slog.Warn("deleteItemHandler: can't respond about item deletion success", "error", err)
 		}
 
 		return nil

@@ -86,11 +86,15 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		interaction := i.Interaction
 
 		// respond to original request
+		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			return fmt.Errorf("can't respond deferring msg, can't continue: %w", err)
+			// return fmt.Errorf("can't respond deferring msg, can't continue: %w", err)
+			slog.Warn("modifyEventHandler: can't send defer message", "error", err)
+			return nil
 		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// #region - get new event data
 		attendeeModels := make([]model.Attendee, 0)
@@ -169,7 +173,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "can't-get-new-event", "error", err)
+				slog.Warn("modifyEventHandler: can't respond about can't parse input data", "error", err)
 			}
 			return nil
 		}
@@ -378,13 +382,13 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "can't-ask-confirm", "error", err)
+				slog.Error("modifyEventHandler: can't respond about can't ask for confirmation", "error", err)
 			}
-			return err
+			return nil
 		case timeout:
 			// respond to nothing
 			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "timed-out", "error", err)
+				slog.Warn("modifyEventHandler: can't send timed out waiting for confirmation message", "error", err)
 			}
 			return nil
 		case !isContinue:
@@ -395,13 +399,14 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: "Event not modified.",
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "cancel", "error", err)
+				slog.Warn("modifyEventHandler: can't respond about event modification canceled", "error", err)
 			}
 			return nil
 		}
 		// #endregion
 
 		// #region - update event
+		startTimer = time.Now()
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			newEventModel.UpdatedAt = time.Now().UTC().Unix()
 			if err := newEventModel.Upsert(ctx, tx); err != nil {
@@ -430,10 +435,11 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "modify-event", "content", "event-update-error", "error", err)
+				slog.Warn("modifyEventHandler: can't respond about can't update event in database", "error", err)
 			}
-			return err
+			return fmt.Errorf("modifyEventHandler: can't update event in database: %w", err)
 		}
+		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
 		// respond to button request
@@ -443,7 +449,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Content: "Event updated.",
 			},
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "modify-event", "content", "event-update-success", "error", err)
+			slog.Warn("modifyEventHandler: can't respond about event update success", "error", err)
 		}
 
 		return nil

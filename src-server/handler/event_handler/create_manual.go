@@ -72,15 +72,25 @@ func createManual(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOp
 			},
 		},
 	})
-	cmdHandler[id] = createManualHandler(as)
+	cmdHandler[id] = createEventManualHandler(as)
 }
 
-func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func createEventManualHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 		if err := ensureCalendarExists(as, s, i); err != nil {
-			return err
+			return fmt.Errorf("createEventManualHandler: can't ensure calendar exists: %w", err)
 		}
+
+		// send defer message
+		startTimer := time.Now()
+		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		}); err != nil {
+			slog.Warn("createEventManualHandler: can't send defer message", "error", err)
+			return nil
+		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// #region - collect data
 		var attendeeModels []model.Attendee
@@ -156,10 +166,10 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Can't create event\n```%s```", err.Error()),
+					Content: fmt.Sprintf("Invalid data provided\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "create-event", "content", "create-event-error", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about invalid data provided", "error", err)
 			}
 			return nil
 		}
@@ -215,19 +225,8 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 
 			select {
 			case <-time.After(time.Minute * 2):
-				if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
-					slog.Warn("can't respond", "handler", "create-event", "content", "timed-out", "error", err)
-				}
 				return false, true, nil
 			case <-cancelCh:
-				if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: "Event creation canceled.",
-					},
-				}); err != nil {
-					slog.Warn("can't respond", "handler", "create-event", "content", "create-event-canceled", "error", err)
-				}
 				return false, false, nil
 			case <-confirmCh:
 				return true, false, nil
@@ -242,12 +241,12 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 					Content: fmt.Sprintf("Can't create event\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "create-event", "content", "create-event-error", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about can't ask for confirmation", "error", err)
 			}
-			return fmt.Errorf("can't create static event: %w", err)
+			return nil
 		case timeout:
 			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
-				slog.Warn("can't respond", "handler", "create-event", "content", "timed-out", "error", err)
+				slog.Warn("createEventManualHandler: can't send timed out waiting for confirmation message", "error", err)
 			}
 			return nil
 		case !isContinue:
@@ -255,13 +254,14 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "create-event", "content", "create-event-canceled", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about event creation canceled", "error", err)
 			}
 			return nil
 		}
 		// #endregion
 
 		// #region - insert to db
+		startTimer = time.Now()
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			eventModel.CreatedAt = time.Now().UTC().Unix()
 			if err := eventModel.Upsert(ctx, tx); err != nil {
@@ -281,10 +281,11 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 					Content: fmt.Sprintf("Can't insert event to database\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "create-event", "content", "insert-event-error", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about can't insert event to database", "error", err)
 			}
-			return fmt.Errorf("can't insert event: %w", err)
+			return fmt.Errorf("createEventManualHandler: can't insert event to database: %w", err)
 		}
+		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
 		// respond to button
@@ -294,7 +295,7 @@ func createManualHandler(as *utils.AppState) func(s *discordgo.Session, i *disco
 				Content: "Event created.",
 			},
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "create-event", "content", "last-msg", "error", err)
+			slog.Warn("createEventManualHandler: can't respond about event creation success", "error", err)
 		}
 
 		return nil

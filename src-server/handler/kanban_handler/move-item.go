@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
@@ -42,11 +43,14 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 		interaction := i.Interaction
 
 		// respond to the original request
+		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "move-item", "content", "deferring", "error", err)
+			slog.Warn("moveItemHandler: can't send defer message", "error", err)
+			return nil
 		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// #region - get the content
 		options := i.ApplicationCommandData().Options[0].Options
@@ -70,24 +74,25 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 				if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 					Content: &msg,
 				}); err != nil {
-					slog.Warn("can't respond", "handler", "move-item", "content", "can't-parse-item-id", "error", err)
+					slog.Warn("moveItemHandler: can't send message about can't parse item ID", "error", err)
 				}
 				return err
 			}
 		}
-
 		if groupName == "" || itemID == 0 {
 			// edit the deferred message
 			msg := "Group name and item ID are required."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "move-item", "content", "group-name-item-id-required", "error", err)
+				slog.Warn("moveItemHandler: can't send message about group name and item ID are required", "error", err)
 			}
 			return nil
 		}
+		// #endregion
 
 		// #region - check if group exists
+		startTimer = time.Now()
 		exists, err := as.BunDB.
 			NewSelect().
 			Model((*model.KanbanGroup)(nil)).
@@ -101,16 +106,18 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "move-item", "content", "can't-get-group", "error", err)
+				slog.Warn("moveItemHandler: can't send message about can't check if group exists", "error", err)
 			}
-			return err
+			return fmt.Errorf("moveItemHandler: can't check if group exists: %w", err)
 		case !exists:
+			as.MetricChans.DatabaseRead <- float64(time.Since(startTimer).Microseconds())
+
 			// edit the deferred message
 			msg := fmt.Sprintf("Group `%s` not found.", groupName)
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "move-item", "content", "group-not-found", "error", err)
+				slog.Warn("moveItemHandler: can't send message about group not found", "error", err)
 			}
 			return nil
 		}
@@ -130,16 +137,16 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "move-item", "content", "can't-check-if-item-exists", "error", err)
+				slog.Warn("moveItemHandler: can't send message about can't check if item exists", "error", err)
 			}
-			return err
+			return fmt.Errorf("moveItemHandler: can't check if item exists: %w", err)
 		case !exists:
 			// edit the deferred message
 			msg := fmt.Sprintf("Item `%d` not found.", itemID)
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "move-item", "content", "item-not-found", "error", err)
+				slog.Warn("moveItemHandler: can't send message about item not found", "error", err)
 			}
 			return nil
 		}
@@ -158,22 +165,24 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "move-item", "content", "can't-get-item", "error", err)
+				slog.Warn("moveItemHandler: can't send message about can't get item", "error", err)
 			}
-			return err
+			return fmt.Errorf("moveItemHandler: can't get item: %w", err)
 		}
 		// #endregion
 
 		// #region - move the item
+		startTimer = time.Now()
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			if _, err := tx.NewDelete().
 				Model((*model.KanbanItem)(nil)).
 				Where("id = ?", itemID).
+				Where("channel_id = ?", interaction.ChannelID).
 				Exec(ctx); err != nil {
 				return err
 			}
 			_, err := tx.NewInsert().
-				Model(model.KanbanItem{
+				Model(&model.KanbanItem{
 					ID:        itemID,
 					Content:   itemModel.Content,
 					GroupName: groupName,
@@ -185,13 +194,14 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 			if err2 := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Can't create kanban group.\n```\n%s\n```", err.Error()),
+					Content: fmt.Sprintf("Can't move kanban item.\n```\n%s\n```", err.Error()),
 				},
 			}); err2 != nil {
-				slog.Warn("can't respond", "handler", "create-kanban-group", "content", "create-kanban-group-error", "error", err)
+				slog.Warn("moveItemHandler: can't respond about can't move item", "error", err)
 			}
-			return err
+			return fmt.Errorf("moveItemHandler: can't move item: %w", err)
 		}
+		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
 		// edit the deferred message
@@ -199,7 +209,7 @@ func moveItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &content,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "move-item", "content", "move-item-success", "error", err)
+			slog.Warn("moveItemHandler: can't respond about item move success", "error", err)
 		}
 
 		return nil

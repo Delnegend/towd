@@ -31,19 +31,22 @@ func list(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cm
 			},
 		},
 	})
-	cmdHandler[id] = listHandler(as)
+	cmdHandler[id] = listEventHandler(as)
 }
 
-func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
 		// response to the original request
+		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "events", "content", "deferring", "error", err)
+			slog.Warn("listEventHandler: can't send defer message", "error", err)
+			return nil
 		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// #region - parse date and get the start/end start date range
 		searchDate := "today"
@@ -85,7 +88,7 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "events", "content", "events-list", "error", err)
+				slog.Warn("listEventHandler: can't respond about can't parse date", "error", err)
 			}
 			return err
 		}
@@ -93,6 +96,7 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 
 		// #region - get all events
 		var eventModels []model.Event
+		startTimer = time.Now()
 		if err := as.BunDB.
 			NewSelect().
 			Model(&eventModels).
@@ -102,11 +106,14 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 			Scan(context.Background()); err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't get events in range\n```\n%s```", err.Error())
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
-			})
-			return nil
+			}); err != nil {
+				slog.Warn("listEventHandler: can't respond about can't get events in range", "error", err)
+			}
+			return fmt.Errorf("listEventHandler: can't get events in range: %w", err)
 		}
+		as.MetricChans.DatabaseRead <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
 		// #region - compose & send the message
@@ -130,7 +137,7 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 			}(),
 			Embeds: &embeds,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "events", "content", "events-list", "error", err)
+			slog.Warn("listEventHandler: can't respond about the result of list events", "error", err)
 		}
 		// #endregion
 

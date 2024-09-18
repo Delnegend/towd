@@ -42,11 +42,14 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
+		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			return fmt.Errorf("importCalendarHandler: can't send defer message: %w", err)
+			slog.Warn("importCalendarHandler: can't send defer message", "error", err)
+			return nil
 		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// #region - parse calendarURL, nameOverride & validate calendarURL
 		calendarURL, nameOverride, err := func() (string, string, error) {
@@ -72,7 +75,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "invalid-url", "error", err)
+				slog.Warn("importCalendarHandler: can't send message about invalid URL", "error", err)
 			}
 			return nil
 		}
@@ -86,13 +89,19 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			Exists(context.Background())
 		switch {
 		case err != nil:
+			msg := fmt.Sprintf("Can't check if calendar exists\n```\n%s\n```", err.Error())
+			if _, err2 := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err2 != nil {
+				slog.Warn("importCalendarHandler: can't send message about can't check if calendar exists", "error", err)
+			}
 			return fmt.Errorf("importCalendarHandler: can't check if calendar exists: %w", err)
 		case exists:
 			msg := "Calendar already exists in the database."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "calendar-already-exists", "error", err)
+				slog.Warn("importCalendarHandler: can't send message about calendar already exists", "error", err)
 			}
 			return nil
 		}
@@ -126,9 +135,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "fetch-calendar-error", "error", err)
+				slog.Warn("importCalendarHandler: can't send message about can't fetch calendar", "error", err)
 			}
-			return err
+			return fmt.Errorf("importCalendarHandler: can't fetch calendar: %w", err)
 		}
 		// #endregion
 
@@ -239,27 +248,27 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 					Content: fmt.Sprintf("Calendar import canceled.\n```\n%s\n```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-error", "error", err)
+				slog.Warn("importCalendarHandler: can't respond about can't import calendar", "error", err)
 			}
-			return err
+			return fmt.Errorf("importCalendarHandler: can't import calendar: %w", err)
 		case isCanceled:
 			msg := "Calendar import canceled."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-cancel", "error", err)
+				slog.Warn("importCalendarHandler: can't send message about calendar import canceled", "error", err)
 			}
 			return nil
 		case isTimedOut:
 			if _, err := s.ChannelMessageSend(interaction.ChannelID, "Calendar import canceled."); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-timeout", "error", err)
+				slog.Warn("importCalendarHandler: can't send message about calendar import timed out", "error", err)
 			}
 			return nil
 		}
 		// #endregion
 
 		// #region - ask for confirmation to continue
-		if isCanceled, isTimedOut, err := func() (bool, bool, error) {
+		isCanceled, isTimedOut, err = func() (bool, bool, error) {
 			cancelButtonID := "cancel-import-" + icalCalendar.GetID()
 			confirmButtonID := "confirm-import-" + icalCalendar.GetID()
 			cancelCh := make(chan struct{})
@@ -305,7 +314,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 						},
 					}},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-error", "error", err)
+				return false, false, fmt.Errorf("can't ask for confirmation: %w", err)
 			}
 
 			// waiting for response
@@ -317,29 +326,32 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			case <-confirmCh:
 				return false, false, nil
 			}
-		}(); err != nil {
+		}()
+
+		switch {
+		case err != nil:
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: fmt.Sprintf("Calendar import canceled.\n```\n%s\n```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-error", "error", err)
+				slog.Warn("importCalendarHandler: can't respond about can't ask for confirmation", "error", err)
 			}
-			return err
-		} else if isCanceled {
+			return fmt.Errorf("importCalendarHandler: can't ask for confirmation: %w", err)
+		case isCanceled:
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Calendar import canceled.",
 				},
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-cancel", "error", err)
+				slog.Warn("importCalendarHandler: can't respond about calendar import canceled", "error", err)
 			}
 			return nil
-		} else if isTimedOut {
+		case isTimedOut:
 			if _, err := s.ChannelMessageSend(interaction.ChannelID, "Calendar import canceled."); err != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "add-calendar-name-timeout", "error", err)
+				slog.Warn("importCalendarHandler: can't send message about calendar import timed out", "error", err)
 			}
 			return nil
 		}
@@ -352,7 +364,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			if err != nil {
 				return err
 			}
-			calendarModel := model.Calendar{
+			calendarModel := model.ExternalCalendar{
 				ID:          icalCalendar.GetID(),
 				ProdID:      icalCalendar.GetProdID(),
 				Name:        icalCalendar.GetName(),
@@ -371,14 +383,16 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			eventModels := make([]model.Event, 0)
 			for _, staticEvent := range icalCalendar.ToStaticEvents() {
 				eventModels = append(eventModels, model.Event{
-					ID:          staticEvent.ID,
-					StartDate:   staticEvent.StartDate,
-					EndDate:     staticEvent.EndDate,
-					Summary:     staticEvent.Title,
-					Description: staticEvent.Description,
-					Location:    staticEvent.Location,
-					URL:         staticEvent.URL,
-					Organizer:   staticEvent.Organizer,
+					ID:               staticEvent.ID,
+					Summary:          staticEvent.Title,
+					Description:      staticEvent.Description,
+					Location:         staticEvent.Location,
+					URL:              staticEvent.URL,
+					Organizer:        staticEvent.Organizer,
+					StartDateUnixUTC: staticEvent.StartDate,
+					EndDateUnixUTC:   staticEvent.EndDate,
+					CalendarID:       calendarModel.ID,
+					ChannelID:        interaction.ChannelID,
 				})
 			}
 			if _, err := tx.NewInsert().
@@ -395,9 +409,9 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 					Content: fmt.Sprintf("Can't import calendar.\n```\n%s\n```", err.Error()),
 				},
 			}); err2 != nil {
-				slog.Warn("can't respond", "handler", "import-calendar", "content", "import-calendar-error", "error", err)
+				slog.Warn("importCalendarHandler: can't respond about can't import calendar", "error", err)
 			}
-			return err
+			return fmt.Errorf("importCalendarHandler: can't import calendar: %w", err)
 		}
 		// #endregion
 
@@ -407,7 +421,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 				Content: fmt.Sprintf("Calendar `%s` imported successfully.", icalCalendar.GetName()),
 			},
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "import-calendar", "content", "import-calendar-success", "error", err)
+			slog.Warn("importCalendarHandler: can't respond about calendar import success", "error", err)
 		}
 
 		return nil

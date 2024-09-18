@@ -53,14 +53,13 @@ func ensureCalendarExists(as *utils.AppState, s *discordgo.Session, i *discordgo
 	switch {
 	case err != nil:
 		// edit the deferred message
-		msg := fmt.Sprintf("Can't create calendar\n```\n%s\n```", err.Error())
+		msg := fmt.Sprintf("Can't check if calendar exists\n```\n%s\n```", err.Error())
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "create-event-llm", "content", "create-event-error", "error", err)
-			return nil
+			slog.Warn("ensureCalendarExists: can't send message about can't check if calendar exists", "error", err)
 		}
-		return nil
+		return fmt.Errorf("ensureCalendarExists: can't check if calendar exists: %w", err)
 	case !exists:
 		channels, err := as.DgSession.GuildChannels(i.GuildID)
 		if err != nil {
@@ -69,10 +68,9 @@ func ensureCalendarExists(as *utils.AppState, s *discordgo.Session, i *discordgo
 			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "create-event-llm", "content", "create-event-error", "error", err)
-				return nil
+				slog.Warn("ensureCalendarExists: can't send message about can't get channel name to create calendar", "error", err)
 			}
-			return nil
+			return fmt.Errorf("ensureCalendarExists: can't get channel name to create calendar: %w", err)
 		}
 		var channelName string
 		for _, channel := range channels {
@@ -92,14 +90,13 @@ func ensureCalendarExists(as *utils.AppState, s *discordgo.Session, i *discordgo
 			}).
 			Exec(context.Background()); err != nil {
 			// edit the deferred message
-			msg := fmt.Sprintf("Can't create calendar\n```\n%s\n```", err.Error())
+			msg := fmt.Sprintf("Can't insert calendar to database\n```\n%s\n```", err.Error())
 			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "create-event-llm", "content", "create-event-error", "error", err)
-				return nil
+				slog.Warn("ensureCalendarExists: can't send message about can't insert calendar to database", "error", err)
 			}
-			return nil
+			return fmt.Errorf("ensureCalendarExists: can't insert calendar to database: %w", err)
 		}
 	}
 	return nil

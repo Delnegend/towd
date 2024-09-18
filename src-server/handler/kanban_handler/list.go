@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
@@ -18,21 +19,25 @@ func list(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cm
 		Name:        id,
 		Description: "List kanban groups.",
 	})
-	cmdHandler[id] = listHandler(as)
+	cmdHandler[id] = listKanbanHandler(as)
 }
 
-func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func listKanbanHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
+		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "list", "content", "deferring", "error", err)
+			slog.Warn("listKanbanHandler: can't send defer message", "error", err)
+			return nil
 		}
+		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// get all groups
 		groups := make([]model.KanbanGroup, 0)
+		startTimer = time.Now()
 		if err := as.BunDB.
 			NewSelect().
 			Model(&groups).
@@ -44,10 +49,11 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("can't respond", "handler", "list", "content", msg, "error", err)
+				slog.Warn("listKanbanHandler: can't send message about can't get groups", "error", err)
 			}
-			return err
+			return fmt.Errorf("listKanbanHandler: can't get groups: %w", err)
 		}
+		as.MetricChans.DatabaseRead <- float64(time.Since(startTimer).Microseconds())
 
 		// compose & send the message
 		embeds := []*discordgo.MessageEmbed{}
@@ -65,12 +71,15 @@ func listHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.Int
 		}
 
 		// edit the deferred message
-		content := ""
+		msg := ""
+		if len(embeds) <= 0 {
+			msg = "This channel doesn't have any kanban group yet."
+		}
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &content,
+			Content: &msg,
 			Embeds:  &embeds,
 		}); err != nil {
-			slog.Warn("can't respond", "handler", "list", "content", "list-groups-error", "error", err)
+			slog.Warn("listKanbanHandler: can't send message about the result", "error", err)
 		}
 
 		return nil
