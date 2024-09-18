@@ -14,6 +14,7 @@ import (
 	"towd/src-server/handler"
 	"towd/src-server/handler/event_handler"
 	"towd/src-server/handler/kanban_handler"
+	"towd/src-server/metric"
 	"towd/src-server/model"
 	"towd/src-server/route"
 	"towd/src-server/utils"
@@ -22,6 +23,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/lmittmann/tint"
 	"github.com/uptrace/bun"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func init() {
@@ -146,12 +148,14 @@ func main() {
 		}
 	}()
 
+	go metric.Init(as)
 
 	// http server
 	go func() {
 		muxer := http.NewServeMux()
-		routes.Auth(muxer, as)
-		routes.Ical(muxer, as)
+		muxer.Handle("GET /metrics", promhttp.Handler())
+		route.Auth(muxer, as)
+		route.Ical(muxer, as)
 		route.SPA(muxer, as)
 		if err := http.ListenAndServe(":"+as.Config.GetPort(), muxer); err != nil {
 			slog.Error("cannot start HTTP server", "error", err)
