@@ -27,5 +27,5 @@ export default [
                 project: true, parser: "@typescript-eslint/parser", extraFileExtensions: [".vue"]
             }
         }
-    }
-]
+    },
+];
