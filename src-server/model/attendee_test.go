@@ -38,12 +38,12 @@ func TestAttendee(t *testing.T) {
 		ProdID: uuid.NewString(),
 	}
 	eventModel := model.Event{
-		ID:         uuid.NewString(),
-		CalendarID: calendarModel.ID,
-		Summary:    "test",
-		StartDate:  1,
-		EndDate:    1,
-		ChannelID:  "test",
+		ID:               uuid.NewString(),
+		CalendarID:       calendarModel.ID,
+		Summary:          "test",
+		StartDateUnixUTC: 1,
+		EndDateUnixUTC:   1,
+		ChannelID:        "test",
 	}
 	attendeeModel := model.Attendee{
 		EventID: eventModel.ID,
