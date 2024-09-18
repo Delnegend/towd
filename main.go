@@ -100,7 +100,7 @@ func main() {
 		}
 	})
 
-	// open a connection
+	// open a connection to Discord
 	if err := as.DgSession.Open(); err != nil {
 		fmt.Println("error opening connection,", err)
 		return
