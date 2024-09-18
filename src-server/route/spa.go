@@ -9,17 +9,17 @@ import (
 	"towd/src-server/utils"
 )
 
-func SPA(muxer *http.ServeMux, as *utils.AppState, sc chan<- os.Signal) {
+func SPA(muxer *http.ServeMux, as *utils.AppState) {
 	files := http.FS(os.DirFS(as.Config.GetStaticWebClientDir()))
 	indexFile, err := files.Open("index.html")
 	if err != nil {
 		slog.Error("Can't open index.html", "err", err)
-		sc <- syscall.SIGTERM
+		as.AppCloseSignalChan <- syscall.SIGTERM
 	}
 	indexFileStat, err := indexFile.Stat()
 	if err != nil {
 		slog.Error("Can't get index.html stat", "err", err)
-		sc <- syscall.SIGTERM
+		as.AppCloseSignalChan <- syscall.SIGTERM
 	}
 
 	muxer.HandleFunc("GET /{filepath...}", func(w http.ResponseWriter, r *http.Request) {
