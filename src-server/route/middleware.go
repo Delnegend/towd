@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -25,28 +26,42 @@ func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Req
 		}()
 		if sessionSecret == "" {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"description": "Session secret cookie not found"}`))
+			w.Write([]byte("Session secret cookie not found"))
 			return
 		}
 
-		session := new(model.Session)
+		sessionModel := new(model.Session)
 		if err := as.BunDB.
 			NewSelect().
-			Model(session).
+			Model(sessionModel).
 			Where("secret = ?", sessionSecret).
-			Where("type = ?", "session").
+			Where("purpose = ?", model.SESSION_MODEL_PURPOSE_SESSION).
 			Scan(r.Context()); err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"description": "Session secret not found"}`))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Can't find session model in DB"))
+			slog.Error("can't find session model in DB", "error", err)
 			return
 		}
-		if session.CreatedAt.Add(time.Hour * 24 * 7).Before(time.Now()) {
+		if time.Unix(sessionModel.CreatedAtUnixUTC, 0).UTC().
+			Add(time.Hour * 24 * 7).Before(time.Now()) {
+			if _, err := as.BunDB.
+				NewDelete().
+				Model((*model.Session)(nil)).
+				Where("secret = ?", sessionSecret).
+				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_SESSION).
+				Exec(r.Context()); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("Can't delete session model in DB"))
+				slog.Error("can't delete session model in DB", "error", err)
+				return
+			}
+
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"description": "Session expired"}`))
+			w.Write([]byte("Session expired"))
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), SessionCtxKey, session)
+		ctx := context.WithValue(r.Context(), SessionCtxKey, sessionModel)
 		next(w, r.WithContext(ctx))
 	}
 }
