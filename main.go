@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -22,7 +20,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 	"github.com/lmittmann/tint"
-	"github.com/uptrace/bun"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -125,28 +122,6 @@ func main() {
 	as.NukeAppCmdInfo()
 	runtime.GC()
 
-	// create calendar model for each guild and insert into database
-	func() {
-		calendarModels := make([]model.Calendar, 0)
-		for _, guild := range as.DgSession.State.Guilds {
-			calendarModels = append(calendarModels, model.Calendar{
-				ID:   guild.ID,
-				Name: guild.Name,
-			})
-		}
-		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
-			if _, err := tx.NewInsert().
-				Model(&calendarModels).
-				On("CONFLICT (id) DO UPDATE").
-				Set("name = EXCLUDED.name").
-				Exec(ctx); err != nil {
-				return err
-			}
-			return nil
-		}); err != nil {
-			slog.Error("can't create calendar model", "error", err)
-		}
-	}()
 
 	go metric.Init(as)
 
