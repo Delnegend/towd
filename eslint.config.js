@@ -4,7 +4,7 @@ import vue from "eslint-plugin-vue";
 import globals from "globals";
 
 export default [
-    { files: ["src/*.{ts,vue"] },
+    { files: ["src/**/*.{vue,ts}"] },
     { ignores: ["src/components/ui/*"] },
 
     ...hagemanto(),
