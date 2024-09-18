@@ -49,8 +49,8 @@ func Ical(muxer *http.ServeMux, as *utils.AppState) {
 					SetDescription(eventModel.Description).
 					SetLocation(eventModel.Location).
 					SetURL(eventModel.URL).
-					SetStartDate(eventModel.StartDate).
-					SetEndDate(eventModel.EndDate).
+					SetStartDate(eventModel.StartDateUnixUTC).
+					SetEndDate(eventModel.EndDateUnixUTC).
 					SetOrganizer(eventModel.Organizer)
 				icalEventInter, err := undecidedEvent.DecideEventType()
 				if err != nil {
