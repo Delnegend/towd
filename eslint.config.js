@@ -24,7 +24,7 @@ export default [
     {
         languageOptions: {
             globals: globals.browser, parserOptions: {
-                project: true, parser: "@typescript-eslint/parser", extraFileExtensions: [".vue"]
+                project: "./tsconfig.json", parser: "@typescript-eslint/parser", extraFileExtensions: [".vue"]
             }
         }
     },
