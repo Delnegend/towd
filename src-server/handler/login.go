@@ -39,6 +39,18 @@ func loginHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.In
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
+		// #region - get the user ID from interaction
+		if i.Member == nil || i.Member.User == nil {
+			msg := "Can't get user ID from interaction."
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("loginHandler: can't send message about login", "error", err)
+			}
+			return fmt.Errorf("Login: can't get user ID from interaction")
+		}
+		// #endregion
+
 		// #region - insert session to DB
 		secret := uuid.NewString()
 		startTimer = time.Now()
