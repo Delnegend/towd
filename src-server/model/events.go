@@ -47,43 +47,6 @@ type Event struct {
 	ExternalCalendar *ExternalCalendar `bun:"rel:belongs-to,join:calendar_id=id"`
 }
 
-var _ bun.AfterDeleteHook = (*Event)(nil)
-
-func (e *Event) AfterDelete(ctx context.Context, query *bun.DeleteQuery) error {
-	if query.DB() == nil {
-		return fmt.Errorf("(*Event).AfterDelete: db is nil")
-	}
-
-	// getting just-deleted-event-ids from context
-	eventIDs := make([]string, 0)
-	switch eventID := ctx.Value(EventIDCtxKey).(type) {
-	case string:
-		if eventID == "" {
-			return fmt.Errorf("(*Event).AfterDelete: deletedEventID is blank")
-		}
-		eventIDs = append(eventIDs, eventID)
-	case []string:
-		if len(eventID) == 0 {
-			return nil
-		}
-		eventIDs = append(eventIDs, eventID...)
-	case nil:
-		return fmt.Errorf("(*Event).AfterDelete: event id is nil")
-	default:
-		return fmt.Errorf("(*Event).AfterDelete: wrong eventID type | type=%T", eventID)
-	}
-
-	// delete all related Attendee models
-	if _, err := query.DB().NewDelete().
-		Model((*Attendee)(nil)).
-		Where("event_id IN (?)", bun.In(eventIDs)).
-		Exec(ctx); err != nil {
-		return fmt.Errorf("(*Event).AfterDelete: can't delete attendees: %w", err)
-	}
-
-	return nil
-}
-
 func (e *Event) Upsert(ctx context.Context, db bun.IDB) error {
 	switch {
 	case e.ID == "":
