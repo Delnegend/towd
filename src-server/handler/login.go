@@ -40,11 +40,12 @@ func loginHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.In
 		// #endregion
 
 		// #region - insert session to DB
+		secret := uuid.NewString()
 		startTimer = time.Now()
 		if _, err := as.BunDB.
 			NewInsert().
 			Model(&model.Session{
-				Secret:           uuid.NewString(),
+				Secret:           secret,
 				Purpose:          model.SESSION_MODEL_PURPOSE_TEMP,
 				UserID:           i.Member.User.ID,
 				ChannelID:        i.ChannelID,
@@ -62,6 +63,13 @@ func loginHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.In
 		}
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
+
+		msg := fmt.Sprintf("```%s```", secret)
+		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			Content: &msg,
+		}); err != nil {
+			slog.Warn("loginHandler: can't respond about login successful", "error", err)
+		}
 
 		return nil
 	}
