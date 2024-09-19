@@ -111,9 +111,6 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 		})
 		switch {
 		case err != nil:
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't create session"))
-			slog.Error("can't create session", "error", err)
 			return
 		case !allowThrough:
 			return
