@@ -133,6 +133,8 @@ func main() {
 		muxer.Handle("GET /metrics", promhttp.Handler())
 		route.Auth(muxer, as)
 		route.Ical(muxer, as)
+		route.Calendar(muxer, as)
+		route.Kanban(muxer, as)
 		route.SPA(muxer, as)
 		if err := http.ListenAndServe(":"+as.Config.GetPort(), muxer); err != nil {
 			slog.Error("cannot start HTTP server", "error", err)
