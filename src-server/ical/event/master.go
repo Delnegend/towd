@@ -26,8 +26,8 @@ func (e *MasterEvent) GetRRuleSet() (*rrule.Set, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(utils.Unix2Datetime(e.startDate) + "\n")
-	sb.WriteString(e.rruleString + "\n")
+	sb.WriteString("DTSTART:" + utils.Unix2Datetime(e.startDate) + "\n")
+	sb.WriteString("RRULE:" + e.rruleString + "\n")
 	for _, exdate := range e.exDates {
 		sb.WriteString("EXDATE:" + utils.Unix2Datetime(exdate) + "\n")
 	}
