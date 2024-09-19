@@ -99,7 +99,9 @@ func createEventManualHandler(as *utils.AppState) func(s *discordgo.Session, i *
 			eventModel.ID = uuid.NewString()
 			eventModel.CalendarID = i.ChannelID
 			eventModel.ChannelID = i.ChannelID
-			eventModel.Organizer = i.Member.User.Username
+			if i.Member != nil && i.Member.User != nil {
+				eventModel.Organizer = i.Member.User.Username
+			}
 
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(

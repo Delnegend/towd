@@ -79,7 +79,9 @@ func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 		eventModel := new(model.Event)
 		eventModel.CalendarID = i.ChannelID
 		eventModel.ChannelID = i.ChannelID
-		eventModel.Organizer = i.User.Username
+		if i.Member != nil && i.Member.User != nil {
+			eventModel.Organizer = i.Member.User.Username
+		}
 		attendeeModels, err := eventModel.FromNaturalText(context.Background(), as, content)
 		if err != nil {
 			// edit the deferred message
