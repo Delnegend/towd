@@ -25,6 +25,7 @@ func loginHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.In
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
+		// #region - respond to the original request
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -36,7 +37,9 @@ func loginHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.In
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
+		// #region - insert session to DB
 		startTimer = time.Now()
 		if _, err := as.BunDB.
 			NewInsert().
@@ -58,6 +61,7 @@ func loginHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.In
 			return fmt.Errorf("loginHandler: can't insert session: %w", err)
 		}
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
 		return nil
 	}
