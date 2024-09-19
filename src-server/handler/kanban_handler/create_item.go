@@ -44,6 +44,9 @@ func createItemHandler(as *utils.AppState) func(s *discordgo.Session, i *discord
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags: discordgo.MessageFlagsEphemeral,
+			},
 		}); err != nil {
 			slog.Warn("createItemHandler: can't send defer message", "error", err)
 			return nil
