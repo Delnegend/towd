@@ -50,7 +50,9 @@ func main() {
 	event_handler.Init(as)
 	kanban_handler.Init(as)
 	handler.ImportCalendar(as)
+	handler.DeleteCalendar(as)
 	handler.Ping(as)
+	handler.Login(as)
 
 	// tell discordgo how to handle interactions from Discord (w/ appCmdHandler)
 	as.DgSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
