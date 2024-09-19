@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -23,12 +24,19 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	type AuthReqBody struct {
+		TempKey string `json:"tempKey"`
+	}
+
 	// login
 	newSessionSecret := uuid.NewString()
-	muxer.HandleFunc("GET /auth/:tempKey", func(w http.ResponseWriter, r *http.Request) {
-		if r.PathValue("tempKey") == "" {
+	muxer.HandleFunc("POST /auth", func(w http.ResponseWriter, r *http.Request) {
+		// parse request body
+		var reqBody AuthReqBody
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Please provide a temp key"))
+			w.Write([]byte("Invalid request body"))
 			return
 		}
 
@@ -38,8 +46,8 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 			exists, err := as.BunDB.
 				NewSelect().
 				Model((*model.Session)(nil)).
-				Where("secret = ?", r.PathValue("tempKey")).
-				Where("type = ?", "temp").
+				Where("secret = ?", reqBody.TempKey).
+				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_TEMP).
 				Exists(r.Context())
 			switch {
 			case err != nil:
@@ -57,7 +65,7 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 			if err := as.BunDB.
 				NewSelect().
 				Model(tempKeySessionModel).
-				Where("secret = ?", r.PathValue("tempKey")).
+				Where("secret = ?", reqBody.TempKey).
 				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_TEMP).
 				Scan(r.Context()); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -69,7 +77,8 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 			if _, err := as.BunDB.
 				NewDelete().
 				Model((*model.Session)(nil)).
-				Where("secret = ?", r.PathValue("tempKey")).
+				Where("secret = ?", reqBody.TempKey).
+				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_TEMP).
 				Exec(r.Context()); err != nil {
 				slog.Error("can't delete temp key in DB", "error", err)
 			}
