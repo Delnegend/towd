@@ -1,7 +1,6 @@
 package ical
 
 import (
-	"fmt"
 	"log/slog"
 	"time"
 	"towd/src-server/ical/event"
@@ -82,7 +81,7 @@ func (c *Calendar) ToStaticEvents() []StaticEvent {
 			// create clones
 			for date := range allDates {
 				staticEvents = append(staticEvents, StaticEvent{
-					ID:        fmt.Sprintf("%d", date),
+					ID:        uuid.NewString(),
 					StartDate: date,
 					EndDate:   date + startEndDiff,
 					IsWholeDay: func() bool {
