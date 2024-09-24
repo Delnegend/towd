@@ -17,12 +17,12 @@
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.1",
 		"lucide-vue-next": "^0.395.0",
-		"radix-vue": "^1.9.5",
+		"radix-vue": "^1.9.6",
 		"shadcn-nuxt": "^0.10.4",
 		"tailwind-merge": "^2.5.2",
 		"tailwindcss-animate": "^1.0.7",
-		"vue": "^3.5.6",
-		"vue-sonner": "^1.1.5"
+		"vue": "^3.5.8",
+		"vue-sonner": "^1.2.1"
 	},
 	"devDependencies": {
 		"@iconify-json/radix-icons": "^1.2.0",
