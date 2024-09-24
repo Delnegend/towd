@@ -24,18 +24,25 @@ func SPA(muxer *http.ServeMux, as *utils.AppState) {
 
 	muxer.HandleFunc("GET /{filepath...}", func(w http.ResponseWriter, r *http.Request) {
 		filepath := filepath.Clean(r.PathValue("filepath"))
-		if filepath == "." {
+		switch filepath {
+		case ".":
 			filepath = "index.html"
+		case "calendar":
+			filepath = "calendar/index.html"
+		case "kanban":
+			filepath = "kanban/index.html"
+		case "200":
+			filepath = "200.html"
+		case "404":
+			filepath = "404.html"
 		}
 
-		// serve index.html if filepath not found
 		file, err := files.Open(filepath)
 		if err != nil {
 			http.ServeContent(w, r, indexFileStat.Name(), indexFileStat.ModTime(), indexFile)
 			return
 		}
 
-		// serve index.html if can't get file stat
 		stat, err := file.Stat()
 		if err != nil {
 			http.ServeContent(w, r, indexFileStat.Name(), indexFileStat.ModTime(), indexFile)
