@@ -1,71 +1,66 @@
 <script setup lang="ts">
-/* eslint-disable no-undef */
+import { toast } from 'vue-sonner';
+import { currTimeCursorPos } from "~/components/page.calendar.state";
+import { GetEvents, type OneEventRespBody } from '~/lib/api';
+import { getWeekUTCTimestamps } from '~/lib/getWeekUTCTimestamp';
 
 const CELL_HEIGHT = 50;
+const events = ref<Array<OneEventRespBody>>([]);
+const { startOfWeekUTCTimestamp, endOfWeekUTCTimestamp } = getWeekUTCTimestamps();
 
-const HOURS = ((): Array<string> => {
-	const hours: Array<string> = [];
-	for (let i = 0; i < 24; i++) {
-		const hour = i % 12 === 0 ? 12 : i % 12;
-		const suffix = i < 12 ? "AM" : "PM";
-		hours.push(`${hour}${suffix}`);
+onMounted(async () => {
+	try {
+		events.value = await GetEvents({ startDateUnixUTC: startOfWeekUTCTimestamp, endDateUnixUTC: endOfWeekUTCTimestamp });
+	} catch (error) {
+		toast("Can't fetch events", {
+			description: `${error}`,
+		});
 	}
+});
 
-	return hours;
-})();
-
-interface CalendarEvent {
+interface ProcessedEvent {
 	id: string;
 	title: string;
+	description?: string;
+	location?: string;
+	url?: string;
+	organizer?: string;
 	startDate: Date;
 	endDate: Date;
-	location: string;
-	description: string;
 
 	cssSpaceTop: string;
-	cssMaxHeight: string;
+	cssEventHeight: string;
 }
+const processedEvents = ref<Record<number, Array<ProcessedEvent>>>({});
+watch(events, () => {
+	const result: Record<number, Array<ProcessedEvent>> = {};
+	for (const event of events.value) {
+		const startDate = new Date(event.startDateUnixUTC * 1000);
+		const endDate = new Date(event.endDateUnixUTC * 1000);
 
-const calendarEvents: Record<number, Array<CalendarEvent>> = {
-	25: [
-		{
-			id: "1",
-			title: "Title",
-			location: "Location",
-			description: "Description",
-			startDate: new Date("2022-01-01T07:00:00"),
-			endDate: new Date("2022-01-01T08:00:00"),
-			cssSpaceTop: "",
-			cssMaxHeight: "",
-		},
-	],
-	31: [
-		{
-			id: "2",
-			title: "Title",
-			location: "Location",
-			description: "Description",
-			startDate: new Date("2022-01-01T09:00:00"),
-			endDate: new Date("2022-01-01T10:00:00"),
-			cssSpaceTop: "",
-			cssMaxHeight: "",
-		},
+		const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+		const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+		const eventHeight = (endHour - startHour) * CELL_HEIGHT - 2;
+		const spaceTop = (startDate.getHours() + startDate.getMinutes() / 60) * CELL_HEIGHT;
 
-	],
-	29: [],
-	30: [],
-};
-
-const eventHeights: Record<string, number> = {};
-for (const [_, eventsInDay] of Object.entries(calendarEvents)) {
-	for (const event of eventsInDay) {
-		const startHour = event.startDate.getHours() + event.startDate.getMinutes() / 60;
-		const endHour = event.endDate.getHours() + event.endDate.getMinutes() / 60;
-		eventHeights[event.id] = (endHour - startHour) * CELL_HEIGHT - 2;
+		result[startDate.getDate()].push({
+			id: event.id,
+			title: event.title,
+			description: event.description,
+			location: event.location,
+			url: event.url,
+			organizer: event.organizer,
+			startDate,
+			endDate,
+			cssSpaceTop: `${spaceTop}px`,
+			cssEventHeight: `${eventHeight}px`,
+		});
 	}
-}
 
-function getCurrentWeekdays(): Array<Date> {
+	processedEvents.value = result;
+});
+
+const currentWeekdays: Array<Date> = (() => {
 	const currentDate = new Date();
 	const firstDay = currentDate.getDate() - currentDate.getDay() + 1;
 	const lastDay = firstDay + 6;
@@ -76,23 +71,19 @@ function getCurrentWeekdays(): Array<Date> {
 	}
 
 	return weekdays;
-}
+})();
 
-// updating the current time cursor position every 5 minutes
-// (config the interval in the worker file)
-const currTimeCursorPos = reactive({
-	top: '',
-	left: '',
-	ready: false,
-});
-const worker = new Worker(new URL('../lib/getCurrTimeCursorPos.worker.ts', import.meta.url));
-worker.onmessage = (e: MessageEvent<{ top: string; left: string }>) => {
-	currTimeCursorPos.top = e.data.top;
-	currTimeCursorPos.left = e.data.left;
-	currTimeCursorPos.ready = true;
-};
+const hourStrings = ((): Array<string> => {
+	const hours: Array<string> = [];
+	for (let i = 0; i < 24; i++) {
+		const hour = i % 12 === 0 ? 12 : i % 12;
+		const suffix = i < 12 ? "AM" : "PM";
+		hours.push(`${hour}${suffix}`);
+	}
 
-// #region - animation handling when hover in/out of each event
+	return hours;
+})();
+
 function handleMouseEnterEvent(target: EventTarget | null): void {
 	if (target === null) {
 		return;
@@ -104,13 +95,13 @@ function handleMouseEnterEvent(target: EventTarget | null): void {
 	element.style.zIndex = "10";
 }
 
-function handleMouseLeaveEvent(target: EventTarget | null, realHeight: number): void {
+function handleMouseLeaveEvent(target: EventTarget | null, eventHeight: string): void {
 	if (target === null) {
 		return;
 	}
 
 	const element = target as HTMLElement;
-	element.style.maxHeight = `${realHeight}px`;
+	element.style.maxHeight = eventHeight;
 	element.style.transform = "scale(1)";
 }
 
@@ -126,15 +117,14 @@ function handleTransitionEnd(target: EventTarget | null) {
 
 	element.style.zIndex = "0";
 }
-// #endregion
 </script>
 
 <template>
 	<div class="size-full">
 		<!-- Weekdays in text -->
-		<div class="sticky top-0 z-20 grid w-full grid-cols-7 border-b border-b-black bg-white pl-20">
+		<div class="sticky top-16 z-20 grid w-full grid-cols-7 border-b border-b-black bg-white pl-20">
 			<div
-				v-for="(wday, index) in getCurrentWeekdays()"
+				v-for="(wday, index) in currentWeekdays"
 				:key="index"
 				class="group flex flex-col items-center justify-center gap-1 py-4"
 				:class="{
@@ -160,7 +150,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 			<!-- Hours col, flex w/ fixed width -->
 			<div class="flex w-20 flex-col">
 				<div
-					v-for="(item, index) in HOURS"
+					v-for="(item, index) in hourStrings"
 					:key="index"
 					class="flex flex-col items-center justify-center"
 					:style="`height: ${CELL_HEIGHT}px`"
@@ -175,13 +165,13 @@ function handleTransitionEnd(target: EventTarget | null) {
 			<div class="relative grid w-full grid-cols-7">
 				<!-- Each col is a day -->
 				<div
-					v-for="(day, weekdayIdx) in getCurrentWeekdays()"
+					v-for="(day, weekdayIdx) in currentWeekdays"
 					:key="`${day}${weekdayIdx}`"
 					class="relative flex flex-col"
 				>
 					<!-- Each row is an hour -->
 					<div
-						v-for="hour in HOURS"
+						v-for="hour in hourStrings"
 						:key="hour"
 						class="border-b border-l border-gray-300"
 						:style="{
@@ -193,19 +183,19 @@ function handleTransitionEnd(target: EventTarget | null) {
 					<!-- Each element is an event -->
 					<Popover>
 						<PopoverTrigger
-							v-for="e in calendarEvents[day.getDate()]"
+							v-for="e in processedEvents[day.getDate()]"
 							:key="e.id"
 							class="absolute m-px flex w-[calc(100%-0.5rem)] flex-col justify-start overflow-hidden rounded-md border border-white bg-green-500 px-3 py-2 text-start text-white shadow-md hover:z-10 hover:scale-[1.03] hover:shadow-lg"
 							:style="{
-								top: `${(e.startDate.getHours() + e.startDate.getMinutes() / 60) * CELL_HEIGHT}px`,
+								top: e.cssSpaceTop,
 								transitionProperty: 'max-height, transform, box-shadow',
 								transitionDuration: '0.3s',
 								transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-								minHeight: `${eventHeights[e.id]}px`,
-								maxHeight: `${eventHeights[e.id]}px`,
+								minHeight: e.cssEventHeight,
+								maxHeight: e.cssEventHeight,
 							}"
 							@mouseenter="handleMouseEnterEvent($event.target)"
-							@mouseleave="handleMouseLeaveEvent($event.target, eventHeights[e.id])"
+							@mouseleave="handleMouseLeaveEvent($event.target, e.cssEventHeight)"
 							@transitionend="handleTransitionEnd($event.target)"
 						>
 							<span class="font-bold">{{ e.title }}</span>
