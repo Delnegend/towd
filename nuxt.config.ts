@@ -4,10 +4,14 @@ export default defineNuxtConfig({
 	devtools: { enabled: false },
 	srcDir: "src",
 	css: ["~/assets/main.css"],
-	modules: ["@nuxtjs/tailwindcss", "shadcn-nuxt", "@nuxtjs/color-mode"],
+	modules: [
+		"@nuxtjs/tailwindcss",
+		"shadcn-nuxt",
+		"@nuxtjs/color-mode",
+		"@nuxt/eslint",
+	],
 
 	shadcn: {
-
 		/**
 		 * Prefix for all the imported component
 		 */

@@ -1,31 +1,26 @@
 import hagemanto from "eslint-plugin-hagemanto";
 import tailwind from "eslint-plugin-tailwindcss";
-import vue from "eslint-plugin-vue";
 import globals from "globals";
+import withNuxt from './.nuxt/eslint.config.mjs';
 
-export default [
-    { files: ["src/**/*.{vue,ts}"] },
-    { ignores: ["src/components/ui/*"] },
+export default withNuxt([
+	{
+		name: "towd/specific",
+		rules: {
+			"tailwindcss/no-custom-classname": "off",
+		}
+	},
+]).prepend([
+	{ name: "towd/include-exclude", files: ["src/**/*.{vue,ts}"], ignores: ["src/components/ui/*"] },
+	...hagemanto(),
+	...tailwind.configs["flat/recommended"],
 
-    ...hagemanto(),
-    ...tailwind.configs["flat/recommended"],
-    ...vue.configs["flat/recommended"],
-
-    {
-        rules: {
-            "tailwindcss/no-custom-classname": "off",
-            "vue/html-indent": ["error", "tab"],
-            "vue/multi-word-component-names": "off",
-            "vue/no-unused-vars": ["error", {
-                "ignorePattern": "^_"
-            }]
-        }
-    },
-    {
-        languageOptions: {
-            globals: globals.browser, parserOptions: {
-                project: "./tsconfig.json", parser: "@typescript-eslint/parser", extraFileExtensions: [".vue"]
-            }
-        }
-    },
-];
+	{
+		name: "towd/language-options",
+		languageOptions: {
+			globals: globals.browser, parserOptions: {
+				project: "./tsconfig.json", parser: "@typescript-eslint/parser", extraFileExtensions: [".vue"]
+			}
+		}
+	},
+]);
