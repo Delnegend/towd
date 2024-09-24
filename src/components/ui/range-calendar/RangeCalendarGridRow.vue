@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { cn } from "@/lib/utils";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import {
 	RangeCalendarGridRow,
 	type RangeCalendarGridRowProps,

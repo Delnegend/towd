@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronLeft } from "lucide-vue-next";

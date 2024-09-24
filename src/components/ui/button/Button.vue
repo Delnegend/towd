@@ -1,4 +1,6 @@
 <script setup lang="ts">
+/* eslint-disable vue/require-default-prop */
+
 import { cn } from "@/lib/utils";
 import { Primitive, type PrimitiveProps } from "radix-vue";
 import type { HTMLAttributes } from "vue";

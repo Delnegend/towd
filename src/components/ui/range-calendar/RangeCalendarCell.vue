@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { cn } from "@/lib/utils";
 import {
 	RangeCalendarCell,
