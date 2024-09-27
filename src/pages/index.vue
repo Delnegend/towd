@@ -1,5 +1,24 @@
+<script setup lang="ts">
+import { Label } from "radix-vue";
+import { toast } from "vue-sonner";
+import { Login } from "~/lib/api";
+
+const secretKey = ref("");
+
+async function Verify() {
+	try {
+		await Login(secretKey.value);
+		toast.success("Successfully verified secret key");
+	} catch (error) {
+		toast.error(`${error}`);
+	}
+}
+</script>
+
 <template>
-	<div>
-		Lorem ipsum dolor sit amet consectetur adipisicing elit. Nemo nesciunt earum aliquid explicabo odit porro maiores eos enim ut placeat fuga eaque quisquam, beatae exercitationem minima quidem illum a doloribus aliquam quod modi vero quibusdam! Magni, quae adipisci. Animi dignissimos vel fugiat eos voluptas sunt at quod placeat neque dicta deleniti voluptates veritatis pariatur ad, aperiam ea eius obcaecati minus voluptate aliquam. Dicta a suscipit natus earum similique tempore fuga culpa adipisci ex est. Reprehenderit, magnam. Quam delectus temporibus accusantium molestiae sint nesciunt praesentium quia tempora ab suscipit rem optio, commodi sunt veniam! Suscipit laudantium neque omnis obcaecati nesciunt? Commodi!
+	<div class="mx-auto flex min-h-[calc(100vh-64px)] max-w-xs flex-col justify-center gap-y-2">
+		<Label for="terms">Secret Key</Label>
+		<Input v-model="secretKey" type="password" placeholder="ddefc197-62fa-4c09-be7b-0c63bf7ef36a" />
+		<Button class="mt-2" @click="Verify">Verify</Button>
 	</div>
 </template>
