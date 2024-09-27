@@ -9,7 +9,9 @@ COPY ./go.sum ./go.sum
 RUN go mod download
 RUN go build -o /app/main .
 
-FROM oven/bun:alpine AS client-builder
+FROM node:22-alpine AS client-builder
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
 WORKDIR /app
 COPY ./src ./src
@@ -17,9 +19,10 @@ COPY ./package.json ./package.json
 COPY ./tailwind.config.js ./tailwind.config.js
 COPY ./components.json ./components.json
 COPY ./tsconfig.json ./tsconfig.json
-COPY ./bun.lockb ./bun.lockb
+COPY pnpm-lock.yaml ./pnpm-lock.yaml
 COPY ./nuxt.config.ts ./nuxt.config.ts
-RUN bun i --frozen-lockfile && bun generate
+RUN npm i -g pnpm
+RUN pnpm i --frozen-lockfile && pnpm generate
 
 FROM alpine:latest
 
