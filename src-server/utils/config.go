@@ -18,7 +18,6 @@ type Config struct {
 	location   *time.Location
 	groqApiKey string
 
-	hostname           string
 	staticWebClientDir string
 
 	eventNotifyInterval      time.Duration
@@ -125,15 +124,6 @@ func NewConfig() *Config {
 			slog.Debug("env", "STATIC_WEB_CLIENT_DIR", staticWebClientDir)
 			return filepath.Clean(staticWebClientDir)
 		}(),
-		hostname: func() string {
-			hostname := os.Getenv("HOSTNAME")
-			if hostname == "" {
-				slog.Error("HOSTNAME is not set")
-				os.Exit(1)
-			}
-			slog.Debug("env", "HOSTNAME", hostname)
-			return hostname
-		}(),
 
 		eventNotifyInterval: func() time.Duration {
 			eventNotifyInterval := os.Getenv("EVENT_NOTIFY_INTERVAL")
@@ -228,11 +218,6 @@ func (c *Config) GetGroqApiKey() string {
 // Get STATIC_WEB_CLIENT_DIR env
 func (c *Config) GetStaticWebClientDir() string {
 	return c.staticWebClientDir
-}
-
-// Get HOSTNAME env
-func (c *Config) GetHostname() string {
-	return c.hostname
 }
 
 // Get EVENT_NOTIFY_INTERVAL env
