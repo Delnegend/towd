@@ -28,7 +28,6 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 	}
 
 	// login
-	newSessionSecret := uuid.NewString()
 	muxer.HandleFunc("POST /auth", func(w http.ResponseWriter, r *http.Request) {
 		// parse request body
 		var reqBody AuthReqBody
@@ -39,6 +38,7 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 			return
 		}
 
+		newSessionSecret := uuid.NewString()
 		allowThrough := false
 		err := as.BunDB.RunInTx(r.Context(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 			// check if tempKey exists in DB
