@@ -116,7 +116,12 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 			return
 		}
 
-		w.Header().Set("Set-Cookie", "session-secret="+newSessionSecret+"; Path=/; HttpOnly; SameSite=Lax")
+		switch as.Config.GetDev() {
+		case true:
+			w.Write([]byte(fmt.Sprintf(`{"sessionSecret": "%s"}`, newSessionSecret)))
+		case false:
+			w.Header().Set("Set-Cookie", "session-secret="+newSessionSecret+"; Path=/; HttpOnly; SameSite=None")
+		}
 		w.WriteHeader(http.StatusOK)
 	})
 }

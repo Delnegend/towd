@@ -16,7 +16,7 @@ const SessionCtxKey SessionCtxKeyType = "session"
 
 func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// extract session secret
+		// extract session secret from cookies
 		sessionSecret := func() string {
 			sessionCookie, err := r.Cookie("session-secret")
 			if err == nil {
@@ -24,6 +24,9 @@ func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Req
 			}
 			return ""
 		}()
+		if as.Config.GetDev() && sessionSecret == "" {
+			sessionSecret = strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		}
 		if sessionSecret == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Session secret cookie not found"))

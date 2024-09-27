@@ -24,6 +24,8 @@ type Config struct {
 	eventNotifyInterval      time.Duration
 	calendarUpdateInterval   time.Duration
 	metricCollectionInterval time.Duration
+
+	dev bool
 }
 
 func NewConfig() *Config {
@@ -175,6 +177,16 @@ func NewConfig() *Config {
 			slog.Debug("env", "METRIC_COLLECTION_INTERVAL", metricCollectionInterval, "duration", duration)
 			return duration
 		}(),
+
+		dev: func() bool {
+			dev := os.Getenv("DEV")
+			if dev == "" {
+				slog.Warn("DEV is not set, using default value", "dev", false)
+				return false
+			}
+			slog.Debug("env", "DEV", dev)
+			return dev == "true"
+		}(),
 	}
 }
 
@@ -236,4 +248,9 @@ func (c *Config) GetCalendarUpdateInterval() time.Duration {
 // Get METRIC_COLLECTION_INTERVAL env
 func (c *Config) GetMetricCollectionInterval() time.Duration {
 	return c.metricCollectionInterval
+}
+
+// Get DEV env
+func (c *Config) GetDev() bool {
+	return c.dev
 }
