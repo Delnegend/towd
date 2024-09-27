@@ -1,83 +1,63 @@
-import { baseURL } from "./base";
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 
-interface KanbanItemReqBody {
+export interface KanbanItemReqBody {
 	id: number;
 	content: string;
 }
 
-interface KanbanGroupReqBody {
+export interface KanbanGroupReqBody {
 	groupName: string;
 	items: Array<KanbanItemReqBody>;
 }
 
-interface KanbanTableReqBody {
+export interface KanbanTableReqRespBody {
 	tableName: string;
 	groups: Array<KanbanGroupReqBody>;
 }
 
-async function GetKanbanTable(): Promise<KanbanTableReqBody> {
-	let resp: Response;
-	try {
-		resp = await fetch(new URL("/kanban/get-groups", baseURL), {
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
-		if (!resp.ok) {
-			return await Promise.reject(new Error(`GetKanbanTableError: [${resp.status}] ${await resp.text()}`));
+async function LoadKanbanTable(): Promise<KanbanTableReqRespBody> {
+	const endpoint = (() => {
+		if (import.meta.dev) {
+			// @ts-expect-error - env do exist
+			return new URL("/kanban/load", import.meta.env.VITE_SERVER_HOSTNAME);
 		}
-	} catch (err) {
-		return Promise.reject(new Error(`GetKanbanTableError: ${err}`));
+
+		return "/kanban/load";
+	})()
+	const resp = await fetch(endpoint, {
+		method: "GET",
+		headers: {
+			"Content-Type": "application/json",
+			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
+		},
+	});
+	if (!resp.ok) {
+		throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);
 	}
 
-	try {
-		return (await resp.json()) as KanbanTableReqBody;
-	} catch (err) {
-		return Promise.reject(new Error(`GetKanbanTableError: can't parse response body: ${err}`));
-	}
+	return (await resp.json()) as KanbanTableReqRespBody;
 }
 
-interface CreateKanbanItemReqBody {
-	groupName: string;
-	content: string;
-}
-
-async function CreateKanbanItem(data: CreateKanbanItemReqBody): Promise<string> {
-	let resp: Response;
-	try {
-		resp = await fetch(new URL("/kanban/create-item", baseURL), {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(data),
-		});
-		if (!resp.ok) {
-			return await Promise.reject(new Error(`CreateKanbanItemError: [${resp.status}] ${await resp.text()}`));
+async function SaveKanbanTable(data: KanbanTableReqRespBody): Promise<void> {
+	const endpoint = (() => {
+		if (import.meta.dev) {
+			// @ts-expect-error - env do exist
+			return new URL("/kanban/save", import.meta.env.VITE_SERVER_HOSTNAME);
 		}
-	} catch (err) {
-		return Promise.reject(new Error(`CreateKanbanItemError: ${err}`));
-	}
 
-	try {
-		return (await resp.json()) as string;
-	} catch (err) {
-		return Promise.reject(new Error(`CreateKanbanItemError: can't parse response body: ${err}`));
-	}
-}
-
-async function DeleteKanbanItem(id: string): Promise<void> {
-	try {
-		const resp_ = await fetch(new URL(`/kanban/delete-item/${id}`, baseURL), {
-			method: "DELETE",
-		});
-		if (!resp_.ok) {
-			await Promise.reject(new Error(`DeleteKanbanItemError: [${resp_.status}] ${await resp_.text()}`));
-		}
-	} catch (err) {
-		await Promise.reject(new Error(`DeleteKanbanItemError: ${err}`));
+		return "/kanban/save";
+	})();
+	const resp = await fetch(endpoint, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
+		},
+		body: JSON.stringify(data),
+	});
+	if (!resp.ok) {
+		throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);
 	}
 }
 
-export { CreateKanbanItem, DeleteKanbanItem, GetKanbanTable };
+export { LoadKanbanTable, SaveKanbanTable };
