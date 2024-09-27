@@ -12,7 +12,7 @@ onMounted(async () => {
 	try {
 		events.value = await GetEvents({ startDateUnixUTC: startOfWeekUTCTimestamp, endDateUnixUTC: endOfWeekUTCTimestamp });
 	} catch (error) {
-		toast("Can't fetch events", {
+		toast.error("Can't fetch events", {
 			description: `${error}`,
 		});
 	}
