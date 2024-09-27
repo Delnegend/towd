@@ -17,7 +17,7 @@ func Login(as *utils.AppState) {
 	as.AddAppCmdHandler(id, loginHandler(as))
 	as.AddAppCmdInfo(id, &discordgo.ApplicationCommand{
 		Name:        id,
-		Description: "Login to the web client",
+		Description: "Get the secret key for the current channel to login to the web client",
 	})
 }
 
