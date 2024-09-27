@@ -4,7 +4,6 @@ import { toast } from 'vue-sonner';
 import draggable from 'vuedraggable';
 import { LoadKanbanTable, SaveKanbanTable, type KanbanTableReqRespBody } from '~/lib/api';
 
-// let readyToWatch = false;
 const KanbanBoard: Ref<KanbanTableReqRespBody> = ref({
 	tableName: "",
 	groups: [],
@@ -18,14 +17,12 @@ onMounted(async () => {
 			description: `${error}`,
 		});
 	}
-	// readyToWatch = true;
 });
 
-watchEffect(async () => {
-	// if (!readyToWatch) {
-	// 	return;
-	// }
-
+const SaveKanbanTableDebounced = pDebounce(async () => {
+	if (KanbanBoard.value.groups.length === 0) {
+		return;
+	}
 	try {
 		await SaveKanbanTable(KanbanBoard.value);
 	} catch (error) {
@@ -33,16 +30,17 @@ watchEffect(async () => {
 			description: `${error}`,
 		});
 	}
-});
+}, 1000);
 
-function AddItem(e: MouseEvent, groupName: string) {
+async function AddItem(e: MouseEvent, groupName: string) {
 	const newItem = { id: Number(new Date()), content: "New Item" };
 	KanbanBoard.value.groups.find((group) => group.groupName === groupName)!.items.push(newItem);
+	await SaveKanbanTableDebounced();
 }
 
 const modifyItemTextAreaValue = ref("");
 
-function ModifyItem(itemId: number, groupName: string) {
+async function ModifyItem(itemId: number, groupName: string) {
 	const content = modifyItemTextAreaValue.value.trim();
 	if (content === "") {
 		toast.warning("Content is empty");
@@ -52,34 +50,38 @@ function ModifyItem(itemId: number, groupName: string) {
 	const item = KanbanBoard.value.groups.find((group) => group.groupName === groupName)!.items.find((item) => item.id === itemId)!;
 	item.content = content;
 	modifyItemTextAreaValue.value = "";
+	await SaveKanbanTableDebounced();
 }
 
-function DeleteItem(itemId: number, groupName: string) {
+async function DeleteItem(itemId: number, groupName: string) {
 	KanbanBoard.value.groups.find((group) => group.groupName === groupName)!.items = KanbanBoard.value.groups.find((group) => group.groupName === groupName)!.items.filter((item) => item.id !== itemId);
+	await SaveKanbanTableDebounced();
 }
 
 const createGroupInputValue = ref("");
 
-function AddGroup() {
+async function AddGroup() {
 	if (createGroupInputValue.value.trim() === "") {
 		toast.warning("Group name is empty");
 		return;
 	}
 
-	if (KanbanBoard.value.groups !== null) {
-		if (KanbanBoard.value.groups.find((group) => group.groupName === createGroupInputValue.value.trim())) {
-			toast.warning("Group already exists");
-			return;
-		}
+	if (KanbanBoard.value.groups.find((group) => group.groupName === createGroupInputValue.value.trim())) {
+		toast.warning("Group already exists");
+		return;
+	}
+
+	if (KanbanBoard.value.groups.length > 0) {
 		KanbanBoard.value.groups.push({ groupName: createGroupInputValue.value.trim(), items: [] });
 	} else {
 		KanbanBoard.value.groups = [{ groupName: createGroupInputValue.value.trim(), items: [] }];
 	}
 
 	createGroupInputValue.value = "";
+	await SaveKanbanTableDebounced();
 }
 
-function DeleteGroup(groupName: string) {
+async function DeleteGroup(groupName: string) {
 	// check if group is not empty
 	if (KanbanBoard.value.groups.find((group) => group.groupName === groupName)!.items.length > 0) {
 		toast.error("Can't delete group, it's not empty");
@@ -92,6 +94,7 @@ function DeleteGroup(groupName: string) {
 			break;
 		}
 	}
+	await SaveKanbanTableDebounced();
 }
 
 </script>
@@ -99,11 +102,11 @@ function DeleteGroup(groupName: string) {
 <template>
 	<div class="h-[calc(100vh-64px)]">
 		<div class="flex h-full flex-row justify-start gap-x-5 overflow-x-scroll px-5">
-			<div v-for="group in KanbanBoard.groups" :key="group.groupName" class="flex h-full min-w-80 shrink flex-col rounded-lg border px-4 py-3 text-slate-700 shadow-lg">
+			<div v-for="(group, groupIndex) in KanbanBoard.groups" :key="group.groupName" class="flex h-full min-w-80 shrink flex-col rounded-lg border px-4 py-3 text-slate-700 shadow-lg">
 
 				<div class="mb-3 flex flex-row justify-between">
 					<span class="text-xl font-bold">{{ group.groupName }}</span>
-					<button class="text-slate-600 transition-transform hover:scale-110" @click="DeleteGroup(group.groupName)">
+					<button v-if="groupIndex !== 0" class="text-slate-600 transition-transform hover:scale-110" @click="DeleteGroup(group.groupName)">
 						<Trash2 :size="18" />
 					</button>
 				</div>
