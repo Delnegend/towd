@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,27 +10,53 @@ import (
 )
 
 func Kanban(muxer *http.ServeMux, as *utils.AppState) {
-	type KanbanItemRespBody struct {
+	type KanbanItemReqRespBody struct {
 		ID      int64  `json:"id"`
 		Content string `json:"content"`
 	}
 
-	type KanbanGroupRespBody struct {
-		Name  string               `json:"groupName"`
-		Items []KanbanItemRespBody `json:"items"`
+	type KanbanGroupReqRespBody struct {
+		Name  string                  `json:"groupName"`
+		Items []KanbanItemReqRespBody `json:"items"`
 	}
 
-	type KanbanTableRespBody struct {
-		TableName string                `json:"tableName"`
-		Groups    []KanbanGroupRespBody `json:"groups"`
+	type KanbanTableReqRespBody struct {
+		TableName string                   `json:"tableName"`
+		Groups    []KanbanGroupReqRespBody `json:"groups"`
 	}
 
-	muxer.HandleFunc("GET /kanban/get-groups", AuthMiddleware(as, func(w http.ResponseWriter, r *http.Request) {
-		sessionModel, ok := r.Context().Value(SessionCtxKey).(model.Session)
+	// get the entire kanban table
+	muxer.HandleFunc("GET /kanban/load", AuthMiddleware(as, func(w http.ResponseWriter, r *http.Request) {
+		sessionModel, ok := r.Context().Value(SessionCtxKey).(*model.Session)
 		if !ok {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Can't get session from middleware"))
 			return
+		}
+
+		// check if exists, if not create a new one
+		exists, err := as.BunDB.
+			NewSelect().
+			Model((*model.KanbanTable)(nil)).
+			Where("channel_id = ?", sessionModel.ChannelID).
+			Exists(r.Context())
+		switch {
+		case err != nil:
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("Can't check if Kanban table exists: %s", err.Error())))
+			return
+		case !exists:
+			kanbanTableModel := model.KanbanTable{
+				ChannelID: sessionModel.ChannelID,
+				Name:      "Untitled",
+			}
+			if _, err := as.BunDB.NewInsert().
+				Model(&kanbanTableModel).
+				Exec(r.Context()); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(fmt.Sprintf("Can't insert Kanban table: %s", err.Error())))
+				return
+			}
 		}
 
 		kanbanTableModel := new(model.KanbanTable)
@@ -39,7 +66,7 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 			Where("channel_id = ?", sessionModel.ChannelID).
 			Scan(r.Context(), kanbanTableModel); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't get Kanban table"))
+			w.Write([]byte(fmt.Sprintf("Can't get Kanban table: %s", err.Error())))
 			return
 		}
 
@@ -51,20 +78,20 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 			Relation("Items").
 			Scan(r.Context(), &groups); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't get Kanban groups"))
+			w.Write([]byte(fmt.Sprintf("Can't get Kanban groups: %s", err.Error())))
 			return
 		}
 
-		resp := KanbanTableRespBody{
+		resp := KanbanTableReqRespBody{
 			TableName: kanbanTableModel.Name,
 		}
 		for _, group := range groups {
-			respGroup := KanbanGroupRespBody{
+			respGroup := KanbanGroupReqRespBody{
 				Name:  group.Name,
-				Items: make([]KanbanItemRespBody, 0),
+				Items: make([]KanbanItemReqRespBody, 0),
 			}
 			for _, item := range group.Items {
-				respItem := KanbanItemRespBody{
+				respItem := KanbanItemReqRespBody{
 					ID:      item.ID,
 					Content: item.Content,
 				}
@@ -74,20 +101,14 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't encode Kanban response"))
+			w.Write([]byte(fmt.Sprintf("Can't encode Kanban response: %s", err.Error())))
 			return
 		}
 	}))
 
-	type CreateKanbanItemReqBody struct {
-		GroupName string `json:"groupName"`
-		Content   string `json:"content"`
-	}
-
-	// create a new kanban item and return its ID
-	muxer.HandleFunc("POST /kanban/create-item", AuthMiddleware(as, func(w http.ResponseWriter, r *http.Request) {
-		// get session model from context
-		sessionModel, ok := r.Context().Value(SessionCtxKey).(model.Session)
+	// overwrite the entire kanban table
+	muxer.HandleFunc("POST /kanban/save", AuthMiddleware(as, func(w http.ResponseWriter, r *http.Request) {
+		sessionModel, ok := r.Context().Value(SessionCtxKey).(*model.Session)
 		if !ok {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Can't get session from middleware"))
@@ -95,80 +116,84 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 		}
 
 		// parse request body
-		var reqBody CreateKanbanItemReqBody
+		var reqBody KanbanTableReqRespBody
 		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't decode request body"))
-			return
 		}
 
-		// check if group name exists
-		exists, err := as.BunDB.
-			NewSelect().
+		// remove the kanban table from the database
+		if _, err := as.BunDB.NewDelete().
 			Model((*model.KanbanTable)(nil)).
-			Where("name = ?", reqBody.GroupName).
 			Where("channel_id = ?", sessionModel.ChannelID).
-			Exists(r.Context())
-		switch {
-		case err != nil:
+			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't check if Kanban table exists"))
-			return
-		case !exists:
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("Kanban table not found"))
+			w.Write([]byte(fmt.Sprintf("Can't delete Kanban table: %s", err.Error())))
 			return
 		}
-
-		// insert new kanban item & get its ID
-		res, err := as.BunDB.NewInsert().
-			Model(&model.KanbanItem{
-				Content:   reqBody.Content,
-				GroupName: reqBody.GroupName,
-				ChannelID: sessionModel.ChannelID,
-			}).
-			Exec(r.Context())
-		if err != nil {
+		if _, err := as.BunDB.NewDelete().
+			Model((*model.KanbanGroup)(nil)).
+			Where("channel_id = ?", sessionModel.ChannelID).
+			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't insert Kanban item"))
+			w.Write([]byte(fmt.Sprintf("Can't delete Kanban groups: %s", err.Error())))
 			return
 		}
-		itemID, err := res.LastInsertId()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't get last inserted Kanban item ID"))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("%d", itemID)))
-	}))
-
-	muxer.HandleFunc("DELETE /kanban/delete-item/:id", AuthMiddleware(as, func(w http.ResponseWriter, r *http.Request) {
-		// get session model from context
-		sessionModel, ok := r.Context().Value(SessionCtxKey).(model.Session)
-		if !ok {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't get session from middleware"))
-			return
-		}
-
-		eventID := r.PathValue("id")
-		if eventID == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Please provide an event ID"))
-			return
-		}
-
-		// delete the event
 		if _, err := as.BunDB.NewDelete().
 			Model((*model.KanbanItem)(nil)).
-			Where("id = ?", eventID).
 			Where("channel_id = ?", sessionModel.ChannelID).
-			Exec(r.Context()); err != nil {
+			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Can't delete event"))
+			w.Write([]byte(fmt.Sprintf("Can't delete Kanban items: %s", err.Error())))
 			return
+		}
+
+		// insert the new kanban table, groups and items into the database
+		if _, err := as.BunDB.NewInsert().
+			Model(&model.KanbanTable{
+				Name:      reqBody.TableName,
+				ChannelID: sessionModel.ChannelID,
+			}).
+			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("Can't insert Kanban table: %s", err.Error())))
+			return
+		}
+
+		if len(reqBody.Groups) > 0 {
+			kanbanGroupModels := make([]model.KanbanGroup, 0)
+			for _, group := range reqBody.Groups {
+				kanbanGroupModels = append(kanbanGroupModels, model.KanbanGroup{
+					Name:      group.Name,
+					ChannelID: sessionModel.ChannelID,
+				})
+			}
+			if _, err := as.BunDB.NewInsert().
+				Model(&kanbanGroupModels).
+				Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(fmt.Sprintf("Can't insert Kanban groups: %s", err.Error())))
+				return
+			}
+			kanbanItemModels := make([]model.KanbanItem, 0)
+			for _, group := range reqBody.Groups {
+				for _, item := range group.Items {
+					kanbanItemModels = append(kanbanItemModels, model.KanbanItem{
+						ID:        item.ID,
+						Content:   item.Content,
+						GroupName: group.Name,
+						ChannelID: sessionModel.ChannelID,
+					})
+				}
+			}
+			if len(kanbanItemModels) > 0 {
+				if _, err := as.BunDB.NewInsert().
+					Model(&kanbanItemModels).
+					Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(fmt.Sprintf("Can't insert Kanban items: %s", err.Error())))
+					return
+				}
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
