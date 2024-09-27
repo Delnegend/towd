@@ -7,9 +7,9 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type TableIDCtxKeyType string
+type KanbanBoardChannelIDCtxKeyType string
 
-const TableIDCtxKey TableIDCtxKeyType = "table-id"
+const KanbanBoardChannelIDCtxKey KanbanBoardChannelIDCtxKeyType = "table-id"
 
 // Each channel has one Kanban table
 type KanbanTable struct {
@@ -20,63 +20,6 @@ type KanbanTable struct {
 
 	Groups []*KanbanGroup `bun:"rel:has-many,join:channel_id=channel_id"`
 	Items  []*KanbanItem  `bun:"rel:has-many,join:channel_id=channel_id"`
-}
-
-var _ bun.AfterDeleteHook = (*KanbanTable)(nil)
-
-func (k *KanbanTable) AfterDelete(ctx context.Context, query *bun.DeleteQuery) error {
-	if query.DB() == nil {
-		return fmt.Errorf("(*KanbanTable).AfterDelete: db is nil")
-	}
-
-	switch tableID := ctx.Value(TableIDCtxKey).(type) {
-	case string:
-		if tableID == "" {
-			return fmt.Errorf("(*KanbanTable).AfterDelete: table id is blank")
-		}
-
-		// rm related kanban groups
-		if _, err := query.DB().NewDelete().
-			Model((*KanbanGroup)(nil)).
-			Where("channel_id = ?", tableID).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*KanbanTable).AfterDelete: %w", err)
-		}
-
-		// rm related kanban items
-		if _, err := query.DB().NewDelete().
-			Model((*KanbanItem)(nil)).
-			Where("channel_id = ?", tableID).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*KanbanTable).AfterDelete: %w", err)
-		}
-	case []string:
-		if len(tableID) == 0 {
-			return fmt.Errorf("(*KanbanTable).AfterDelete: table id is empty")
-		}
-
-		// rm related kanban groups
-		if _, err := query.DB().NewDelete().
-			Model((*KanbanGroup)(nil)).
-			Where("channel_id IN (?)", bun.In(tableID)).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*KanbanTable).AfterDelete: %w", err)
-		}
-
-		// rm related kanban items
-		if _, err := query.DB().NewDelete().
-			Model((*KanbanItem)(nil)).
-			Where("channel_id IN (?)", bun.In(tableID)).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*KanbanTable).AfterDelete: %w", err)
-		}
-	case nil:
-		return fmt.Errorf("(*KanbanTable).AfterDelete: table id is nil")
-	default:
-		return fmt.Errorf("(*KanbanTable).AfterDelete: wrong table id type | type=%T", tableID)
-	}
-
-	return nil
 }
 
 func (k *KanbanTable) Upsert(ctx context.Context, db bun.IDB) error {
