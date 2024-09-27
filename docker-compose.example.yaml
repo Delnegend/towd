@@ -13,8 +13,6 @@ services:
             - ./data:/data
         environment:
             PORT: 8080
-            JWT_SECRET: secret
-            JWT_EXPIRE: 168h
             DISCORD_GUILD_ID:
             DISCORD_APP_TOKEN:
             TIMEZONE:
