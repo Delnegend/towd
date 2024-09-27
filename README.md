@@ -9,8 +9,8 @@ Tiny Office With Discord
 - Discord Bot Token, Groq API Key
 
 ### Development server
-- Backend: `go run .`
-- Frontend: `pnpm dev`
+- Backend: `go run .` -> `http://localhost:8080`
+- Frontend: `pnpm dev` -> `http://localhost:3000`
 
 ## Build, deployment and update
 ### Prerequisites
