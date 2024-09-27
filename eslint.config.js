@@ -8,6 +8,7 @@ export default withNuxt([
 		name: "towd/specific",
 		rules: {
 			"tailwindcss/no-custom-classname": "off",
+			"indent": ["error", "tab"],
 		}
 	},
 ]).prepend([
