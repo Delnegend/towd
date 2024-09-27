@@ -33,6 +33,26 @@ func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Req
 			return
 		}
 
+		startTimer := time.Now()
+		exists, err := as.BunDB.
+			NewSelect().
+			Model((*model.Session)(nil)).
+			Where("secret = ?", sessionSecret).
+			Where("purpose = ?", model.SESSION_MODEL_PURPOSE_SESSION).
+			Exists(r.Context())
+		switch {
+		case err != nil:
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Can't check if session exists in DB"))
+			slog.Error("can't check if session exists in DB", "error", err)
+			return
+		case !exists:
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Session secret not found"))
+			return
+		}
+		as.MetricChans.DatabaseReadForAuthMiddleware <- float64(time.Since(startTimer).Microseconds())
+
 		sessionModel := new(model.Session)
 		if err := as.BunDB.
 			NewSelect().
