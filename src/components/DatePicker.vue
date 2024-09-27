@@ -1,8 +1,5 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/strict-boolean-expressions */
-
-import { type Ref, ref, watch } from "vue";
-
 import { CalendarDate, type DateValue, isEqualMonth } from "@internationalized/date";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-vue-next";
 
