@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 	"towd/src-server/model"
@@ -69,8 +68,8 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_TEMP).
 				Scan(r.Context()); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Can't find temp key in DB"))
-				return fmt.Errorf("can't find temp key: %w", err)
+				w.Write([]byte(fmt.Sprintf("Can't find temp key in DB: %s", err.Error())))
+				return fmt.Errorf("")
 			}
 
 			// delete the model from DB right away since it's one-time use
@@ -80,7 +79,9 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 				Where("secret = ?", reqBody.TempKey).
 				Where("purpose = ?", model.SESSION_MODEL_PURPOSE_TEMP).
 				Exec(r.Context()); err != nil {
-				slog.Error("can't delete temp key in DB", "error", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(fmt.Sprintf("Can't delete temp key in DB: %s", err.Error())))
+				return fmt.Errorf("")
 			}
 
 			// check if tempKey is expired
@@ -103,8 +104,8 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 				}).
 				Exec(r.Context()); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Can't insert session model to DB"))
-				return fmt.Errorf("can't insert session model to db: %w", err)
+				w.Write([]byte(fmt.Sprintf("Can't insert session model to DB: %s", err.Error())))
+				return fmt.Errorf("")
 			}
 			allowThrough = true
 			return nil
