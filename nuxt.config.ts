@@ -23,5 +23,8 @@ export default defineNuxtConfig({
 		 */
 		componentDir: "./src/components/ui"
 	},
+	experimental: {
+		viewTransition: true,
+	},
 	compatibilityDate: "2024-08-28",
 });
