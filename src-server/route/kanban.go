@@ -2,11 +2,16 @@ package route
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
+
+	"github.com/uptrace/bun"
+	"golang.org/x/exp/slog"
 )
 
 func Kanban(muxer *http.ServeMux, as *utils.AppState) {
@@ -124,30 +129,41 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 		}
 
 		// remove the kanban table from the database
-		if _, err := as.BunDB.NewDelete().
-			Model((*model.KanbanTable)(nil)).
-			Where("channel_id = ?", sessionModel.ChannelID).
-			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Can't delete Kanban table: %s", err.Error())))
+		startTimer := time.Now()
+		if err := as.BunDB.RunInTx(r.Context(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			if _, err := tx.NewDelete().
+				Model((*model.KanbanTable)(nil)).
+				Where("channel_id = ?", sessionModel.ChannelID).
+				Exec(ctx); err != nil {
+				slog.Error("can't delete Kanban table", "error", err)
+				w.Write([]byte(fmt.Sprintf("Can't delete Kanban table: %s", err.Error())))
+				w.WriteHeader(http.StatusInternalServerError)
+				return fmt.Errorf("can't delete Kanban table: %w", err)
+			}
+			if _, err := tx.NewDelete().
+				Model((*model.KanbanGroup)(nil)).
+				Where("channel_id = ?", sessionModel.ChannelID).
+				Exec(ctx); err != nil {
+				slog.Error("can't delete Kanban groups", "error", err)
+				w.Write([]byte(fmt.Sprintf("Can't delete Kanban groups: %s", err.Error())))
+				w.WriteHeader(http.StatusInternalServerError)
+				return fmt.Errorf("can't delete Kanban groups: %w", err)
+			}
+			if _, err := tx.NewDelete().
+				Model((*model.KanbanItem)(nil)).
+				Where("channel_id = ?", sessionModel.ChannelID).
+				Exec(ctx); err != nil {
+				slog.Error("can't delete Kanban items", "error", err)
+				w.Write([]byte(fmt.Sprintf("Can't delete Kanban items: %s", err.Error())))
+				w.WriteHeader(http.StatusInternalServerError)
+				return fmt.Errorf("can't delete Kanban items: %w", err)
+			}
+			return nil
+		}); err != nil {
+			slog.Error(err.Error())
 			return
 		}
-		if _, err := as.BunDB.NewDelete().
-			Model((*model.KanbanGroup)(nil)).
-			Where("channel_id = ?", sessionModel.ChannelID).
-			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Can't delete Kanban groups: %s", err.Error())))
-			return
-		}
-		if _, err := as.BunDB.NewDelete().
-			Model((*model.KanbanItem)(nil)).
-			Where("channel_id = ?", sessionModel.ChannelID).
-			Exec(context.WithValue(r.Context(), model.KanbanBoardChannelIDCtxKey, sessionModel.ChannelID)); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Can't delete Kanban items: %s", err.Error())))
-			return
-		}
+		as.MetricChans.DatabaseWriteForKanbanBoard <- float64(time.Since(startTimer).Microseconds())
 
 		// insert the new kanban table, groups and items into the database
 		if _, err := as.BunDB.NewInsert().
