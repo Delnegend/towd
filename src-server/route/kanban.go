@@ -71,6 +71,7 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 		}
 
 		groups := make([]model.KanbanGroup, 0)
+		startTimer := time.Now()
 		if err := as.BunDB.
 			NewSelect().
 			Model(&groups).
@@ -81,6 +82,7 @@ func Kanban(muxer *http.ServeMux, as *utils.AppState) {
 			w.Write([]byte(fmt.Sprintf("Can't get Kanban groups: %s", err.Error())))
 			return
 		}
+		as.MetricChans.DatabaseReadForKanbanBoard <- float64(time.Since(startTimer).Microseconds())
 
 		resp := KanbanTableReqRespBody{
 			TableName: kanbanTableModel.Name,
