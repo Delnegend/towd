@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner';
-import { currTimeCursorPos } from "~/components/page.calendar.state";
+import { currTimeCursorPos } from "~/composables/page.calendar.state";
 import { GetEvents, type OneEventRespBody } from '~/lib/api';
 import { getWeekUTCTimestamps } from '~/lib/getWeekUTCTimestamp';
 
