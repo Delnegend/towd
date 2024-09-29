@@ -10,7 +10,6 @@ export default defineNuxtConfig({
 		"@nuxtjs/color-mode",
 		"@nuxt/eslint",
 	],
-
 	shadcn: {
 		/**
 		 * Prefix for all the imported component
