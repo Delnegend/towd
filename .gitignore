@@ -8,3 +8,4 @@ tmp/
 *.ics
 db.*
 .eslintcache
+docker-compose.yml
