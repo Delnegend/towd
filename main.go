@@ -21,6 +21,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/lmittmann/tint"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	_ "time/tzdata"
 )
 
 func init() {
