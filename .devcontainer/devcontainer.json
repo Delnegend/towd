@@ -1,0 +1,29 @@
+{
+	"name": "Existing Dockerfile",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"runArgs": [
+		"--hostname=devcontainer", "-p", "3000:3000", "-p", "8080:8080"
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"maptz.regionfolder",
+				"golang.go",
+				"bradlc.vscode-tailwindcss",
+				"Vue.volar",
+				"yy0931.vscode-sqlite3-editor",
+				"Supermaven.supermaven",
+				"RobbOwen.synthwave-vscode"
+			],
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "zsh"
+			}
+		}
+	},
+	"mounts": [
+		"source=global-pnpm-store,target=/home/vscode/.pnpm-store,type=volume"
+	],
+	"postCreateCommand": "go install go.abhg.dev/requiredfield/cmd/requiredfield@latest"
+}
