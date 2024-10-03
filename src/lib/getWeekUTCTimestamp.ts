@@ -18,12 +18,14 @@ export function getWeekUTCTimestamps(): { startOfWeekUTCTimestamp: number; endOf
 	endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
 	endOfWeek.setUTCHours(23, 59, 59, 999);
 
+	const timezoneOffset = new Date().getTimezoneOffset() * 60;
+
 	// Convert to Unix timestamps
-	const startOfWeekUTCTimestamp = Math.floor(startOfWeek.getTime() / 1000);
-	const endOfWeekUTCTimestamp = Math.floor(endOfWeek.getTime() / 1000) + 1;
+	const startOfWeekUnixUTCSeconds = Math.floor(startOfWeek.getTime() / 1000) + timezoneOffset;
+	const endOfWeekUnixUTCSeconds = Math.floor(endOfWeek.getTime() / 1000) + 1 + timezoneOffset;
 
 	return {
-		startOfWeekUTCTimestamp,
-		endOfWeekUTCTimestamp
+		startOfWeekUTCTimestamp: startOfWeekUnixUTCSeconds,
+		endOfWeekUTCTimestamp: endOfWeekUnixUTCSeconds
 	};
 }
