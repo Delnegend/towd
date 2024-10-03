@@ -41,7 +41,7 @@ onMounted(async () => {
 		const eventHeight = (endHour - startHour) * CELL_HEIGHT - 2;
 		const spaceTop = (startDate.getHours() + startDate.getMinutes() / 60) * CELL_HEIGHT;
 
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, no-eq-null, eqeqeq
 		if (processedEvents.value[startDate.getDate()] == null) {
 			processedEvents.value[startDate.getDate()] = [];
 		}
