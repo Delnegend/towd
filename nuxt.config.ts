@@ -22,6 +22,12 @@ export default defineNuxtConfig({
 		 */
 		componentDir: "./src/components/ui"
 	},
+	vite: {
+		server: {
+			hmr: {
+				clientPort: 3000,
+			},
+		}
 	},
 	compatibilityDate: "2024-08-28",
 });
