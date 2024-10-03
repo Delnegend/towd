@@ -103,6 +103,27 @@ async function DeleteGroup(groupName: string) {
 	await SaveKanbanTableDebounced();
 }
 
+const editGroupNameInputValue = ref("");
+let editGroupNameOldValue = "";
+
+async function EditGroupName() {
+	if (editGroupNameInputValue.value.trim() === "") {
+		toast.warning("Group name is empty");
+		return;
+	}
+
+	const group = KanbanBoard.value.groups.find((group) => group.groupName === editGroupNameOldValue);
+	if (group === undefined) {
+		toast.warning("Group not found");
+		return;
+	}
+
+	group.groupName = editGroupNameInputValue.value.trim();
+	editGroupNameInputValue.value = "";
+	editGroupNameOldValue = "";
+	await SaveKanbanTableDebounced();
+}
+
 </script>
 
 <template>
@@ -112,9 +133,40 @@ async function DeleteGroup(groupName: string) {
 
 				<div class="mb-3 flex flex-row justify-between">
 					<span class="text-xl font-bold">{{ group.groupName }}</span>
-					<button v-if="groupIndex !== 0" class="text-slate-600 transition-transform hover:scale-110" @click="DeleteGroup(group.groupName)">
-						<Trash2 :size="18" />
-					</button>
+					<div class="flex flex-row gap-x-2">
+						<!-- Edit group name -->
+						<Sheet>
+							<SheetTrigger as-child>
+								<button
+class="text-slate-600 transition-transform hover:scale-110" @click="() => {
+									editGroupNameInputValue = group.groupName;
+									editGroupNameOldValue = group.groupName;
+								}">
+									<Pencil class="text-slate-600 transition-transform hover:scale-110" :size="18" />
+								</button>
+							</SheetTrigger>
+							<SheetContent>
+								<SheetHeader>
+									<SheetTitle>Edit item</SheetTitle>
+									<SheetDescription>
+										Make changes to the group name here. Click save when you're done.
+									</SheetDescription>
+								</SheetHeader>
+								<Input v-model="editGroupNameInputValue" class="mb-4 mt-3" />
+								<SheetFooter>
+									<SheetClose as-child>
+										<Button type="submit" @click="EditGroupName">
+											Save changes
+										</Button>
+									</SheetClose>
+								</SheetFooter>
+							</SheetContent>
+						</Sheet>
+						<!-- Delete group button -->
+						<button v-if="groupIndex !== 0" class="text-slate-600 transition-transform hover:scale-110" @click="DeleteGroup(group.groupName)">
+							<Trash2 :size="18" />
+						</button>
+					</div>
 				</div>
 
 				<!-- because we don't want the title to be a part of the sortable -->
@@ -123,8 +175,8 @@ async function DeleteGroup(groupName: string) {
 						<div class="cursor-grab text-balance rounded-sm border border-slate-400 bg-white px-3 py-2 text-black">
 							{{ element.content }}
 
-							<!-- Edit & delete buttons -->
 							<div class="flex flex-row justify-end gap-2">
+								<!-- Edit item button -->
 								<Sheet>
 									<SheetTrigger as-child>
 										<button class="text-slate-600 transition-transform hover:scale-110" @click="modifyItemTextAreaValue = element.content">
@@ -149,6 +201,7 @@ async function DeleteGroup(groupName: string) {
 									</SheetContent>
 								</Sheet>
 
+								<!-- Delete item button -->
 								<button class="text-slate-600 transition-transform hover:scale-110" @click="DeleteItem(element.id, group.groupName)">
 									<Trash2 :size="18" color="red" />
 								</button>
@@ -187,7 +240,6 @@ async function DeleteGroup(groupName: string) {
 					</SheetFooter>
 				</SheetContent>
 			</Sheet>
-
 		</div>
 	</div>
 </template>
