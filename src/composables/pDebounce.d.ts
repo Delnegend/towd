@@ -9,6 +9,7 @@ declare namespace pDebounce {
 	}
 }
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 declare const pDebounce: {
 	/**
 	[Debounce](https://css-tricks.com/debouncing-throttling-explained-examples/) promise-returning & async functions.
@@ -35,7 +36,7 @@ declare const pDebounce: {
 	//=> 3
 	```
 	*/
-	<ArgumentsType extends unknown[], ReturnType>(
+	<ArgumentsType extends Array<unknown>, ReturnType>(
 		fn: (...arguments: ArgumentsType) => PromiseLike<ReturnType> | ReturnType,
 		wait: number,
 		options?: pDebounce.Options
@@ -68,7 +69,7 @@ declare const pDebounce: {
 	//=> 1
 	```
 	*/
-	promise<ArgumentsType extends unknown[], ReturnType>(
+	promise<ArgumentsType extends Array<unknown>, ReturnType>(
 		function_: (...arguments: ArgumentsType) => PromiseLike<ReturnType> | ReturnType
 	): (...arguments: ArgumentsType) => Promise<ReturnType>;
 };
