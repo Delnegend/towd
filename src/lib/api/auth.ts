@@ -13,19 +13,14 @@ async function Login(tempKey: string): Promise<void> {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
 		},
 		body: JSON.stringify({
 			tempKey,
 		}),
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 	});
 	if (!resp.ok) {
 		throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);
-	}
-
-	if (import.meta.dev) {
-		const sessionSecret = ((await resp.json()) as { sessionSecret: string }).sessionSecret;
-		window.localStorage.setItem("sessionSecret", sessionSecret);
 	}
 }
 
@@ -40,6 +35,7 @@ async function Logout(): Promise<void> {
 	})();
 	const resp = await fetch(endpoint, {
 		method: 'DELETE',
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 	});
 	if (!resp.ok) {
 		throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);

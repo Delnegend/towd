@@ -26,10 +26,8 @@ async function LoadKanbanTable(): Promise<KanbanTableReqRespBody> {
 	})()
 	const resp = await fetch(endpoint, {
 		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
-		},
+		headers: { "Content-Type": "application/json" },
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 	});
 	if (!resp.ok) {
 		throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);
@@ -49,10 +47,8 @@ async function SaveKanbanTable(data: KanbanTableReqRespBody): Promise<void> {
 	})();
 	const resp = await fetch(endpoint, {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
-		},
+		headers: { "Content-Type": "application/json" },
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 		body: JSON.stringify(data),
 	});
 	if (!resp.ok) {

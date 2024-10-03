@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 
+
 export interface GetEventsReqBody {
 	startDateUnixUTC: number;
 	endDateUnixUTC: number;
@@ -31,8 +32,8 @@ async function GetEvents(data: GetEventsReqBody): Promise<Array<OneEventRespBody
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
 		},
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 		body: JSON.stringify(data),
 	});
 	if (!resp_.ok) {
@@ -66,8 +67,8 @@ async function CreateEvent(data: CreateEventReqBody): Promise<string> {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
 		},
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 		body: JSON.stringify(data),
 	});
 	if (!resp.ok) {
@@ -96,6 +97,7 @@ async function ModifyEvent(data: ModifyEventReqBody): Promise<void> {
 		headers: {
 			"Content-Type": "application/json",
 		},
+		credentials: import.meta.dev ? 'include' : 'same-origin',
 		body: JSON.stringify(data),
 	});
 	if (!resp.ok) {
@@ -114,9 +116,7 @@ async function DeleteEvent(id: string): Promise<void> {
 	})();
 	const resp_ = await fetch(endpoint, {
 		method: "DELETE",
-		headers: {
-			...(import.meta.dev ? { 'Authorization': `Bearer ${  window.localStorage.getItem("sessionSecret")}` } : {}),
-		},
+		credentials: import.meta.dev ? 'include' : 'same-origin'
 	});
 	if (!resp_.ok) {
 		throw new Error(`${resp_.status} ${(await resp_.text()).slice(0, 200)}`);
