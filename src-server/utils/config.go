@@ -112,11 +112,11 @@ func NewConfig() *Config {
 			info, err := os.Stat(staticWebClientDir)
 			if err != nil {
 				slog.Error("can't get info of STATIC_WEB_CLIENT_DIR", "error", err)
-				os.Exit(1)
+				return ""
 			}
 			if !info.IsDir() {
 				slog.Error("STATIC_WEB_CLIENT_DIR is not a directory", "error", err)
-				os.Exit(1)
+				return ""
 			}
 
 			slog.Debug("env", "STATIC_WEB_CLIENT_DIR", staticWebClientDir)

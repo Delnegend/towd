@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"syscall"
 	"towd/src-server/utils"
 )
 
@@ -14,12 +13,14 @@ func SPA(muxer *http.ServeMux, as *utils.AppState) {
 	indexFile, err := files.Open("index.html")
 	if err != nil {
 		slog.Error("Can't open index.html", "err", err)
-		as.AppCloseSignalChan <- syscall.SIGTERM
+		// as.AppCloseSignalChan <- syscall.SIGTERM
+		return
 	}
 	indexFileStat, err := indexFile.Stat()
 	if err != nil {
 		slog.Error("Can't get index.html stat", "err", err)
-		as.AppCloseSignalChan <- syscall.SIGTERM
+		// as.AppCloseSignalChan <- syscall.SIGTERM
+		return
 	}
 
 	muxer.HandleFunc("GET /{filepath...}", func(w http.ResponseWriter, r *http.Request) {
