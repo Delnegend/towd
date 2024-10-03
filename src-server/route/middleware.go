@@ -24,9 +24,6 @@ func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Req
 			}
 			return ""
 		}()
-		if as.Config.GetDev() && sessionSecret == "" {
-			sessionSecret = strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		}
 		if sessionSecret == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Session secret cookie not found"))
