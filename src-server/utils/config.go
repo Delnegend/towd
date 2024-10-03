@@ -28,11 +28,11 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		port: func() string {
-			port := os.Getenv("PORT")
+			port := os.Getenv("SERVER_PORT")
 			if port == "" {
 				port = "8080"
 			}
-			slog.Debug("env", "PORT", port)
+			slog.Debug("env", "SERVER_PORT", port)
 			return port
 		}(),
 
