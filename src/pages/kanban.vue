@@ -12,7 +12,8 @@ const KanbanBoard: Ref<KanbanTableReqRespBody> = ref({
 onMounted(async () => {
 	try {
 		KanbanBoard.value = await LoadKanbanTable();
-		if (KanbanBoard.value.groups == null) {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		if (KanbanBoard.value.groups === null) {
 			KanbanBoard.value.groups = [];
 		}
 	} catch (error) {
