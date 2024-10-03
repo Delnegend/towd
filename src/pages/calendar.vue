@@ -118,6 +118,32 @@ function handleTransitionEnd(target: EventTarget | null) {
 
 	element.style.zIndex = "0";
 }
+
+/** Extracts links from an event description */
+function extractLinks(desc?: string): Array<string> {
+	if (desc === undefined) {
+		return [];
+	}
+
+	const regex = /(https?:\/\/[^\s]+)/ug;
+	const matches = desc.match(regex);
+	if (matches === null) {
+		return [];
+	}
+
+	return matches.reduce((acc, match) => {
+		if (match.includes("support.google.com/a/users/answer/928")) {
+			return acc;
+		}
+
+		let url = match.replaceAll("https://", "").replaceAll("http://", "");
+		if (url.endsWith("\\")) {
+			url = url.slice(0, -1);
+		}
+
+		return [...acc, url];
+	}, [] as Array<string>);
+}
 </script>
 
 <template>
@@ -196,13 +222,24 @@ function handleTransitionEnd(target: EventTarget | null) {
 								-
 								{{ e.endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) }}
 							</div>
-							<!-- <span class="break-words">{{ e.description }}</span> -->
-							<span>{{ e.location }}</span>
+							<span v-if="e.location">{{ e.location }}</span>
+
 						</PopoverTrigger>
-						<PopoverContent
-							side="right"
-							align="start">
-							Test
+						<PopoverContent side="right" align="start" class="overflow-x-auto">
+							<div v-if="e.description || e.url">
+								<div class="text-lg font-bold">Description</div>
+								{{ e.description?.replaceAll("\\n", "\n").replaceAll("\\ n", "\n") }}
+								<div class="text-lg font-bold">Links</div>
+								<a v-if="e.url" class="flex flex-row gap-x-2 text-blue-600 hover:underline" :href="e.url" target="_blank">
+									{{ e.url }}
+								</a>
+								<a v-for="link in extractLinks(e.description)" :key="link" class="flex flex-row gap-x-2 text-blue-600 hover:underline" :href="`https://${link}`" target="_blank">
+									{{ link }}
+								</a>
+							</div>
+							<div v-else>
+								There's nothing here.
+							</div>
 						</PopoverContent>
 					</Popover>
 				</div>
