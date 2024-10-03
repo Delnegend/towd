@@ -17,9 +17,7 @@ import (
 func Auth(muxer *http.ServeMux, as *utils.AppState) {
 	// logout
 	muxer.HandleFunc("DELETE /auth", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Set-Cookie", "authorization=; Path=/; HttpOnly; SameSite=Lax")
-		w.Header().Set("Set-Cookie", "uid=; Path=/; HttpOnly; SameSite=Lax")
-
+		w.Header().Set("Set-Cookie", SessionSecretCookieName+"=; Path=/; HttpOnly; SameSite=Lax")
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -116,13 +114,7 @@ func Auth(muxer *http.ServeMux, as *utils.AppState) {
 		case !allowThrough:
 			return
 		}
-
-		switch as.Config.GetDev() {
-		case true:
-			w.Write([]byte(fmt.Sprintf(`{"sessionSecret": "%s"}`, newSessionSecret)))
-		case false:
-			w.Header().Set("Set-Cookie", "session-secret="+newSessionSecret+"; Path=/; HttpOnly; SameSite=Lax")
-		}
+		w.Header().Set("Set-Cookie", SessionSecretCookieName+"="+newSessionSecret+"; Path=/; HttpOnly; SameSite=Strict; Secure")
 		w.WriteHeader(http.StatusOK)
 	})
 }

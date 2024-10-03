@@ -138,22 +138,8 @@ func main() {
 		route.Calendar(muxer, as)
 		route.Kanban(muxer, as)
 		route.SPA(muxer, as)
-		if err := http.ListenAndServe(":"+as.Config.GetPort(), func() http.Handler {
-			// DANGER: DO NOT USE THIS IN PRODUCTION
-			if as.Config.GetDev() {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Access-Control-Allow-Credentials", "true")
-					w.Header().Set("Access-Control-Allow-Origin", "*")
-					w.Header().Set("Access-Control-Allow-Methods", "*")
-					w.Header().Set("Access-Control-Allow-Headers", "*")
-					if r.Method == http.MethodOptions {
-						return
-					}
-					muxer.ServeHTTP(w, r)
-				})
-			}
-			return muxer
-		}()); err != nil {
+
+		if err := http.ListenAndServe(":"+as.Config.GetPort(), muxer); err != nil {
 			slog.Error("cannot start HTTP server", "error", err)
 			as.AppCloseSignalChan <- syscall.SIGTERM
 		}
