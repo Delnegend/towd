@@ -5,19 +5,6 @@ import { GetEvents, type OneEventRespBody } from '~/lib/api';
 import { getWeekUTCTimestamps } from '~/lib/getWeekUTCTimestamp';
 
 const CELL_HEIGHT = 50;
-const events = ref<Array<OneEventRespBody>>([]);
-const { startOfWeekUTCTimestamp, endOfWeekUTCTimestamp } = getWeekUTCTimestamps();
-
-onMounted(async () => {
-	try {
-		events.value = await GetEvents({ startDateUnixUTC: startOfWeekUTCTimestamp, endDateUnixUTC: endOfWeekUTCTimestamp });
-	} catch (error) {
-		toast.error("Can't fetch events", {
-			description: `${error}`,
-		});
-	}
-});
-
 interface ProcessedEvent {
 	id: string;
 	title: string;
@@ -32,9 +19,20 @@ interface ProcessedEvent {
 	cssEventHeight: string;
 }
 const processedEvents = ref<Record<number, Array<ProcessedEvent>>>({});
-watch(events, () => {
-	const result: Record<number, Array<ProcessedEvent>> = {};
-	for (const event of events.value) {
+const { startOfWeekUTCTimestamp, endOfWeekUTCTimestamp } = getWeekUTCTimestamps();
+
+onMounted(async () => {
+	let rawEvents: Array<OneEventRespBody>;
+	try {
+		rawEvents = await GetEvents({ startDateUnixUTC: startOfWeekUTCTimestamp, endDateUnixUTC: endOfWeekUTCTimestamp });
+	} catch (error) {
+		toast.error("Can't fetch events", {
+			description: `${error}`,
+		});
+		return
+	}
+
+	for (const event of rawEvents) {
 		const startDate = new Date(event.startDateUnixUTC * 1000);
 		const endDate = new Date(event.endDateUnixUTC * 1000);
 
@@ -43,7 +41,12 @@ watch(events, () => {
 		const eventHeight = (endHour - startHour) * CELL_HEIGHT - 2;
 		const spaceTop = (startDate.getHours() + startDate.getMinutes() / 60) * CELL_HEIGHT;
 
-		result[startDate.getDate()].push({
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		if (processedEvents.value[startDate.getDate()] == null) {
+			processedEvents.value[startDate.getDate()] = [];
+		}
+
+		processedEvents.value[startDate.getDate()].push({
 			id: event.id,
 			title: event.title,
 			description: event.description,
@@ -56,13 +59,11 @@ watch(events, () => {
 			cssEventHeight: `${eventHeight}px`,
 		});
 	}
-
-	processedEvents.value = result;
 });
 
 const currentWeekdays: Array<Date> = (() => {
 	const currentDate = new Date();
-	const firstDay = currentDate.getDate() - currentDate.getDay() + 1;
+	const firstDay = currentDate.getDate() - (currentDate.getDay() === 0 ? 6 : currentDate.getDay()) + 1;
 	const lastDay = firstDay + 6;
 
 	const weekdays: Array<Date> = [];
