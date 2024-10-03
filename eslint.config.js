@@ -11,8 +11,8 @@ export default withNuxt([
 			"indent": ["error", "tab"],
 		}
 	},
-]).prepend([
 	{ name: "towd/include-exclude", files: ["src/**/*.{vue,ts}"], ignores: ["src/components/ui/*"] },
+]).prepend([
 	...hagemanto(),
 	...tailwind.configs["flat/recommended"],
 
