@@ -27,6 +27,7 @@ const SaveKanbanTableDebounced = pDebounce(async () => {
 	if (KanbanBoard.value.groups.length === 0) {
 		return;
 	}
+
 	try {
 		await SaveKanbanTable(KanbanBoard.value);
 	} catch (error) {
@@ -98,6 +99,7 @@ async function DeleteGroup(groupName: string) {
 			break;
 		}
 	}
+
 	await SaveKanbanTableDebounced();
 }
 
