@@ -65,7 +65,7 @@ func Calendar(muxer *http.ServeMux, as *utils.AppState) {
 				Where("start_date >= ?", startDate.Unix()).
 				Where("end_date <= ?", endDate.Unix()).
 				Relation("Attendees").
-				Scan(r.Context(), &eventModels); err != nil {
+				Scan(r.Context()); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("Can't get events"))
 				return
