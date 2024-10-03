@@ -12,13 +12,16 @@ import (
 
 type SessionCtxKeyType string
 
-const SessionCtxKey SessionCtxKeyType = "session"
+const (
+	SessionCtxKey           SessionCtxKeyType = "session"
+	SessionSecretCookieName string            = "session-secret"
+)
 
 func AuthMiddleware(as *utils.AppState, next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// extract session secret from cookies
 		sessionSecret := func() string {
-			sessionCookie, err := r.Cookie("session-secret")
+			sessionCookie, err := r.Cookie(SessionSecretCookieName)
 			if err == nil {
 				return strings.TrimSpace(sessionCookie.Value)
 			}
