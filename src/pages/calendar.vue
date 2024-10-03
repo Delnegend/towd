@@ -130,17 +130,14 @@ function handleTransitionEnd(target: EventTarget | null) {
 				class="group flex flex-col items-center justify-center gap-1 py-4"
 				:class="{
 					'today': wday.getDate() == new Date().getDate(),
-				}"
-			>
+				}">
 				<div
-					class="w-20 px-4 text-center text-sm text-gray-600 group-[.today]:text-blue-600"
-				>
+					class="w-20 px-4 text-center text-sm text-gray-600 group-[.today]:text-blue-600">
 					{{ wday.toLocaleString('en-US', { weekday: 'short' }).slice(0, 3).toUpperCase() }}
 				</div>
 
 				<div
-					class=" aspect-square rounded-full  p-2 text-center text-2xl font-semibold  text-gray-500 group-[.today]:bg-blue-600 group-[.today]:text-white group-[.today]:shadow-md"
-				>
+					class=" aspect-square rounded-full  p-2 text-center text-2xl font-semibold  text-gray-500 group-[.today]:bg-blue-600 group-[.today]:text-white group-[.today]:shadow-md">
 					{{ wday.getDate() }}
 				</div>
 			</div>
@@ -154,8 +151,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 					v-for="(item, index) in hourStrings"
 					:key="index"
 					class="flex flex-col items-center justify-center"
-					:style="`height: ${CELL_HEIGHT}px`"
-				>
+					:style="`height: ${CELL_HEIGHT}px`">
 					<div class="w-20 -translate-y-8 text-center">
 						{{ item }}
 					</div>
@@ -168,8 +164,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 				<div
 					v-for="(day, weekdayIdx) in currentWeekdays"
 					:key="`${day}${weekdayIdx}`"
-					class="relative flex flex-col"
-				>
+					class="relative flex flex-col">
 					<!-- Each row is an hour -->
 					<div
 						v-for="hour in hourStrings"
@@ -178,14 +173,11 @@ function handleTransitionEnd(target: EventTarget | null) {
 						:style="{
 							borderRightWidth: weekdayIdx === 6 ? '1px' : '0px',
 							height: `${CELL_HEIGHT}px`,
-						}"
-					/>
+						}" />
 
 					<!-- Each element is an event -->
-					<Popover>
+					<Popover v-for="e in processedEvents[day.getDate()]" :key="e.id">
 						<PopoverTrigger
-							v-for="e in processedEvents[day.getDate()]"
-							:key="e.id"
 							class="absolute m-px flex w-[calc(100%-0.5rem)] flex-col justify-start overflow-hidden rounded-md border border-white bg-green-500 px-3 py-2 text-start text-white shadow-md hover:z-10 hover:scale-[1.03] hover:shadow-lg"
 							:style="{
 								top: e.cssSpaceTop,
@@ -197,8 +189,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 							}"
 							@mouseenter="handleMouseEnterEvent($event.target)"
 							@mouseleave="handleMouseLeaveEvent($event.target, e.cssEventHeight)"
-							@transitionend="handleTransitionEnd($event.target)"
-						>
+							@transitionend="handleTransitionEnd($event.target)">
 							<span class="font-bold">{{ e.title }}</span>
 							<div class="text-sm">
 								{{ e.startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) }}
@@ -210,8 +201,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 						</PopoverTrigger>
 						<PopoverContent
 							side="right"
-							align="start"
-						>
+							align="start">
 							Test
 						</PopoverContent>
 					</Popover>
@@ -224,8 +214,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 						left: currTimeCursorPos.top,
 						top: currTimeCursorPos.left,
 						transition: 'opacity 0.3s',
-					}"
-				/>
+					}" />
 			</div>
 		</div>
 	</div>
