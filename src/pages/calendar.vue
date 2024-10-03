@@ -196,7 +196,7 @@ function handleTransitionEnd(target: EventTarget | null) {
 								-
 								{{ e.endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) }}
 							</div>
-							<span>{{ e.description }}</span>
+							<!-- <span class="break-words">{{ e.description }}</span> -->
 							<span>{{ e.location }}</span>
 						</PopoverTrigger>
 						<PopoverContent
