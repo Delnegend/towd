@@ -178,8 +178,8 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}()
 		switch {
 		case err != nil:
-			// edit the deferred message
 			msg := fmt.Sprintf("Can't ask for confirmation, can't continue: %s", err.Error())
+			// edit ask confirmation message
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
@@ -192,7 +192,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		case !isContinue:
-			// respond to button request
+			// respond ask confirmation message
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
