@@ -192,6 +192,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if err := as.BunDB.
 				NewSelect().
 				Model(oldEvent).
+				Relation("Attendees").
 				Where("id = ?", newEventModel.ID).
 				Scan(context.Background()); err != nil {
 				return false, false, fmt.Errorf("can't get old event: %w", err)
