@@ -41,6 +41,8 @@ type AppState struct {
 	// all channels in this list will be also sent a signal
 	gracefulShutdownChans      []*chan struct{}
 	gracefulShutdownChansMutex sync.RWMutex
+
+	Natural Natural
 }
 
 func NewAppState() *AppState {
@@ -95,6 +97,15 @@ func NewAppState() *AppState {
 		AppCloseSignalChan:         make(chan os.Signal, 1),
 		gracefulShutdownChans:      make([]*chan struct{}, 0),
 		gracefulShutdownChansMutex: sync.RWMutex{},
+
+		Natural: func() Natural {
+			natural, err := InitNatural(config.GetGroqApiKey())
+			if err != nil {
+				slog.Error("cannot initialize Natural", "error", err)
+				os.Exit(1)
+			}
+			return natural
+		}(),
 	}
 }
 
