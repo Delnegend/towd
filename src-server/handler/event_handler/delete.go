@@ -178,17 +178,15 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}()
 		switch {
 		case err != nil:
-			msg := fmt.Sprintf("Can't ask for confirmation, can't continue: %s", err.Error())
+			return fmt.Errorf("event_handler::deleteHandler: %w", err)
+		case timeout:
 			// edit ask confirmation message
+			msg := "Timed out waiting for confirmation."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
+				Embeds:  &[]*discordgo.MessageEmbed{},
 			}); err != nil {
-				slog.Warn("deleteEventHandler: can't respond about can't ask for confirmation", "error", err)
-			}
-			return fmt.Errorf("deleteEventHandler: can't ask for confirmation: %w", err)
-		case timeout:
-			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
-				slog.Warn("deleteEventHandler: can't send timed out waiting for confirmation message", "error", err)
+				slog.Warn("event_handler::deleteHandler: can't respond about event deletion timed out", "error", err)
 			}
 			return nil
 		case !isContinue:
