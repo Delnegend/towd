@@ -23,8 +23,8 @@ func Init(as *utils.AppState) {
 	)
 
 	// injecting info and handler into 2 local maps
-	createManual(as, &localCmdInfo, localCmdHandler)
 	create(as, &localCmdInfo, localCmdHandler)
+	natural(as, &localCmdInfo, localCmdHandler)
 	delete(as, &localCmdInfo, localCmdHandler)
 	list(as, &localCmdInfo, localCmdHandler)
 	modify(as, &localCmdInfo, localCmdHandler)
