@@ -11,6 +11,7 @@ import (
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -23,34 +24,86 @@ func create(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, 
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "content",
-				Description: "Describe the event in detail.",
+				Name:        "title",
+				Description: "The title of the event.",
 				Required:    true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "start",
+				Description: "The start date of the event.",
+				Required:    true,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "description",
+				Description: "Describe the event in detail.",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "end",
+				Description: "The end date of the event.",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionBoolean,
+				Name:        "whole-day",
+				Description: "Is the event a whole day event?",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "location",
+				Description: "The location of the event.",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "url",
+				Description: "The URL of the event.",
+				Required:    false,
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "invitees",
+				Description: "List the invitees of the event, each separated by a comma.",
+				Required:    false,
 			},
 		},
 	})
-	cmdHandler[id] = createEventHandler(as)
+	cmdHandler[id] = createHandler(as)
 }
 
-func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 		if err := ensureCalendarExists(as, s, i); err != nil {
-			return err
+			return fmt.Errorf("createEventManualHandler: can't ensure calendar exists: %w", err)
 		}
 
-		// respond to the original request
+		// send defer message
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("createEventHandler: can't send defer message", "error", err)
+			slog.Warn("createEventManualHandler: can't send defer message", "error", err)
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
-		// #region - get the content
-		content := func() string {
+		// #region - collect data
+		var attendeeModels []model.Attendee
+		eventModel, err := func() (*model.Event, error) {
+			eventModel := new(model.Event)
+			eventModel.ID = uuid.NewString()
+			eventModel.CalendarID = i.ChannelID
+			eventModel.ChannelID = i.ChannelID
+			eventModel.NotificationSent = false
+			if i.Member != nil && i.Member.User != nil {
+				eventModel.Organizer = i.Member.User.Username
+			}
+
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
 				map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options),
@@ -58,38 +111,68 @@ func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 			for _, opt := range options {
 				optionMap[opt.Name] = opt
 			}
-			if opt, ok := optionMap["content"]; ok {
-				return strings.TrimSpace(opt.StringValue())
-			}
-			return ""
-		}()
-		if content == "" {
-			// edit the deferred message
-			msg := "Event content is empty."
-			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-			}); err != nil {
-				slog.Warn("createEventHandler: can't respond about event content is empty", "error", err)
-			}
-			return nil
-		}
-		// #endregion
 
-		// #region - natural text -> event model
-		eventModel := new(model.Event)
-		eventModel.CalendarID = i.ChannelID
-		eventModel.ChannelID = i.ChannelID
-		if i.Member != nil && i.Member.User != nil {
-			eventModel.Organizer = i.Member.User.Username
-		}
-		attendeeModels, err := eventModel.FromNaturalText(context.Background(), as, content)
+			if value, ok := optionMap["title"]; ok {
+				eventModel.Summary = utils.CleanupString(value.StringValue())
+			}
+			if value, ok := optionMap["description"]; ok {
+				eventModel.Description = utils.CleanupString(value.StringValue())
+			}
+			if value, ok := optionMap["location"]; ok {
+				eventModel.Location = utils.CleanupString(value.StringValue())
+			}
+			if value, ok := optionMap["url"]; ok {
+				eventModel.URL = utils.CleanupString(value.StringValue())
+			}
+			if value, ok := optionMap["start"]; ok {
+				result, err := as.When.Parse(value.StringValue(), time.Now())
+				if err != nil {
+					return nil, fmt.Errorf("can't parse start date: %w", err)
+				}
+				eventModel.StartDateUnixUTC = result.Time.UTC().Unix()
+			}
+			if value, ok := optionMap["end"]; ok {
+				result, err := as.When.Parse(value.StringValue(), time.Now())
+				if err != nil {
+					return nil, fmt.Errorf("can't parse end date: %w", err)
+				}
+				eventModel.EndDateUnixUTC = result.Time.UTC().Unix()
+			}
+			if value, ok := optionMap["invitees"]; ok {
+				rawString := value.StringValue()
+				for _, attendee := range strings.Split(rawString, ",") {
+					attendee := strings.TrimSpace(attendee)
+					if attendee != "" {
+						attendeeModels = append(attendeeModels, model.Attendee{
+							EventID: eventModel.ID,
+							Data:    attendee,
+						})
+					}
+				}
+			}
+			if value, ok := optionMap["whole-day"]; ok {
+				eventModel.IsWholeDay = value.BoolValue()
+				startDate := time.Unix(eventModel.StartDateUnixUTC, 0)
+				endDate := time.Unix(eventModel.EndDateUnixUTC, 0)
+				if eventModel.IsWholeDay {
+					startDate = startDate.Truncate(24 * time.Hour)
+					endDate = endDate.Truncate(24 * time.Hour)
+				}
+				eventModel.StartDateUnixUTC = startDate.UTC().Unix()
+				eventModel.EndDateUnixUTC = endDate.UTC().Unix()
+			}
+
+			return eventModel, nil
+		}()
 		if err != nil {
-			// edit the deferred message
-			msg := fmt.Sprintf("Can't create event\n```\n%s\n```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: &msg,
+			// respond to original request
+			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Invalid data provided\n```%s```", err.Error()),
+				},
 			}); err != nil {
-				slog.Warn("createEventHandler: can't respond about can't parse event data", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about invalid data provided", "error", err)
 			}
 			return nil
 		}
@@ -103,26 +186,26 @@ func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 			cancelCh := make(chan struct{})
 			defer close(confirmCh)
 			defer close(cancelCh)
-
-			// edit the deferred message
-			msg := "Is this correct?"
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-				Embeds: &[]*discordgo.MessageEmbed{
-					eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
-				},
-				Components: &[]discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							discordgo.Button{
-								Label:    "Yes",
-								Style:    discordgo.SuccessButton,
-								CustomID: yesCustomId,
-							},
-							discordgo.Button{
-								Label:    "Cancel",
-								Style:    discordgo.DangerButton,
-								CustomID: cancelCustomId,
+			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Is this correct?",
+					Embeds: []*discordgo.MessageEmbed{
+						eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
+					},
+					Components: []discordgo.MessageComponent{
+						discordgo.ActionsRow{
+							Components: []discordgo.MessageComponent{
+								discordgo.Button{
+									Label:    "Yes",
+									Style:    discordgo.SuccessButton,
+									CustomID: yesCustomId,
+								},
+								discordgo.Button{
+									Label:    "Cancel",
+									Style:    discordgo.PrimaryButton,
+									CustomID: cancelCustomId,
+								},
 							},
 						},
 					},
@@ -130,8 +213,6 @@ func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 			}); err != nil {
 				return false, false, fmt.Errorf("can't ask for confirmation, can't continue: %w", err)
 			}
-
-			// add handlers for buttons
 			as.AddAppCmdHandler(yesCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 				interaction = i.Interaction
 				confirmCh <- struct{}{}
@@ -146,38 +227,59 @@ func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 			defer as.RemoveAppCmdHandler(cancelCustomId)
 
 			select {
+			case <-time.After(time.Minute * 2):
+				return false, true, nil
 			case <-cancelCh:
 				return false, false, nil
 			case <-confirmCh:
 				return true, false, nil
-			case <-time.After(time.Minute * 2):
-				return false, false, fmt.Errorf("timeout waiting for confirmation")
 			}
 		}()
 		switch {
 		case err != nil:
-			// edit the deferred message
-			msg := fmt.Sprintf("Can't ask for confirmation, can't continue: %s", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-			}); err != nil {
-				slog.Warn("createEventHandler: can't respond about can't ask for confirmation", "error", err)
-			}
-			return nil
+			return fmt.Errorf("event_handler::createHandler: %w", err)
 		case timeout:
-			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
-				slog.Warn("createEventHandler: can't send timed out waiting for confirmation message", "error", err)
+			// edit ask confirmation message
+			msg := "Timed out waiting for confirmation."
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Content:    &msg,
+				Components: &[]discordgo.MessageComponent{},
+			}); err != nil {
+				slog.Warn("createEventManualHandler: can't respond about event creation timed out", "error", err)
 			}
 			return nil
 		case !isContinue:
-			// respond to button request
+			// response ask confirmation message
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: "Event creation canceled.",
 				},
 			}); err != nil {
-				slog.Warn("createEventHandler: can't respond about event creation canceled", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about event creation canceled", "error", err)
+			}
+			// edit ask for confirmation message to disable buttons
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Components: &[]discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.Button{
+								Label:    "Yes",
+								Style:    discordgo.SuccessButton,
+								CustomID: "",
+								Disabled: true,
+							},
+							discordgo.Button{
+								Label:    "Cancel",
+								Style:    discordgo.DangerButton,
+								CustomID: "",
+								Disabled: true,
+							},
+						},
+					},
+				},
+			}); err != nil {
+				slog.Warn("createEventManualHandler: can't edit ask for confirmation message to disable buttons", "error", err)
 			}
 			return nil
 		}
@@ -186,41 +288,64 @@ func createEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discor
 		// #region - insert to db
 		startTimer = time.Now()
 		if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+			eventModel.CreatedAt = time.Now().UTC().Unix()
 			if err := eventModel.Upsert(ctx, tx); err != nil {
 				return err
 			}
-			if len(attendeeModels) > 0 {
-				if _, err := tx.NewInsert().
-					Model(&attendeeModels).
-					Exec(ctx); err != nil {
-					return fmt.Errorf("can't insert attendees: %w", err)
-				}
+			if _, err := tx.NewInsert().
+				Model(&attendeeModels).
+				Exec(ctx); err != nil {
+				return err
 			}
 			return nil
 		}); err != nil {
-			// respond to button request
+			// respond to button
 			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: fmt.Sprintf("Can't insert event to database\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("createEventHandler: can't respond about can't insert event to database", "error", err)
+				slog.Warn("createEventManualHandler: can't respond about can't insert event to database", "error", err)
 			}
-			return fmt.Errorf("createEventHandler: can't insert event to database: %w", err)
+			return fmt.Errorf("createEventManualHandler: can't insert event to database: %w", err)
 		}
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
-		// respond to button request
+		// respond to button
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "Event created.",
 			},
 		}); err != nil {
-			slog.Warn("createEventHandler: can't respond about event creation success", "error", err)
+			slog.Warn("createEventManualHandler: can't respond about event creation success", "error", err)
 		}
+		// edit ask for confirmation message to disable buttons
+		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			Components: &[]discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label:    "Yes",
+							Style:    discordgo.SuccessButton,
+							CustomID: "",
+							Disabled: true,
+						},
+						discordgo.Button{
+							Label:    "Cancel",
+							Style:    discordgo.DangerButton,
+							CustomID: "",
+							Disabled: true,
+						},
+					},
+				},
+			},
+		}); err != nil {
+			slog.Warn("createEventManualHandler: can't edit ask for confirmation message to disable buttons", "error", err)
+		}
+
 		return nil
 	}
 }
