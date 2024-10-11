@@ -25,5 +25,5 @@
 	"mounts": [
 		"source=global-pnpm-store,target=/home/vscode/.pnpm-store,type=volume"
 	],
-	"postCreateCommand": "go install go.abhg.dev/requiredfield/cmd/requiredfield@latest"
+	"postCreateCommand": "zsh ./.devcontainer/postinstall.sh"
 }
