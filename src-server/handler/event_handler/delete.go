@@ -11,23 +11,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func Delete_(as *utils.AppState) {
-	id := "event-delete"
-	as.AddAppCmdHandler(id, deleteEventHandler(as))
-	as.AddAppCmdInfo(id, &discordgo.ApplicationCommand{
-		Name:        id,
-		Description: "Delete an event",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "event-id",
-				Description: "ID of the event to delete.",
-				Required:    true,
-			},
-		},
-	})
-}
-
 func delete(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cmdHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error) {
 	id := "delete"
 	*cmdInfo = append(*cmdInfo, &discordgo.ApplicationCommandOption{
