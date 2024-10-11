@@ -198,100 +198,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return false, false, fmt.Errorf("can't get old event: %w", err)
 			}
 
-			// these variables are only for the embed msg
-			var title string
-			description := "`None` `[unchanged]`"
-			startDate := "`None` `[unchanged]`"
-			endDate := "`None` `[unchanged]`"
-			url := "`None` `[unchanged]`"
-			location := "`None` `[unchanged]`"
-			attendees := "`None` `[unchanged]`"
-
-			switch newExist, oldExist := newEventModel.Summary != "", oldEvent.Summary != ""; {
-			case newExist && oldExist:
-				title = fmt.Sprintf("%s `[old value: %s]`", newEventModel.Summary, oldEvent.Summary)
-			case newExist && !oldExist:
-				title = fmt.Sprintf("%s `[old value: None]`", newEventModel.Summary)
-			case !newExist && oldExist:
-				title = fmt.Sprintf("%s `[unchanged]`", oldEvent.Summary)
-			}
-
-			switch newExist, oldExist := newEventModel.Description != "", oldEvent.Description != ""; {
-			case newExist && oldExist:
-				description = fmt.Sprintf("%s `[old value: %s]`", newEventModel.Description, oldEvent.Description)
-			case newExist && !oldExist:
-				description = fmt.Sprintf("%s `[old value: None]`", newEventModel.Description)
-			case !newExist && oldExist:
-				description = fmt.Sprintf("%s `[unchanged]`", oldEvent.Description)
-			}
-
-			switch newExist, oldExist := newEventModel.StartDateUnixUTC != 0, oldEvent.StartDateUnixUTC != 0; {
-			case newExist && oldExist:
-				startDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.StartDateUnixUTC, oldEvent.StartDateUnixUTC)
-			case newExist && !oldExist:
-				startDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.StartDateUnixUTC)
-			case !newExist && oldExist:
-				startDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.StartDateUnixUTC)
-			}
-
-			switch newExist, oldExist := newEventModel.EndDateUnixUTC != 0, oldEvent.EndDateUnixUTC != 0; {
-			case newExist && oldExist:
-				endDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", newEventModel.EndDateUnixUTC, oldEvent.EndDateUnixUTC)
-			case newExist && !oldExist:
-				endDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", newEventModel.EndDateUnixUTC)
-			case !newExist && oldExist:
-				endDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", oldEvent.EndDateUnixUTC)
-			}
-
-			switch newExist, oldExist := newEventModel.URL != "", oldEvent.URL != ""; {
-			case newExist && oldExist:
-				url = fmt.Sprintf("%s `[old value: %s]`", newEventModel.URL, oldEvent.URL)
-			case newExist && !oldExist:
-				url = fmt.Sprintf("%s `[old value: None]`", newEventModel.URL)
-			case !newExist && oldExist:
-				url = fmt.Sprintf("%s `[unchanged]`", oldEvent.URL)
-			}
-
-			switch newExist, oldExist := newEventModel.Location != "", oldEvent.Location != ""; {
-			case newExist && oldExist:
-				location = fmt.Sprintf("%s `[old value: %s]`", newEventModel.Location, oldEvent.Location)
-			case newExist && !oldExist:
-				location = fmt.Sprintf("%s `[old value: None]`", newEventModel.Location)
-			case !newExist && oldExist:
-				location = fmt.Sprintf("%s `[unchanged]`", oldEvent.Location)
-			}
-
-			oldAttendees := func() string {
-				var attendeeModels []model.Attendee
-				if err := as.BunDB.
-					NewSelect().
-					Model(&attendeeModels).
-					Where("event_id = ?", oldEvent.ID).
-					Scan(context.Background()); err != nil {
-					slog.Warn("can't get attendees", "handler", "modify-event", "purpose", "display-changes", "error", err)
-					return ""
-				}
-				attendees := make([]string, len(attendeeModels))
-				for i, attendee := range attendeeModels {
-					attendees[i] = attendee.Data
-				}
-				return strings.Join(attendees, ", ")
-			}()
-			newAttendees := func() string {
-				var attendees []string
-				for _, attendeeModel := range attendeeModels {
-					attendees = append(attendees, attendeeModel.Data)
-				}
-				return strings.Join(attendees, ", ")
-			}()
-			switch newExist, oldExist := newAttendees != "", oldAttendees != ""; {
-			case newExist && oldExist:
-				attendees = fmt.Sprintf("%s `[old value: %s]`", newAttendees, oldAttendees)
-			case newExist && !oldExist:
-				attendees = fmt.Sprintf("%s `[old value: None]`", newAttendees)
-			case !newExist && oldExist:
-				attendees = fmt.Sprintf("%s `[unchanged]`", oldAttendees)
-			}
+			diff := oldEvent.Diff(newEventModel)
 
 			msg := "Is this correct?"
 			// edit the deferred message
@@ -299,30 +206,30 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Content: &msg,
 				Embeds: &[]*discordgo.MessageEmbed{
 					{
-						Title:       title,
-						Description: description,
+						Title:       diff.Title,
+						Description: diff.Description,
 						Fields: []*discordgo.MessageEmbedField{
 							{
 								Name:   "Start Date",
-								Value:  startDate,
+								Value:  diff.StartDate,
 								Inline: true,
 							},
 							{
 								Name:   "End Date",
-								Value:  endDate,
+								Value:  diff.EndDate,
 								Inline: true,
 							},
 							{
 								Name:  "Location",
-								Value: location,
+								Value: diff.Location,
 							},
 							{
 								Name:  "URL",
-								Value: url,
+								Value: diff.URL,
 							},
 							{
 								Name:  "Attendees",
-								Value: attendees,
+								Value: diff.Attendees,
 							},
 						},
 						Footer: &discordgo.MessageEmbedFooter{
