@@ -82,6 +82,8 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	// #endregion
 
 	// #region - ask for confirmation
+	askForConfirmInteraction := i.Interaction
+	buttonInteraction := new(discordgo.Interaction)
 	isContinue, timeout, err := func() (bool, bool, error) {
 		yesCustomId := "yes-" + newEventModel.ID
 		cancelCustomId := "cancel-" + newEventModel.ID
@@ -115,12 +117,12 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 			return false, false, fmt.Errorf("can't ask for confirmation, can't continue: %w", err)
 		}
 		as.AddAppCmdHandler(yesCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-			interaction = i.Interaction
+			buttonInteraction = i.Interaction
 			confirmCh <- struct{}{}
 			return nil
 		})
 		as.AddAppCmdHandler(cancelCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-			interaction = i.Interaction
+			buttonInteraction = i.Interaction
 			cancelCh <- struct{}{}
 			return nil
 		})
