@@ -145,7 +145,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 								CustomID: yesCustomId,
 							},
 							discordgo.Button{
-								Label:    "No",
+								Label:    "Cancel",
 								Style:    discordgo.DangerButton,
 								CustomID: cancelCustomId,
 							},
