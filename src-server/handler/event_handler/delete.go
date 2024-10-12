@@ -223,7 +223,6 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			msg := "Timed out waiting for confirmation."
 			if _, err := s.InteractionResponseEdit(askForConfirmInteraction, &discordgo.WebhookEdit{
 				Content: &msg,
-				Embeds:  &[]*discordgo.MessageEmbed{},
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about event deletion timed out", "error", err)
 			}
