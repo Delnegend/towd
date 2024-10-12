@@ -16,8 +16,6 @@ import (
 )
 
 func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discordgo.InteractionCreate, naturalOutput utils.NaturalOutput) error {
-	interaction := i.Interaction
-
 	body, ok := naturalOutput.Body.(utils.NaturalOutputBodyForCreateOrUpdate)
 	if !ok {
 		// edit the deferred message
@@ -52,11 +50,11 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}
-	endDate, err := time.ParseInLocation("02/01/2006 15:04", body.End, as.Config.GetLocation())
+	endDate, err := time.ParseInLocation("02/01/2006 15:04", naturalOutput.Body.End, as.Config.GetLocation())
 	if err != nil {
 		// edit the deferred message
 		msg := fmt.Sprintf("Can't create event, invalid end date: %s", err.Error())
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
 			slog.Warn("event_handler:natural:create: can't respond about can't create event, invalid end date", "error", err)
@@ -66,7 +64,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	if startDate.After(endDate) {
 		// edit the deferred message
 		msg := "Can't create event, start date must be before end date."
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
 			slog.Warn("event_handler:natural:create: can't respond about can't create event, start date must be before end date", "error", err)
@@ -78,10 +76,10 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	// #region - init new event model
 	newEventModel := model.Event{
 		ID:               uuid.NewString(),
-		Summary:          body.Title,
-		Description:      body.Description,
-		Location:         body.Location,
-		URL:              body.URL,
+		Summary:          naturalOutput.Body.Title,
+		Description:      naturalOutput.Body.Description,
+		Location:         naturalOutput.Body.Location,
+		URL:              naturalOutput.Body.URL,
 		Organizer:        i.Member.User.Username,
 		StartDateUnixUTC: startDate.UTC().Unix(),
 		EndDateUnixUTC:   endDate.UTC().Unix(),
@@ -104,7 +102,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 
 		// edit the deferred message
 		msg := "You're creating a new event. Is this correct?"
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 			Embeds:  &[]*discordgo.MessageEmbed{newEventModel.ToDiscordEmbed(context.Background(), as.BunDB)},
 			Components: &[]discordgo.MessageComponent{
