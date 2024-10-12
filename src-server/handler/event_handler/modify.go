@@ -83,11 +83,9 @@ func modify(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, 
 
 func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		interaction := i.Interaction
-
 		// #region - reply w/ deferred
 		startTimer := time.Now()
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			// return fmt.Errorf("can't respond deferring msg, can't continue: %w", err)
@@ -171,7 +169,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		if err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Invalid event data\n```%s```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:modify: can't respond about can't parse input data", "error", err)
@@ -181,6 +179,8 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #endregion
 
 		// #region - ask for confirmation
+		askForConfirmInteraction := i.Interaction
+		buttonInteraction := new(discordgo.Interaction)
 		isContinue, timeout, err := func() (bool, bool, error) {
 			yesCustomId := "yes-" + newEventModel.ID
 			cancelCustomId := "cancel-" + newEventModel.ID
@@ -203,7 +203,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 
 			msg := "Is this correct?"
 			// edit the deferred message
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds: &[]*discordgo.MessageEmbed{
 					{
@@ -261,12 +261,12 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return false, false, fmt.Errorf("can't ask for confirmation, can't continue: %w", err)
 			}
 			as.AddAppCmdHandler(yesCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				interaction = i.Interaction
+				buttonInteraction = i.Interaction
 				confirmCh <- struct{}{}
 				return nil
 			})
 			as.AddAppCmdHandler(cancelCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				interaction = i.Interaction
+				buttonInteraction = i.Interaction
 				cancelCh <- struct{}{}
 				return nil
 			})
