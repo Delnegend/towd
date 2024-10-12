@@ -213,6 +213,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			slog.Warn("event_handler:delete: can't edit ask for confirmation message to disable buttons", "error", err)
 		}
 		// #endregion
+
 		// #region - handle ask-for-confirm cases
 		switch {
 		case err != nil:
