@@ -237,12 +237,10 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}()
 		// #endregion
 
-		// #region - reply to ask-for-confirm w/ deferred
-		if err := s.InteractionRespond(
-			interaction,
-			&discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-			},
+		// #region - reply to buttons click w/ deferred
+		if err := s.InteractionRespond(buttonInteraction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		},
 		); err != nil {
 			slog.Warn("event_handler:create: can't defer ask for confirmation message", "error", err)
 		}
