@@ -82,7 +82,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			return fmt.Errorf("event_handler:create: can't ensure calendar exists: %w", err)
 		}
 
-		// send defer message
+		// #region - reply w/ deferred
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -91,8 +91,9 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
-		// #region - collect data
+		// #region - parse user params
 		var attendeeModels []model.Attendee
 		eventModel, err := func() (*model.Event, error) {
 			eventModel := new(model.Event)
@@ -235,11 +236,17 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return true, false, nil
 			}
 		}()
+		// #endregion
+
+		// #region - reply to ask-for-confirm w/ deferred
+		// #endregion
+
+		// #region - handle ask-for-confirm cases
 		switch {
 		case err != nil:
 			return fmt.Errorf("event_handler::createHandler: %w", err)
 		case timeout:
-			// edit ask confirmation message
+			// edit ask for confirmation message
 			msg := "Timed out waiting for confirmation."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content:    &msg,
@@ -323,6 +330,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			slog.Warn("createEventManualHandler: can't respond about event creation success", "error", err)
 		}
 		// edit ask for confirmation message to disable buttons
+		// #region - edit the deferred response of the button
 		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 			Components: &[]discordgo.MessageComponent{
 				discordgo.ActionsRow{
@@ -345,6 +353,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}); err != nil {
 			slog.Warn("event_handler:create: can't edit deferred response of the button click", "error", err)
 		}
+		// #endregion
 
 		return nil
 	}

@@ -33,7 +33,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
-		// respond to original request
+		// #region - respond to original request
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -42,6 +42,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
 		// #region - get the event ID
 		eventID := func() string {
@@ -176,6 +177,11 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return true, false, nil
 			}
 		}()
+		// #endregion
+
+		// #region - reply buttons click w/ deferred
+		// #endregion
+		// #region - handle ask-for-confirm cases
 		switch {
 		case err != nil:
 			return fmt.Errorf("event_handler::deleteHandler: %w", err)
@@ -230,6 +236,8 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}); err != nil {
 			slog.Warn("event_handler:delete: can't edit deferred response of the button click", "error", err)
 		}
+		// #endregion
+
 		return nil
 	}
 }

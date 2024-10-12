@@ -85,7 +85,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
-		// respond to original request
+		// #region - reply w/ deferred
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -95,6 +95,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
 		// #region - get new event data
 		attendeeModels := make([]model.Attendee, 0)
@@ -281,6 +282,12 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return true, false, nil
 			}
 		}()
+		// #endregion
+
+		// #region - reply to ask-for-confirm w/ deferred
+		// #endregion
+
+		// #region - handle ask-for-confirm cases
 		switch {
 		case err != nil:
 			// respond to button request
@@ -356,9 +363,11 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			Data: &discordgo.InteractionResponseData{
 				Content: "Event updated.",
 			},
+		// #region - edit deferred response of button click
 		}); err != nil {
 			slog.Warn("event_handler:modify: can't respond about event update success", "error", err)
 		}
+		// #endregion
 
 		return nil
 	}

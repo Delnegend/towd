@@ -148,6 +148,10 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 			return true, false, nil
 		}
 	}()
+	// #region - reply buttons click w/ deferred
+	// #endregion
+
+	// #region - handle ask-for-confirm cases
 	switch {
 	case err != nil:
 		return fmt.Errorf("event_handler:natural:create -> handleActionTypeCreate: %w", err)
@@ -283,6 +287,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 				},
 			},
 		},
+	// #region - edit deffered response of button click
 	}); err != nil {
 		slog.Warn("naturalHandler: can't edit ask for confirmation message to disable buttons", "error", err)
 	}

@@ -47,7 +47,7 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 			return err
 		}
 
-		// respond to the original request
+		// #region - respond to the original request
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -56,6 +56,7 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
 		// #region - get user params
 		content, eventContextID := func() (string, string) {
