@@ -99,7 +99,7 @@ func NewAppState() *AppState {
 		gracefulShutdownChansMutex: sync.RWMutex{},
 
 		Natural: func() Natural {
-			natural, err := InitNatural(config.GetGroqApiKey())
+			natural, err := InitNatural(config)
 			if err != nil {
 				slog.Error("cannot initialize Natural", "error", err)
 				os.Exit(1)
