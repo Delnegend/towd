@@ -246,7 +246,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			Where("id = ?", eventID).
 			Where("channel_id = ?", i.Interaction.ChannelID).
 			Exec(context.WithValue(context.Background(), model.EventIDCtxKey, eventID)); err != nil {
-			// edit the deferred message
+			// edit deferred response of button click
 			msg := fmt.Sprintf("Can't delete event\n```\n%s\n```", err.Error())
 			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
 				Content: &msg,
