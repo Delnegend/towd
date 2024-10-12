@@ -188,6 +188,10 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	case !isContinue:
+		// edit deferred response of button click
+		msg := "Event creation canceled."
+		if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+			Content: &msg,
 		}); err != nil {
 			slog.Warn("event_handler:natural:create: can't respond about event creation canceled", "error", err)
 		}
