@@ -304,10 +304,12 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if err := eventModel.Upsert(ctx, tx); err != nil {
 				return err
 			}
-			if _, err := tx.NewInsert().
-				Model(&attendeeModels).
-				Exec(ctx); err != nil {
-				return err
+			if len(attendeeModels) > 0 {
+				if _, err := tx.NewInsert().
+					Model(&attendeeModels).
+					Exec(ctx); err != nil {
+					return err
+				}
 			}
 			return nil
 		}); err != nil {
