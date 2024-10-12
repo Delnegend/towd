@@ -216,7 +216,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #region - handle ask-for-confirm cases
 		switch {
 		case err != nil:
-			return fmt.Errorf("event_handler::deleteHandler: %w", err)
+			return fmt.Errorf("event_handler:delete: %w", err)
 		case timeout:
 			// edit ask confirmation message
 			msg := "Timed out waiting for confirmation."
