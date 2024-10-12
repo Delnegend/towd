@@ -228,12 +228,10 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		case !isContinue:
-			// respond ask confirmation message
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Event deletion canceled.",
-				},
+			// edit deferred response of button click
+			msg := "Event deletion canceled."
+			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about event deletion canceled", "error", err)
 			}
