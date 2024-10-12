@@ -343,29 +343,21 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #region - handle ask-for-confirm cases
 		switch {
 		case err != nil:
-			// respond to button request
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
-				},
-			}); err != nil {
-				slog.Error("modifyEventHandler: can't respond about can't ask for confirmation", "error", err)
-			}
-			return nil
+			return fmt.Errorf("event_handler:modify: %w", err)
 		case timeout:
-			// respond to nothing
-			if _, err := s.ChannelMessageSend(i.ChannelID, "Timed out waiting for confirmation."); err != nil {
-				slog.Warn("modifyEventHandler: can't send timed out waiting for confirmation message", "error", err)
+			// edit ask-for-confirm msg
+			msg := "Timed out waiting for confirmation."
+			if _, err := s.InteractionResponseEdit(askForConfirmInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("event_handler:modify: can't respond about event modification timed out", "error", err)
 			}
 			return nil
 		case !isContinue:
-			// respond to button request
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Event not modified.",
-				},
+			// edit deferred response of button click
+			msg := "Event not modified."
+			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:modify: can't respond about event modification canceled", "error", err)
 			}
@@ -396,12 +388,10 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}); err != nil {
-			// respond to button request
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
-				},
+			// edit deferred response of button click
+			msg := fmt.Sprintf("Can't update event\n```%s```", err.Error())
+			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:modify: can't respond about can't update event in database", "error", err)
 			}
@@ -410,13 +400,10 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
-		// respond to button request
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Event updated.",
-			},
 		// #region - edit deferred response of button click
+		msg := "Event updated."
+		if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+			Content: &msg,
 		}); err != nil {
 			slog.Warn("event_handler:modify: can't respond about event update success", "error", err)
 		}
