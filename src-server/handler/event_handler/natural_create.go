@@ -17,15 +17,17 @@ import (
 
 func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discordgo.InteractionCreate, naturalOutput utils.NaturalOutput) error {
 	// #region - validate
-	if _, err := url.ParseRequestURI(body.URL); err != nil {
-		// edit the deferred message
-		msg := fmt.Sprintf("Can't create event, invalid URL: %s", err.Error())
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-			Content: &msg,
-		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about can't create event, invalid URL", "error", err)
+	if naturalOutput.Body.URL != "" {
+		if _, err := url.ParseRequestURI(naturalOutput.Body.URL); err != nil {
+			// edit the deferred message
+			msg := fmt.Sprintf("Can't create event, invalid URL: %s", err.Error())
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			}); err != nil {
+				slog.Warn("event_handler:natural:create: can't respond about can't create event, invalid URL", "error", err)
+			}
+			return nil
 		}
-		return nil
 	}
 	startDate, err := time.ParseInLocation("02/01/2006 15:04", body.Start, as.Config.GetLocation())
 	if err != nil {
