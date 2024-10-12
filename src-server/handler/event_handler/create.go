@@ -180,6 +180,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #endregion
 
 		// #region - ask for confirmation
+		askForConfirmInteraction := interaction
 		isContinue, timeout, err := func() (bool, bool, error) {
 			yesCustomId := "yes-" + eventModel.ID
 			cancelCustomId := "cancel-" + eventModel.ID
