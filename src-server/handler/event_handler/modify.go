@@ -16,7 +16,7 @@ import (
 )
 
 func modify(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cmdHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error) {
-	id := "event-modify"
+	id := "modify"
 	*cmdInfo = append(*cmdInfo, &discordgo.ApplicationCommandOption{
 		Type:        discordgo.ApplicationCommandOptionSubCommand,
 		Name:        id,
