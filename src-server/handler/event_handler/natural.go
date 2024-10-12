@@ -2,18 +2,14 @@ package event_handler
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"strings"
 	"time"
 	"towd/src-server/model"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/google/uuid"
-	"github.com/uptrace/bun"
 )
 
 func natural(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cmdHandler map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate) error) {
