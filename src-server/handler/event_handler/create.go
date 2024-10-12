@@ -179,7 +179,8 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #endregion
 
 		// #region - ask for confirmation
-		askForConfirmInteraction := interaction
+		askForConfirmInteraction := i.Interaction
+		buttonInteraction := new(discordgo.Interaction)
 		isContinue, timeout, err := func() (bool, bool, error) {
 			yesCustomId := "yes-" + eventModel.ID
 			cancelCustomId := "cancel-" + eventModel.ID
@@ -213,12 +214,12 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return false, false, fmt.Errorf("can't ask for confirmation, can't continue: %w", err)
 			}
 			as.AddAppCmdHandler(yesCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				interaction = i.Interaction
+				buttonInteraction = i.Interaction
 				confirmCh <- struct{}{}
 				return nil
 			})
 			as.AddAppCmdHandler(cancelCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				interaction = i.Interaction
+				buttonInteraction = i.Interaction
 				cancelCh <- struct{}{}
 				return nil
 			})
