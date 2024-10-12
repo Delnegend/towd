@@ -124,9 +124,9 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 				Scan(context.Background()); err != nil {
 				slog.Warn("naturalHandler: can't scan event context", "error", err)
 			}
-			startTime := time.Unix(0, eventModel.StartDateUnixUTC).UTC()
+			startTime := time.Unix(0, naturalInputEventModel.StartDateUnixUTC).UTC()
 			startTimeStr := startTime.In(time.Now().Location()).Format("02/01/2006 15:04")
-			endTime := time.Unix(0, eventModel.EndDateUnixUTC).UTC()
+			endTime := time.Unix(0, naturalInputEventModel.EndDateUnixUTC).UTC()
 			endTimeStr := endTime.In(time.Now().Location()).Format("02/01/2006 15:04")
 			attendees := make([]string, len(naturalInputEventModel.Attendees))
 			for i, attendee := range naturalInputEventModel.Attendees {
@@ -137,8 +137,6 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 				Description: naturalInputEventModel.Description,
 				Start:       startTimeStr,
 				End:         endTimeStr,
-				Location:    eventModel.Location,
-				URL:         eventModel.URL,
 				Location:    naturalInputEventModel.Location,
 				URL:         naturalInputEventModel.URL,
 				Attendees:   attendees,
@@ -175,9 +173,9 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 		case utils.NaturalOutputActionTypeRead:
 			return handleActionTypeRead(as, s, i, naturalOutput)
 		case utils.NaturalOutputActionTypeUpdate:
-			return handleActionTypeUpdate(as, s, i, naturalOutput)
+			return handleActionTypeUpdate(as, s, i, naturalInputEventModel, naturalOutput)
 		case utils.NaturalOutputActionTypeDelete:
-			return handleActionTypeDelete(as, s, i, naturalInputEventContext, naturalOutput)
+			return handleActionTypeDelete(as, s, i, naturalInputEventModel)
 		default:
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't create event, invalid action %s from the LLM.", naturalOutput.Action)
