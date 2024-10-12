@@ -31,11 +31,9 @@ func delete(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, 
 
 func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		interaction := i.Interaction
-
 		// #region - respond to original request
 		startTimer := time.Now()
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			slog.Warn("event_handler:delete: can't send defer message", "error", err)
@@ -62,7 +60,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		if eventID == "" {
 			// edit the deferred message
 			msg := "Event ID is empty."
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about event ID is empty", "error", err)
@@ -83,7 +81,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		case err != nil:
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't check if event exists\n```\n%s\n```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about can't check if event exists", "error", err)
@@ -92,7 +90,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		case !exists:
 			// edit the deferred message
 			msg := "Event not found."
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about event not found", "error", err)
@@ -107,11 +105,11 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			NewSelect().
 			Model(eventModel).
 			Where("id = ?", eventID).
-			Where("channel_id = ?", interaction.ChannelID).
+			Where("channel_id = ?", i.Interaction.ChannelID).
 			Scan(context.Background()); err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't get event\n```\n%s\n```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about can't get event", "error", err)
@@ -121,6 +119,8 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #endregion
 
 		// #region - ask for confirmation
+		askForConfirmInteraction := i.Interaction
+		buttonInteraction := new(discordgo.Interaction)
 		isContinue, timeout, err := func() (bool, bool, error) {
 			yesCustomId := "yes-" + eventID
 			cancelCustomId := "cancel-" + eventID
@@ -131,7 +131,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 
 			// edit the deferred message
 			msg := "Is this the event you want to delete?"
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds: &[]*discordgo.MessageEmbed{
 					eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
@@ -156,12 +156,12 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				return false, false, fmt.Errorf("can't ask for confirmation, can't continue: %w", err)
 			}
 			as.AddAppCmdHandler(yesCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				interaction = i.Interaction
+				buttonInteraction = i.Interaction
 				confirmCh <- struct{}{}
 				return nil
 			})
 			as.AddAppCmdHandler(cancelCustomId, func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-				interaction = i.Interaction
+				buttonInteraction = i.Interaction
 				cancelCh <- struct{}{}
 				return nil
 			})
@@ -188,7 +188,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		case timeout:
 			// edit ask confirmation message
 			msg := "Timed out waiting for confirmation."
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(askForConfirmInteraction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds:  &[]*discordgo.MessageEmbed{},
 			}); err != nil {
@@ -214,11 +214,11 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		if _, err := as.BunDB.NewDelete().
 			Model((*model.Event)(nil)).
 			Where("id = ?", eventID).
-			Where("channel_id = ?", interaction.ChannelID).
+			Where("channel_id = ?", i.Interaction.ChannelID).
 			Exec(context.WithValue(context.Background(), model.EventIDCtxKey, eventID)); err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't delete event\n```\n%s\n```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:delete: can't respond about can't delete event", "error", err)
