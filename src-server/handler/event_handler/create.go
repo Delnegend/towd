@@ -326,6 +326,9 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #endregion
 
 		// #region - edit the deferred response of the button
+		msg := "Event created."
+		if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+			Content: &msg,
 		}); err != nil {
 			slog.Warn("event_handler:create: can't edit deferred response of the button click", "error", err)
 		}
