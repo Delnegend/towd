@@ -258,11 +258,10 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Event deleted.",
-			},
+		// #region - edit deferred response of button click
+		msg := "Event deleted."
+		if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+			Content: &msg,
 		}); err != nil {
 			slog.Warn("event_handler:delete: can't edit deferred response of the button click", "error", err)
 		}
