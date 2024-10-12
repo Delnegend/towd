@@ -279,9 +279,8 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		case timeout:
 			// edit ask for confirmation message
 			msg := "Timed out waiting for confirmation."
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Content:    &msg,
-				Components: &[]discordgo.MessageComponent{},
+			if _, err := s.InteractionResponseEdit(askForConfirmInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:create: can't respond about event creation timed out", "error", err)
 			}
