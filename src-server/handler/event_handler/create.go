@@ -287,35 +287,10 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		case !isContinue:
-			// response ask confirmation message
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Event creation canceled.",
-				},
-			}); err != nil {
-				slog.Warn("createEventManualHandler: can't respond about event creation canceled", "error", err)
-			}
-			// edit ask for confirmation message to disable buttons
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-				Components: &[]discordgo.MessageComponent{
-					discordgo.ActionsRow{
-						Components: []discordgo.MessageComponent{
-							discordgo.Button{
-								Label:    "Yes",
-								Style:    discordgo.SuccessButton,
-								CustomID: "",
-								Disabled: true,
-							},
-							discordgo.Button{
-								Label:    "Cancel",
-								Style:    discordgo.DangerButton,
-								CustomID: "",
-								Disabled: true,
-							},
-						},
-					},
-				},
+			// edit deferred response of the button
+			msg := "Event creation canceled."
+			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:create: can't edit about event creation canceled", "error", err)
 			}
