@@ -36,11 +36,9 @@ func list(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, cm
 
 func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		interaction := i.Interaction
-
 		// response to the original request
 		startTimer := time.Now()
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			slog.Warn("event_handler:list: can't send defer message", "error", err)
@@ -85,7 +83,7 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 		if err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't parse date\n```\n%s```", err.Error())
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:list: can't respond about can't parse date", "error", err)
@@ -102,7 +100,7 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 			Model(&eventModels).
 			Where("start_date >= ?", startStartDateRange.Unix()).
 			Where("end_date <= ?", endStartDateRange.Unix()).
-			Where("channel_id = ?", interaction.ChannelID).
+			Where("channel_id = ?", i.Interaction.ChannelID).
 			Scan(context.Background()); err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Can't get events in range\n```\n%s```", err.Error())
