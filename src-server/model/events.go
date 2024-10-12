@@ -155,58 +155,70 @@ type DiffEvent struct {
 func (e *Event) Diff(otherEvent *Event) DiffEvent {
 	diff := DiffEvent{}
 
-	switch newExist, oldExist := otherEvent.Summary != "", e.Summary != ""; {
-	case newExist && oldExist:
+	switch newExist, oldExist, theSame := otherEvent.Summary != "", e.Summary != "", otherEvent.Summary == e.Summary; {
+	case newExist && oldExist && !theSame:
 		diff.Title = fmt.Sprintf("%s `[old value: %s]`", otherEvent.Summary, e.Summary)
+	case (!newExist && oldExist) || (newExist && theSame):
+		diff.Title = fmt.Sprintf("%s `[unchanged]`", e.Summary)
 	case newExist && !oldExist:
 		diff.Title = fmt.Sprintf("%s `[old value: None]`", otherEvent.Summary)
-	case !newExist && oldExist:
-		diff.Title = fmt.Sprintf("%s `[unchanged]`", e.Summary)
+	default:
+		diff.Title = "None `[unchanged]`"
 	}
 
-	switch otherExist, thisExist := otherEvent.Description != "", e.Description != ""; {
-	case otherExist && thisExist:
+	switch newExist, oldExist, theSame := otherEvent.Description != "", e.Description != "", otherEvent.Description == e.Description; {
+	case newExist && oldExist && !theSame:
 		diff.Description = fmt.Sprintf("%s `[old value: %s]`", otherEvent.Description, e.Description)
-	case otherExist && !thisExist:
+	case newExist && !oldExist:
 		diff.Description = fmt.Sprintf("%s `[old value: None]`", otherEvent.Description)
-	case !otherExist && thisExist:
+	case (!newExist && oldExist) || (newExist && theSame):
 		diff.Description = fmt.Sprintf("%s `[unchanged]`", e.Description)
+	default:
+		diff.Description = "None `[unchanged]`"
 	}
 
-	switch newExist, oldExist := otherEvent.StartDateUnixUTC != 0, e.StartDateUnixUTC != 0; {
-	case newExist && oldExist:
-		diff.StartDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", otherEvent.StartDateUnixUTC, e.StartDateUnixUTC)
+	switch newExist, oldExist, theSame := otherEvent.StartDateUnixUTC != 0, e.StartDateUnixUTC != 0, otherEvent.StartDateUnixUTC == e.StartDateUnixUTC; {
+	case newExist && oldExist && !theSame:
+		diff.StartDate = fmt.Sprintf("<t:%d:f> `[old value]` <t:%d:f>", otherEvent.StartDateUnixUTC, e.StartDateUnixUTC)
 	case newExist && !oldExist:
 		diff.StartDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", otherEvent.StartDateUnixUTC)
-	case !newExist && oldExist:
+	case (!newExist && oldExist) || (newExist && theSame):
 		diff.StartDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", e.StartDateUnixUTC)
+	default:
+		diff.StartDate = "None `[unchanged]`"
 	}
 
-	switch newExist, oldExist := otherEvent.EndDateUnixUTC != 0, e.EndDateUnixUTC != 0; {
-	case newExist && oldExist:
-		diff.EndDate = fmt.Sprintf("<t:%d:f> `[old value: <t:%d:f>]`", otherEvent.EndDateUnixUTC, e.EndDateUnixUTC)
+	switch newExist, oldExist, theSame := otherEvent.EndDateUnixUTC != 0, e.EndDateUnixUTC != 0, otherEvent.EndDateUnixUTC == e.EndDateUnixUTC; {
+	case newExist && oldExist && !theSame:
+		diff.EndDate = fmt.Sprintf("<t:%d:f> `%d [old value]` <t:%d:f>", otherEvent.EndDateUnixUTC, otherEvent.EndDateUnixUTC, e.EndDateUnixUTC)
 	case newExist && !oldExist:
 		diff.EndDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", otherEvent.EndDateUnixUTC)
-	case !newExist && oldExist:
+	case (!newExist && oldExist) || (newExist && theSame):
 		diff.EndDate = fmt.Sprintf("<t:%d:f> `[unchanged]`", e.EndDateUnixUTC)
+	default:
+		diff.EndDate = "None `[unchanged]`"
 	}
 
-	switch newExist, oldExist := otherEvent.URL != "", e.URL != ""; {
-	case newExist && oldExist:
+	switch newExist, oldExist, theSame := otherEvent.URL != "", e.URL != "", otherEvent.URL == e.URL; {
+	case newExist && oldExist && !theSame:
 		diff.URL = fmt.Sprintf("%s `[old value: %s]`", otherEvent.URL, e.URL)
 	case newExist && !oldExist:
 		diff.URL = fmt.Sprintf("%s `[old value: None]`", otherEvent.URL)
-	case !newExist && oldExist:
+	case (!newExist && oldExist) || (newExist && theSame):
 		diff.URL = fmt.Sprintf("%s `[unchanged]`", e.URL)
+	default:
+		diff.URL = "None `[unchanged]`"
 	}
 
-	switch newExist, oldExist := otherEvent.Location != "", e.Location != ""; {
-	case newExist && oldExist:
+	switch newExist, oldExist, theSame := otherEvent.Location != "", e.Location != "", otherEvent.Location == e.Location; {
+	case newExist && oldExist && !theSame:
 		diff.Location = fmt.Sprintf("%s `[old value: %s]`", otherEvent.Location, e.Location)
 	case newExist && !oldExist:
 		diff.Location = fmt.Sprintf("%s `[old value: None]`", otherEvent.Location)
-	case !newExist && oldExist:
+	case (!newExist && oldExist) || (newExist && theSame):
 		diff.Location = fmt.Sprintf("%s `[unchanged]`", e.Location)
+	default:
+		diff.Location = "None `[unchanged]`"
 	}
 
 	oldAttendees := func() string {
@@ -223,13 +235,15 @@ func (e *Event) Diff(otherEvent *Event) DiffEvent {
 		}
 		return strings.Join(attendees, ", ")
 	}()
-	switch newExist, oldExist := newAttendees != "", oldAttendees != ""; {
-	case newExist && oldExist:
+	switch newExist, oldExist, theSame := newAttendees != "", oldAttendees != "", newAttendees == oldAttendees; {
+	case newExist && oldExist && !theSame:
 		diff.Attendees = fmt.Sprintf("%s `[old value: %s]`", newAttendees, oldAttendees)
 	case newExist && !oldExist:
 		diff.Attendees = fmt.Sprintf("%s `[old value: None]`", newAttendees)
-	case !newExist && oldExist:
+	case (!newExist && oldExist) || (newExist && theSame):
 		diff.Attendees = fmt.Sprintf("%s `[unchanged]`", oldAttendees)
+	default:
+		diff.Attendees = "None `[unchanged]`"
 	}
 
 	return diff
