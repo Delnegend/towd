@@ -179,7 +179,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	case err != nil:
 		return fmt.Errorf("event_handler:natural:create -> handleActionTypeCreate: %w", err)
 	case timeout:
-		// edit ask confirmation message
+		// edit ask-for-confirm msg
 		msg := "Timed out waiting for confirmation."
 		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 			Content: &msg,
