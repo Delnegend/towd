@@ -313,12 +313,10 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			}
 			return nil
 		}); err != nil {
-			// respond to button
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Can't insert event to database\n```%s```", err.Error()),
-				},
+			// edit the deferred response of the button
+			msg := fmt.Sprintf("Can't insert event to database\n```%s```", err.Error())
+			if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+				Content: &msg,
 			}); err != nil {
 				slog.Warn("event_handler:create: can't respond about can't insert event to database", "error", err)
 			}
