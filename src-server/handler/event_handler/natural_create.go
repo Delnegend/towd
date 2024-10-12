@@ -206,17 +206,19 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 			Exec(ctx); err != nil {
 			return fmt.Errorf("can't insert event to database: %w", err)
 		}
-		attendeeModels := make([]model.Attendee, len(body.Attendees))
-		for i, attendee := range body.Attendees {
-			attendeeModels[i] = model.Attendee{
-				EventID: newEventModel.ID,
-				Data:    attendee,
+		if len(naturalOutput.Body.Attendees) > 0 {
+			attendeeModels := make([]model.Attendee, len(naturalOutput.Body.Attendees))
+			for i, attendee := range naturalOutput.Body.Attendees {
+				attendeeModels[i] = model.Attendee{
+					EventID: newEventModel.ID,
+					Data:    attendee,
+				}
 			}
-		}
-		if _, err := tx.NewInsert().
-			Model(&attendeeModels).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("can't insert attendees to database: %w", err)
+			if _, err := tx.NewInsert().
+				Model(&attendeeModels).
+				Exec(ctx); err != nil {
+				return fmt.Errorf("can't insert attendees to database: %w", err)
+			}
 		}
 		return nil
 	}); err != nil {
