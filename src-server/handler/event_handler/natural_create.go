@@ -16,18 +16,6 @@ import (
 )
 
 func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discordgo.InteractionCreate, naturalOutput utils.NaturalOutput) error {
-	body, ok := naturalOutput.Body.(utils.NaturalOutputBodyForCreateOrUpdate)
-	if !ok {
-		// edit the deferred message
-		msg := "Can't create event, invalid body from the LLM."
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-			Content: &msg,
-		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about can't create event, invalid body from the LLM", "error", err)
-		}
-		return nil
-	}
-
 	// #region - validate
 	if _, err := url.ParseRequestURI(body.URL); err != nil {
 		// edit the deferred message
