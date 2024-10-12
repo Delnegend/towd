@@ -188,35 +188,6 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	case !isContinue:
-		// respond ask confirmation message
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Event creation canceled.",
-			},
-		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about event creation canceled", "error", err)
-		}
-		// edit ask for confirmation message to disable buttons
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-			Components: &[]discordgo.MessageComponent{
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.Button{
-							Label:    "Yes",
-							Style:    discordgo.SuccessButton,
-							CustomID: "",
-							Disabled: true,
-						},
-						discordgo.Button{
-							Label:    "Cancel",
-							Style:    discordgo.DangerButton,
-							CustomID: "",
-							Disabled: true,
-						},
-					},
-				},
-			},
 		}); err != nil {
 			slog.Warn("event_handler:natural:create: can't respond about event creation canceled", "error", err)
 		}
@@ -245,71 +216,17 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}); err != nil {
-		// respond the ask confirmation message
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Can't insert event to database\n```\n" + err.Error() + "\n```",
-			},
+		// edit deferred response of button click
+		msg := fmt.Sprintf("Can't insert event to database\n```\n%s\n```", err.Error())
+		if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+			Content: &msg,
 		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about can't insert event to database", "error", err)
-		}
-		// edit ask for confirmation message to disable buttons
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-			Components: &[]discordgo.MessageComponent{
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.Button{
-							Label:    "Yes",
-							Style:    discordgo.SuccessButton,
-							CustomID: "",
-							Disabled: true,
-						},
-						discordgo.Button{
-							Label:    "Cancel",
-							Style:    discordgo.DangerButton,
-							CustomID: "",
-							Disabled: true,
-						},
-					},
-				},
-			},
-		}); err != nil {
-			slog.Warn("naturalHandler: can't edit ask for confirmation message to disable buttons", "error", err)
+			slog.Warn("event_handler:natural:create: can't tell user about can't insert event to database", "error", err)
 		}
 		return fmt.Errorf("event_handler::naturalHandler: %w", err)
 	}
 	// #endregion
 
-	// #region - respond ask confirmation message
-	if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "Event created.",
-		},
-	}); err != nil {
-		slog.Warn("naturalHandler: can't respond about event creation success", "error", err)
-	}
-	// edit ask for confirmation message to disable buttons
-	if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-		Components: &[]discordgo.MessageComponent{
-			discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discordgo.Button{
-						Label:    "Yes",
-						Style:    discordgo.SuccessButton,
-						CustomID: "",
-						Disabled: true,
-					},
-					discordgo.Button{
-						Label:    "Cancel",
-						Style:    discordgo.DangerButton,
-						CustomID: "",
-						Disabled: true,
-					},
-				},
-			},
-		},
 	// #region - edit deffered response of button click
 	}); err != nil {
 		slog.Warn("naturalHandler: can't edit ask for confirmation message to disable buttons", "error", err)
