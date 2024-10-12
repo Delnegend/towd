@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -15,9 +16,11 @@ type Config struct {
 	discordClientId     string
 	discordClientSecret string
 
-	location   *time.Location
-	groqApiKey string
+	groqApiKey   string
+	geminiApiKey string
+	llmProvider  LLMProvider
 
+	location           *time.Location
 	staticWebClientDir string
 
 	eventNotifyInterval      time.Duration
@@ -72,6 +75,44 @@ func NewConfig() *Config {
 			return discordClientSecret
 		}(),
 
+		groqApiKey: func() string {
+			groqApiKey := os.Getenv("GROQ_API_KEY")
+			if groqApiKey == "" {
+				slog.Error("GROQ_API_KEY is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "GROQ_API_KEY", groqApiKey[0:3]+"...")
+			return groqApiKey
+		}(),
+		geminiApiKey: func() string {
+			geminiApiKey := os.Getenv("GEMINI_API_KEY")
+			if geminiApiKey == "" {
+				slog.Error("GEMINI_API_KEY is not set")
+				os.Exit(1)
+			}
+			slog.Debug("env", "GEMINI_API_KEY", geminiApiKey[0:3]+"...")
+			return geminiApiKey
+		}(),
+		llmProvider: func() LLMProvider {
+			llmProvider := strings.ToLower(os.Getenv("LLM_PROVIDER"))
+			if llmProvider == "" {
+				slog.Warn("LLM_PROVIDER is not set, using default value", "provider", LLMProviderGroq)
+				return LLMProviderGroq
+			}
+			switch llmProvider {
+			case "groq":
+				slog.Warn("LLM_PROVIDER is set to groq, using groq provider", "provider", LLMProviderGroq)
+				return LLMProviderGroq
+			case "gemini":
+				slog.Warn("LLM_PROVIDER is set to gemini, using gemini provider", "provider", LLMProviderGemini)
+				return LLMProviderGemini
+			default:
+				slog.Error("invalid LLM_PROVIDER", "provider", llmProvider)
+				os.Exit(1)
+			}
+			return LLMProvider("")
+		}(),
+
 		location: func() *time.Location {
 			timezoneStr := os.Getenv("TIMEZONE")
 			var loc *time.Location
@@ -93,16 +134,6 @@ func NewConfig() *Config {
 			slog.Debug("env", "TIMEZONE", timezoneStr)
 			return loc
 		}(),
-		groqApiKey: func() string {
-			groqApiKey := os.Getenv("GROQ_API_KEY")
-			if groqApiKey == "" {
-				slog.Error("GROQ_API_KEY is not set")
-				os.Exit(1)
-			}
-			slog.Debug("env", "GROQ_API_KEY", groqApiKey[0:3]+"...")
-			return groqApiKey
-		}(),
-
 		staticWebClientDir: func() string {
 			staticWebClientDir := os.Getenv("STATIC_WEB_CLIENT_DIR")
 			if staticWebClientDir == "" {
@@ -193,14 +224,24 @@ func (c *Config) GetDiscordClientSecret() string {
 	return c.discordClientSecret
 }
 
-// Get TIMEZONE env
-func (c *Config) GetLocation() *time.Location {
-	return c.location
-}
-
 // Get GROQ_API_KEY env
 func (c *Config) GetGroqApiKey() string {
 	return c.groqApiKey
+}
+
+// Get GEMINI_API_KEY env
+func (c *Config) GetGeminiApiKey() string {
+	return c.geminiApiKey
+}
+
+// Get LLM_PROVIDER env
+func (c *Config) GetLLMProvider() LLMProvider {
+	return c.llmProvider
+}
+
+// Get TIMEZONE env
+func (c *Config) GetLocation() *time.Location {
+	return c.location
 }
 
 // Get STATIC_WEB_CLIENT_DIR env
