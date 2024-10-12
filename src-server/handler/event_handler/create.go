@@ -77,14 +77,13 @@ func create(as *utils.AppState, cmdInfo *[]*discordgo.ApplicationCommandOption, 
 
 func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-		interaction := i.Interaction
 		if err := ensureCalendarExists(as, s, i); err != nil {
 			return fmt.Errorf("event_handler:create: can't ensure calendar exists: %w", err)
 		}
 
 		// #region - reply w/ deferred
 		startTimer := time.Now()
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			slog.Warn("event_handler:create: can't send defer message", "error", err)
@@ -167,7 +166,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		}()
 		if err != nil {
 			// respond to original request
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
+			if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Content: fmt.Sprintf("Invalid data provided\n```%s```", err.Error()),
@@ -191,7 +190,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 
 			// edit the deferred message
 			msg := "Is this correct?"
-			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds:  &[]*discordgo.MessageEmbed{eventModel.ToDiscordEmbed(context.Background(), as.BunDB)},
 				Components: &[]discordgo.MessageComponent{
