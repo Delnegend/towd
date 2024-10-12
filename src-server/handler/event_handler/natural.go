@@ -95,6 +95,7 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 			exists, err := as.BunDB.NewSelect().
 				Model((*model.Event)(nil)).
 				Where("id = ?", eventContextID).
+				Where("channel_id = ?", interaction.ChannelID).
 				Exists(context.Background())
 			if err != nil {
 				// edit the deferred message
