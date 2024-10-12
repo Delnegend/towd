@@ -325,36 +325,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
 
-		// respond to button
-		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Event created.",
-			},
-		}); err != nil {
-			slog.Warn("createEventManualHandler: can't respond about event creation success", "error", err)
-		}
-		// edit ask for confirmation message to disable buttons
 		// #region - edit the deferred response of the button
-		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
-			Components: &[]discordgo.MessageComponent{
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.Button{
-							Label:    "Yes",
-							Style:    discordgo.SuccessButton,
-							CustomID: "",
-							Disabled: true,
-						},
-						discordgo.Button{
-							Label:    "Cancel",
-							Style:    discordgo.DangerButton,
-							CustomID: "",
-							Disabled: true,
-						},
-					},
-				},
-			},
 		}); err != nil {
 			slog.Warn("event_handler:create: can't edit deferred response of the button click", "error", err)
 		}
