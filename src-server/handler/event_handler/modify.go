@@ -198,6 +198,27 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Scan(context.Background()); err != nil {
 				return false, false, fmt.Errorf("can't get old event: %w", err)
 			}
+			if newEventModel.Summary == "" {
+				newEventModel.Summary = oldEvent.Summary
+			}
+			if newEventModel.Description == "" {
+				newEventModel.Description = oldEvent.Description
+			}
+			if newEventModel.Location == "" {
+				newEventModel.Location = oldEvent.Location
+			}
+			if newEventModel.URL == "" {
+				newEventModel.URL = oldEvent.URL
+			}
+			if newEventModel.Organizer == "" {
+				newEventModel.Organizer = oldEvent.Organizer
+			}
+			if newEventModel.StartDateUnixUTC == 0 {
+				newEventModel.StartDateUnixUTC = oldEvent.StartDateUnixUTC
+			}
+			if newEventModel.EndDateUnixUTC == 0 {
+				newEventModel.EndDateUnixUTC = oldEvent.EndDateUnixUTC
+			}
 
 			diff := oldEvent.Diff(newEventModel)
 
