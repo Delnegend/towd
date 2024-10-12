@@ -283,7 +283,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Content:    &msg,
 				Components: &[]discordgo.MessageComponent{},
 			}); err != nil {
-				slog.Warn("createEventManualHandler: can't respond about event creation timed out", "error", err)
+				slog.Warn("event_handler:create: can't respond about event creation timed out", "error", err)
 			}
 			return nil
 		case !isContinue:
@@ -317,7 +317,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					},
 				},
 			}); err != nil {
-				slog.Warn("createEventManualHandler: can't edit ask for confirmation message to disable buttons", "error", err)
+				slog.Warn("event_handler:create: can't edit about event creation canceled", "error", err)
 			}
 			return nil
 		}
@@ -344,9 +344,9 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: fmt.Sprintf("Can't insert event to database\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("createEventManualHandler: can't respond about can't insert event to database", "error", err)
+				slog.Warn("event_handler:create: can't respond about can't insert event to database", "error", err)
 			}
-			return fmt.Errorf("createEventManualHandler: can't insert event to database: %w", err)
+			return fmt.Errorf("event_handler:create: can't insert event to database: %w", err)
 		}
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
