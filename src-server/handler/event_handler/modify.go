@@ -306,6 +306,38 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		// #endregion
 
 		// #region - reply to ask-for-confirm w/ deferred
+		if !timeout {
+			if err := s.InteractionRespond(buttonInteraction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+			},
+			); err != nil {
+				slog.Warn("event_handler:modify: can't defer ask for confirmation message", "error", err)
+			}
+		}
+
+		// edit ask for confirmation message to disable buttons
+		if _, err := s.InteractionResponseEdit(askForConfirmInteraction, &discordgo.WebhookEdit{
+			Components: &[]discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label:    "Yes",
+							Style:    discordgo.SuccessButton,
+							CustomID: "yes-disabled",
+							Disabled: true,
+						},
+						discordgo.Button{
+							Label:    "Cancel",
+							Style:    discordgo.DangerButton,
+							CustomID: "cancel-disabled",
+							Disabled: true,
+						},
+					},
+				},
+			},
+		}); err != nil {
+			slog.Warn("event_handler:modify: can't edit ask for confirmation message to disable buttons", "error", err)
+		}
 		// #endregion
 
 		// #region - handle ask-for-confirm cases
