@@ -79,7 +79,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 		if err := ensureCalendarExists(as, s, i); err != nil {
-			return fmt.Errorf("createEventManualHandler: can't ensure calendar exists: %w", err)
+			return fmt.Errorf("event_handler:create: can't ensure calendar exists: %w", err)
 		}
 
 		// send defer message
@@ -87,7 +87,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("createEventManualHandler: can't send defer message", "error", err)
+			slog.Warn("event_handler:create: can't send defer message", "error", err)
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
@@ -172,7 +172,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: fmt.Sprintf("Invalid data provided\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("createEventManualHandler: can't respond about invalid data provided", "error", err)
+				slog.Warn("event_handler:create: can't respond about invalid data provided", "error", err)
 			}
 			return nil
 		}
@@ -343,7 +343,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				},
 			},
 		}); err != nil {
-			slog.Warn("createEventManualHandler: can't edit ask for confirmation message to disable buttons", "error", err)
+			slog.Warn("event_handler:create: can't edit deferred response of the button click", "error", err)
 		}
 
 		return nil

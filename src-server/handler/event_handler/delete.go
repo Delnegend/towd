@@ -38,7 +38,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
-			slog.Warn("event_handler::deleteHandler: can't send defer message", "error", err)
+			slog.Warn("event_handler:delete: can't send defer message", "error", err)
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
@@ -64,7 +64,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about event ID is empty", "error", err)
+				slog.Warn("event_handler:delete: can't respond about event ID is empty", "error", err)
 			}
 			return nil
 		}
@@ -85,16 +85,16 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about can't check if event exists", "error", err)
+				slog.Warn("event_handler:delete: can't respond about can't check if event exists", "error", err)
 			}
-			return fmt.Errorf("event_handler::deleteHandler: can't check if event exists: %w", err)
+			return fmt.Errorf("event_handler:delete: can't check if event exists: %w", err)
 		case !exists:
 			// edit the deferred message
 			msg := "Event not found."
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about event not found", "error", err)
+				slog.Warn("event_handler:delete: can't respond about event not found", "error", err)
 			}
 			return nil
 		}
@@ -113,9 +113,9 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about can't get event", "error", err)
+				slog.Warn("event_handler:delete: can't respond about can't get event", "error", err)
 			}
-			return fmt.Errorf("event_handler::deleteHandler: can't get event: %w", err)
+			return fmt.Errorf("event_handler:delete: can't get event: %w", err)
 		}
 		// #endregion
 
@@ -186,7 +186,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Content: &msg,
 				Embeds:  &[]*discordgo.MessageEmbed{},
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about event deletion timed out", "error", err)
+				slog.Warn("event_handler:delete: can't respond about event deletion timed out", "error", err)
 			}
 			return nil
 		case !isContinue:
@@ -197,7 +197,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: "Event deletion canceled.",
 				},
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about event deletion canceled", "error", err)
+				slog.Warn("event_handler:delete: can't respond about event deletion canceled", "error", err)
 			}
 			return nil
 		}
@@ -215,9 +215,9 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("event_handler::deleteHandler: can't respond about can't delete event", "error", err)
+				slog.Warn("event_handler:delete: can't respond about can't delete event", "error", err)
 			}
-			return fmt.Errorf("event_handler::deleteHandler: can't delete event: %w", err)
+			return fmt.Errorf("event_handler:delete: can't delete event: %w", err)
 		}
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
@@ -228,7 +228,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Content: "Event deleted.",
 			},
 		}); err != nil {
-			slog.Warn("event_handler::deleteHandler: can't respond about event deletion success", "error", err)
+			slog.Warn("event_handler:delete: can't edit deferred response of the button click", "error", err)
 		}
 		return nil
 	}

@@ -91,7 +91,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		}); err != nil {
 			// return fmt.Errorf("can't respond deferring msg, can't continue: %w", err)
-			slog.Warn("modifyEventHandler: can't send defer message", "error", err)
+			slog.Warn("event_handler:modify: can't send defer message", "error", err)
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
@@ -173,7 +173,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 			}); err != nil {
-				slog.Warn("modifyEventHandler: can't respond about can't parse input data", "error", err)
+				slog.Warn("event_handler:modify: can't respond about can't parse input data", "error", err)
 			}
 			return nil
 		}
@@ -307,7 +307,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: "Event not modified.",
 				},
 			}); err != nil {
-				slog.Warn("modifyEventHandler: can't respond about event modification canceled", "error", err)
+				slog.Warn("event_handler:modify: can't respond about event modification canceled", "error", err)
 			}
 			return nil
 		}
@@ -343,9 +343,9 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 					Content: fmt.Sprintf("Can't update event\n```%s```", err.Error()),
 				},
 			}); err != nil {
-				slog.Warn("modifyEventHandler: can't respond about can't update event in database", "error", err)
+				slog.Warn("event_handler:modify: can't respond about can't update event in database", "error", err)
 			}
-			return fmt.Errorf("modifyEventHandler: can't update event in database: %w", err)
+			return fmt.Errorf("event_handler:modify: can't update event in database: %w", err)
 		}
 		as.MetricChans.DatabaseWrite <- float64(time.Since(startTimer).Microseconds())
 		// #endregion
@@ -357,7 +357,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				Content: "Event updated.",
 			},
 		}); err != nil {
-			slog.Warn("modifyEventHandler: can't respond about event update success", "error", err)
+			slog.Warn("event_handler:modify: can't respond about event update success", "error", err)
 		}
 
 		return nil

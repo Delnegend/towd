@@ -48,7 +48,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about can't create event, invalid start date", "error", err)
+			slog.Warn("event_handler:natural:create: can't respond about can't create event, invalid start date", "error", err)
 		}
 		return nil
 	}
@@ -59,7 +59,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about can't create event, invalid end date", "error", err)
+			slog.Warn("event_handler:natural:create: can't respond about can't create event, invalid end date", "error", err)
 		}
 		return nil
 	}
@@ -69,7 +69,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about can't create event, start date must be before end date", "error", err)
+			slog.Warn("event_handler:natural:create: can't respond about can't create event, start date must be before end date", "error", err)
 		}
 		return nil
 	}
@@ -150,14 +150,14 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	}()
 	switch {
 	case err != nil:
-		return fmt.Errorf("naturalHandler -> handleActionTypeCreate: %w", err)
+		return fmt.Errorf("event_handler:natural:create -> handleActionTypeCreate: %w", err)
 	case timeout:
 		// edit ask confirmation message
 		msg := "Timed out waiting for confirmation."
 		if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
 			Content: &msg,
 		}); err != nil {
-			slog.Warn("naturalHandler: can't respond about event creation timed out", "error", err)
+			slog.Warn("event_handler:natural:create: can't respond about event creation timed out", "error", err)
 		}
 		return nil
 	case !isContinue:
@@ -191,7 +191,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 				},
 			},
 		}); err != nil {
-			slog.Warn("naturalHandler: can't edit ask for confirmation message to disable buttons", "error", err)
+			slog.Warn("event_handler:natural:create: can't respond about event creation canceled", "error", err)
 		}
 		return nil
 	}
