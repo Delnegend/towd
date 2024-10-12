@@ -69,29 +69,24 @@ func (e *Event) Upsert(ctx context.Context, db bun.IDB) error {
 		e.IsWholeDay = true
 	}
 
-	exists, err := db.NewSelect().
-		Model((*Event)(nil)).
-		Where("id = ?", e.ID).
-		Exists(context.Background())
-	if err != nil {
+	if _, err := db.NewInsert().
+		Model(e).
+		On("CONFLICT (id) DO UPDATE").
+		Set("summary = EXCLUDED.summary").
+		Set("description = EXCLUDED.description").
+		Set("location = EXCLUDED.location").
+		Set("url = EXCLUDED.url").
+		Set("organizer = EXCLUDED.organizer").
+		Set("start_date = EXCLUDED.start_date").
+		Set("end_date = EXCLUDED.end_date").
+		Set("is_whole_day = EXCLUDED.is_whole_day").
+		Set("created_at = EXCLUDED.created_at").
+		Set("sequence = EXCLUDED.sequence").
+		Set("calendar_id = EXCLUDED.calendar_id").
+		Set("channel_id = EXCLUDED.channel_id").
+		Set("notification_sent = EXCLUDED.notification_sent").
+		Exec(ctx); err != nil {
 		return fmt.Errorf("(*Event).Upsert: %w", err)
-	}
-
-	switch exists {
-	case true:
-		e.UpdatedAt = time.Now().UTC().Unix()
-		e.Sequence++
-		if _, err := db.NewUpdate().
-			Model(e).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*Event).Upsert: %w", err)
-		}
-	case false:
-		if _, err := db.NewInsert().
-			Model(e).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("(*Event).Upsert: %w", err)
-		}
 	}
 
 	return nil
