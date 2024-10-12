@@ -188,26 +188,24 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			cancelCh := make(chan struct{})
 			defer close(confirmCh)
 			defer close(cancelCh)
-			if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Is this correct?",
-					Embeds: []*discordgo.MessageEmbed{
-						eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
-					},
-					Components: []discordgo.MessageComponent{
-						discordgo.ActionsRow{
-							Components: []discordgo.MessageComponent{
-								discordgo.Button{
-									Label:    "Yes",
-									Style:    discordgo.SuccessButton,
-									CustomID: yesCustomId,
-								},
-								discordgo.Button{
-									Label:    "Cancel",
-									Style:    discordgo.PrimaryButton,
-									CustomID: cancelCustomId,
-								},
+
+			// edit the deferred message
+			msg := "Is this correct?"
+			if _, err := s.InteractionResponseEdit(interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+				Embeds:  &[]*discordgo.MessageEmbed{eventModel.ToDiscordEmbed(context.Background(), as.BunDB)},
+				Components: &[]discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.Button{
+								Label:    "Yes",
+								Style:    discordgo.SuccessButton,
+								CustomID: yesCustomId,
+							},
+							discordgo.Button{
+								Label:    "Cancel",
+								Style:    discordgo.DangerButton,
+								CustomID: cancelCustomId,
 							},
 						},
 					},
