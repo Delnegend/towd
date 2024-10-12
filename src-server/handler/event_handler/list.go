@@ -47,7 +47,7 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
 
 		// #region - parse date and get the start/end start date range
-		searchDate := "today"
+		searchDate := ""
 		startStartDateRange, endStartDateRange, err := func() (time.Time, time.Time, error) {
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
@@ -78,6 +78,8 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 			} else {
 				endStartDateRange = startStartDateRange.Add(24 * time.Hour)
 			}
+
+			searchDate = fmt.Sprintf("from <t:%d:f> to <t:%d:f>", startStartDateRange.Unix(), endStartDateRange.Unix())
 			return startStartDateRange, endStartDateRange, nil
 		}()
 		if err != nil {
