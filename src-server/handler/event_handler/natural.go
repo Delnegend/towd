@@ -90,8 +90,8 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 
 		// #region - get the event from database if provided event ID
 		naturalInputEventContext := new(utils.NaturalInputEventContext)
+		naturalInputEventModel := new(model.Event)
 		if eventContextID != "" {
-			eventModel := new(model.Event)
 			exists, err := as.BunDB.NewSelect().
 				Model((*model.Event)(nil)).
 				Where("id = ?", eventContextID).
@@ -117,7 +117,7 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 				return nil
 			}
 			if err := as.BunDB.NewSelect().
-				Model(eventModel).
+				Model(naturalInputEventModel).
 				Where("id = ?", eventContextID).
 				Relation("Attendees").
 				Scan(context.Background()); err != nil {
@@ -127,17 +127,19 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 			startTimeStr := startTime.In(time.Now().Location()).Format("02/01/2006 15:04")
 			endTime := time.Unix(0, eventModel.EndDateUnixUTC).UTC()
 			endTimeStr := endTime.In(time.Now().Location()).Format("02/01/2006 15:04")
-			attendees := make([]string, len(eventModel.Attendees))
-			for i, attendee := range eventModel.Attendees {
+			attendees := make([]string, len(naturalInputEventModel.Attendees))
+			for i, attendee := range naturalInputEventModel.Attendees {
 				attendees[i] = attendee.Data
 			}
 			naturalInputEventContext = &utils.NaturalInputEventContext{
-				Title:       eventModel.Summary,
-				Description: eventModel.Description,
+				Title:       naturalInputEventModel.Summary,
+				Description: naturalInputEventModel.Description,
 				Start:       startTimeStr,
 				End:         endTimeStr,
 				Location:    eventModel.Location,
 				URL:         eventModel.URL,
+				Location:    naturalInputEventModel.Location,
+				URL:         naturalInputEventModel.URL,
 				Attendees:   attendees,
 			}
 		}
