@@ -234,6 +234,9 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	// #endregion
 
 	// #region - edit deffered response of button click
+	msg := "Event created."
+	if _, err := s.InteractionResponseEdit(buttonInteraction, &discordgo.WebhookEdit{
+		Content: &msg,
 	}); err != nil {
 		slog.Warn("event_handler:natural:create: can't respond about event creation success", "error", err)
 	}
