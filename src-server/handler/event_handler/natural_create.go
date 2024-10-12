@@ -223,13 +223,13 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}); err != nil {
 			slog.Warn("event_handler:natural:create: can't tell user about can't insert event to database", "error", err)
 		}
-		return fmt.Errorf("event_handler::naturalHandler: %w", err)
+		return fmt.Errorf("event_handler:natural:create: %w", err)
 	}
 	// #endregion
 
 	// #region - edit deffered response of button click
 	}); err != nil {
-		slog.Warn("naturalHandler: can't edit ask for confirmation message to disable buttons", "error", err)
+		slog.Warn("event_handler:natural:create: can't respond about event creation success", "error", err)
 	}
 	// #endregion
 
