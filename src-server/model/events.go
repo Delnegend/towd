@@ -39,7 +39,7 @@ type Event struct {
 	Attendees        []*Attendee       `bun:"rel:has-many,join:id=event_id"`
 	Calendar         *Calendar         `bun:"rel:belongs-to,join:calendar_id=channel_id"`
 	ExternalCalendar *ExternalCalendar `bun:"rel:belongs-to,join:calendar_id=id"`
-	NotificationSent bool              `bun:"message_sent"` // required
+	NotificationSent bool              `bun:"notification_sent"` // required
 }
 
 func (e *Event) Upsert(ctx context.Context, db bun.IDB) error {
