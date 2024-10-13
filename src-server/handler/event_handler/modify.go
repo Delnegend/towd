@@ -97,9 +97,9 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 
 		// #region - get new event data
 		attendeeModels := make([]model.Attendee, 0)
-		newEventModel, err := func() (*model.Event, error) {
-			newEventModel := new(model.Event)
-
+		oldEventModel := new(model.Event)
+		newEventModel := new(model.Event)
+		if err := func() error {
 			options := i.ApplicationCommandData().Options[0].Options
 			optionMap := make(
 				map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options),
@@ -111,6 +111,17 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if value, ok := optionMap["event-id"]; ok {
 				newEventModel.ID = value.StringValue()
 			}
+
+			if err := as.BunDB.
+				NewSelect().
+				Model(oldEventModel).
+				Relation("Attendees").
+				Where("id = ?", newEventModel.ID).
+				Scan(context.Background()); err != nil {
+				return fmt.Errorf("can't get old event: %w", err)
+			}
+			*newEventModel = *oldEventModel
+
 			if value, ok := optionMap["title"]; ok {
 				newEventModel.Summary = utils.CleanupString(value.StringValue())
 			}
@@ -120,14 +131,14 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if value, ok := optionMap["start"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
-					return nil, fmt.Errorf("can't parse start date: %w", err)
+					return fmt.Errorf("can't parse start date: %w", err)
 				}
 				newEventModel.StartDateUnixUTC = result.Time.UTC().Unix()
 			}
 			if value, ok := optionMap["end"]; ok {
 				result, err := as.When.Parse(value.StringValue(), time.Now())
 				if err != nil {
-					return nil, fmt.Errorf("can't parse end date: %w", err)
+					return fmt.Errorf("can't parse end date: %w", err)
 				}
 				newEventModel.EndDateUnixUTC = result.Time.UTC().Unix()
 			}
@@ -163,10 +174,8 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				newEventModel.StartDateUnixUTC = startDate.UTC().Unix()
 				newEventModel.EndDateUnixUTC = endDate.UTC().Unix()
 			}
-
-			return newEventModel, nil
-		}()
-		if err != nil {
+			return nil
+		}(); err != nil {
 			// edit the deferred message
 			msg := fmt.Sprintf("Invalid event data\n```%s```", err.Error())
 			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
@@ -189,38 +198,7 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			defer close(confirmCh)
 			defer close(cancelCh)
 
-			oldEvent := new(model.Event)
-			if err := as.BunDB.
-				NewSelect().
-				Model(oldEvent).
-				Relation("Attendees").
-				Where("id = ?", newEventModel.ID).
-				Scan(context.Background()); err != nil {
-				return false, false, fmt.Errorf("can't get old event: %w", err)
-			}
-			if newEventModel.Summary == "" {
-				newEventModel.Summary = oldEvent.Summary
-			}
-			if newEventModel.Description == "" {
-				newEventModel.Description = oldEvent.Description
-			}
-			if newEventModel.Location == "" {
-				newEventModel.Location = oldEvent.Location
-			}
-			if newEventModel.URL == "" {
-				newEventModel.URL = oldEvent.URL
-			}
-			if newEventModel.Organizer == "" {
-				newEventModel.Organizer = oldEvent.Organizer
-			}
-			if newEventModel.StartDateUnixUTC == 0 {
-				newEventModel.StartDateUnixUTC = oldEvent.StartDateUnixUTC
-			}
-			if newEventModel.EndDateUnixUTC == 0 {
-				newEventModel.EndDateUnixUTC = oldEvent.EndDateUnixUTC
-			}
-
-			diff := oldEvent.Diff(newEventModel)
+			diff := oldEventModel.Diff(newEventModel)
 
 			msg := "Is this correct?"
 			// edit the deferred message
