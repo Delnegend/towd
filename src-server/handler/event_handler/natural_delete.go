@@ -40,7 +40,7 @@ func handleActionTypeDelete(as *utils.AppState, s *discordgo.Session, i *discord
 		// edit the deferred message
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &msg,
-			Embeds:  &[]*discordgo.MessageEmbed{naturalInputEventModel.ToDiscordEmbed(context.Background(), as.BunDB)},
+			Embeds:  &[]*discordgo.MessageEmbed{naturalInputEventModel.ToDiscordEmbed()},
 			Components: &[]discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
