@@ -57,6 +57,13 @@ func NewAppState() *AppState {
 		return parsedAsUTC.Sub(parsedAsLocal)
 	}()
 
+	if config.GetGeminiApiKey() == "" && config.GetLLMProvider() == LLMProviderGemini {
+		slog.Error("LLM_PROVIDER is set to gemini, but GEMINI_API_KEY is not set")
+	}
+	if config.GetGroqApiKey() == "" && config.GetLLMProvider() == LLMProviderGroq {
+		slog.Error("LLM_PROVIDER is set to groq, but GROQ_API_KEY is not set")
+	}
+
 	return &AppState{
 		Config: config,
 
