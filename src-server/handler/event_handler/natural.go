@@ -90,6 +90,7 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 		if eventContextID != "" {
 			exists, err := as.BunDB.NewSelect().
 				Model((*model.Event)(nil)).
+				Relation("Attendees").
 				Where("id = ?", eventContextID).
 				Where("channel_id = ?", interaction.ChannelID).
 				Exists(context.Background())
