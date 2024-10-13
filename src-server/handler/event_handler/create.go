@@ -193,7 +193,7 @@ func createHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			msg := "Is this correct?"
 			if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
-				Embeds:  &[]*discordgo.MessageEmbed{eventModel.ToDiscordEmbed(context.Background(), as.BunDB)},
+				Embeds:  &[]*discordgo.MessageEmbed{eventModel.ToDiscordEmbed()},
 				Components: &[]discordgo.MessageComponent{
 					discordgo.ActionsRow{
 						Components: []discordgo.MessageComponent{

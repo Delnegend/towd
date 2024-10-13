@@ -57,7 +57,7 @@ func handleActionTypeRead(as *utils.AppState, s *discordgo.Session, i *discordgo
 	// #region - compose response
 	var embeds []*discordgo.MessageEmbed
 	for _, eventModel := range eventModels {
-		embeds = append(embeds, eventModel.ToDiscordEmbed(context.Background(), as.BunDB))
+		embeds = append(embeds, eventModel.ToDiscordEmbed())
 	}
 	if len(embeds) == 0 {
 		// edit the deferred message

@@ -119,7 +119,7 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 		// #region - compose & send the message
 		embeds := []*discordgo.MessageEmbed{}
 		for _, event := range eventModels {
-			embeds = append(embeds, event.ToDiscordEmbed(context.Background(), as.BunDB))
+			embeds = append(embeds, event.ToDiscordEmbed())
 		}
 		// edit the deferred message
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{

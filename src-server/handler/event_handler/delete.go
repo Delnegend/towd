@@ -134,7 +134,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 			if _, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &msg,
 				Embeds: &[]*discordgo.MessageEmbed{
-					eventModel.ToDiscordEmbed(context.Background(), as.BunDB),
+					eventModel.ToDiscordEmbed(),
 				},
 				Components: &[]discordgo.MessageComponent{
 					discordgo.ActionsRow{

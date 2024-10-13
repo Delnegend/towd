@@ -96,7 +96,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		msg := "You're creating a new event. Is this correct?"
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 			Content: &msg,
-			Embeds:  &[]*discordgo.MessageEmbed{newEventModel.ToDiscordEmbed(context.Background(), as.BunDB)},
+			Embeds:  &[]*discordgo.MessageEmbed{newEventModel.ToDiscordEmbed()},
 			Components: &[]discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{

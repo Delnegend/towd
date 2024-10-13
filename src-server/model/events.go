@@ -92,7 +92,7 @@ func (e *Event) Upsert(ctx context.Context, db bun.IDB) error {
 	return nil
 }
 
-func (e *Event) ToDiscordEmbed(ctx context.Context, db bun.IDB) *discordgo.MessageEmbed {
+func (e *Event) ToDiscordEmbed() *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Title:       e.Summary,
 		Description: e.Description,
