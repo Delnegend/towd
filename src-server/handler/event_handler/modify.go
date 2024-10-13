@@ -146,10 +146,12 @@ func modifyHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 				newEventModel.Location = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["url"]; ok {
-				if _, err := url.ParseRequestURI(value.StringValue()); err != nil {
-					return nil, fmt.Errorf("invalid URL: %w", err)
+				if value.StringValue() != "" {
+					if _, err := url.ParseRequestURI(value.StringValue()); err != nil {
+						return fmt.Errorf("invalid URL: %w", err)
+					}
+					newEventModel.URL = utils.CleanupString(value.StringValue())
 				}
-				newEventModel.URL = utils.CleanupString(value.StringValue())
 			}
 			if value, ok := optionMap["invitees"]; ok {
 				rawString := value.StringValue()
