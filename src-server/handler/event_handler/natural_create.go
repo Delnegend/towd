@@ -65,9 +65,17 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 	}
 	// #endregion
 
-	// #region - init new event model
+	// #region - init new event & attendees model
+	newEventModelID := uuid.NewString()
+	attendeeModels := make([]*model.Attendee, len(naturalOutput.Body.Attendees))
+	for i, attendee := range naturalOutput.Body.Attendees {
+		attendeeModels[i] = &model.Attendee{
+			EventID: newEventModelID,
+			Data:    attendee,
+		}
+	}
 	newEventModel := model.Event{
-		ID:               uuid.NewString(),
+		ID:               newEventModelID,
 		Summary:          naturalOutput.Body.Title,
 		Description:      naturalOutput.Body.Description,
 		Location:         naturalOutput.Body.Location,
@@ -80,6 +88,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		CalendarID:       i.ChannelID,
 		ChannelID:        i.ChannelID,
 		NotificationSent: false,
+		Attendees:        attendeeModels,
 	}
 	// #endregion
 
@@ -208,16 +217,13 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 			Exec(ctx); err != nil {
 			return fmt.Errorf("can't insert event to database: %w", err)
 		}
-		if len(naturalOutput.Body.Attendees) > 0 {
-			attendeeModels := make([]model.Attendee, len(naturalOutput.Body.Attendees))
-			for i, attendee := range naturalOutput.Body.Attendees {
-				attendeeModels[i] = model.Attendee{
-					EventID: newEventModel.ID,
-					Data:    attendee,
-				}
-			}
+		attendeeModelsDeref := make([]model.Attendee, len(attendeeModels))
+		for i, attendeeModel := range attendeeModels {
+			attendeeModelsDeref[i] = *attendeeModel
+		}
+		if len(attendeeModelsDeref) > 0 {
 			if _, err := tx.NewInsert().
-				Model(&attendeeModels).
+				Model(&attendeeModelsDeref).
 				Exec(ctx); err != nil {
 				return fmt.Errorf("can't insert attendees to database: %w", err)
 			}
