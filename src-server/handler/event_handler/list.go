@@ -67,7 +67,7 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 				}
 				startStartDateRange = parsed.Time.UTC()
 			} else {
-				startStartDateRange = time.Now().Truncate(24 * time.Hour)
+				startStartDateRange = time.Now().UTC().Truncate(24 * time.Hour).Add(-1 * as.GetTimezoneOffset())
 			}
 			if value, ok := optionMap["end"]; ok {
 				parsed, err := as.When.Parse(value.StringValue(), time.Now())
