@@ -104,6 +104,7 @@ func deleteHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.I
 		if err := as.BunDB.
 			NewSelect().
 			Model(eventModel).
+			Relation("Attendees").
 			Where("id = ?", eventID).
 			Where("channel_id = ?", i.Interaction.ChannelID).
 			Scan(context.Background()); err != nil {
