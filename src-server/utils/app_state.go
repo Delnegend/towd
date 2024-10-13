@@ -24,6 +24,7 @@ type AppState struct {
 	When      *when.Parser
 
 	startedAt time.Time
+	tzOffset  time.Duration
 
 	// will be send to Discord
 	appCmdInfo      map[string]*discordgo.ApplicationCommand
@@ -48,6 +49,14 @@ type AppState struct {
 func NewAppState() *AppState {
 	startedAt := time.Now()
 	config := NewConfig()
+	tzOffset := func() time.Duration {
+		anchor := "02/01/2006 15:04:05"
+		parsedAsUTC, _ := time.Parse(anchor, "02/01/2006 15:04:05")
+		parsedAsLocal, _ := time.ParseInLocation(anchor, "02/01/2006 15:04:05", config.GetLocation())
+		slog.Debug("timezone duration offset", "parsed as UTC", parsedAsUTC, "parsed as local", parsedAsLocal, "offset", parsedAsUTC.Sub(parsedAsLocal))
+		return parsedAsUTC.Sub(parsedAsLocal)
+	}()
+
 	return &AppState{
 		Config: config,
 
@@ -86,6 +95,7 @@ func NewAppState() *AppState {
 		}(),
 
 		startedAt: startedAt,
+		tzOffset:  tzOffset,
 
 		appCmdInfo:         make(map[string]*discordgo.ApplicationCommand),
 		appCmdInfoMutex:    sync.RWMutex{},
@@ -99,7 +109,7 @@ func NewAppState() *AppState {
 		gracefulShutdownChansMutex: sync.RWMutex{},
 
 		Natural: func() Natural {
-			natural, err := InitNatural(config)
+			natural, err := InitNatural(config, tzOffset)
 			if err != nil {
 				slog.Error("cannot initialize Natural", "error", err)
 				os.Exit(1)
@@ -112,6 +122,11 @@ func NewAppState() *AppState {
 // GetUptime returns the uptime of the app.
 func (as *AppState) GetUptime() time.Duration {
 	return time.Since(as.startedAt).Truncate(time.Second)
+}
+
+// GetTimezoneOffset returns the timezone offset of the app.
+func (as *AppState) GetTimezoneOffset() time.Duration {
+	return as.tzOffset
 }
 
 // AddAppCmdInfo adds a slash command info to the AppState.
