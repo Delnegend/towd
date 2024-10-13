@@ -40,6 +40,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}
+	startDate = startDate.UTC()
 	endDate, err := time.ParseInLocation("02/01/2006 15:04", naturalOutput.Body.End, as.Config.GetLocation())
 	if err != nil {
 		// edit the deferred message
@@ -51,6 +52,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}
+	endDate = endDate.UTC()
 	if startDate.After(endDate) {
 		// edit the deferred message
 		msg := "Can't create event, start date must be before end date."
@@ -71,9 +73,9 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		Location:         naturalOutput.Body.Location,
 		URL:              naturalOutput.Body.URL,
 		Organizer:        i.Member.User.Username,
-		StartDateUnixUTC: startDate.UTC().Unix(),
-		EndDateUnixUTC:   endDate.UTC().Unix(),
 		CreatedAt:        time.Now().UTC().Unix(),
+		StartDateUnixUTC: startDate.Unix(),
+		EndDateUnixUTC:   endDate.Unix(),
 		Sequence:         0,
 		CalendarID:       i.ChannelID,
 		ChannelID:        i.ChannelID,
