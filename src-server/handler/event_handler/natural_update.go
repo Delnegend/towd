@@ -83,11 +83,6 @@ func handleActionTypeUpdate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}
-	tzOffsetSeconds := func() int64 {
-		baseTime, _ := time.Parse("02/01/2006 15:04", naturalOutput.Body.Start)
-		offset := startDate.Sub(baseTime)
-		return int64(offset.Seconds())
-	}()
 	// #endregion
 
 	// #region - compose new event
