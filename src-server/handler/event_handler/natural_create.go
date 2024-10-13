@@ -81,7 +81,6 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 		Location:         naturalOutput.Body.Location,
 		URL:              naturalOutput.Body.URL,
 		Organizer:        i.Member.User.Username,
-		CreatedAt:        time.Now().UTC().Unix(),
 		StartDateUnixUTC: startDate.Unix(),
 		EndDateUnixUTC:   endDate.Unix(),
 		Sequence:         0,
@@ -212,6 +211,7 @@ func handleActionTypeCreate(as *utils.AppState, s *discordgo.Session, i *discord
 
 	// #region - insert to DB
 	if err := as.BunDB.RunInTx(context.Background(), &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+		newEventModel.CreatedAt = time.Now().UTC().Unix()
 		if _, err := tx.NewInsert().
 			Model(&newEventModel).
 			Exec(ctx); err != nil {
