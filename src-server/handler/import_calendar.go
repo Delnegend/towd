@@ -43,6 +43,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 	return func(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		interaction := i.Interaction
 
+		// #region - respond w/ deferred
 		startTimer := time.Now()
 		if err := s.InteractionRespond(interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -54,6 +55,7 @@ func importCalendarHandler(as *utils.AppState) func(s *discordgo.Session, i *dis
 			return nil
 		}
 		as.MetricChans.DiscordSendMessage <- float64(time.Since(startTimer).Microseconds())
+		// #endregion
 
 		// #region - parse input parameters & validate URL
 		calendarURL, nameOverride, err := func() (string, string, error) {
