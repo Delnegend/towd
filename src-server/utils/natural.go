@@ -52,11 +52,14 @@ const (
 type Natural struct {
 	provider LLMProvider
 	req      *http.Request
+	tzOffset time.Duration
 }
 
-func InitNatural(config *Config) (Natural, error) {
+func InitNatural(config *Config, tzOffset time.Duration) (Natural, error) {
 	var err error
 	var natural Natural
+	natural.tzOffset = tzOffset
+
 	switch config.GetLLMProvider() {
 	case LLMProviderGroq:
 		if config.GetGroqApiKey() == "" {
@@ -75,8 +78,10 @@ func InitNatural(config *Config) (Natural, error) {
 	if err != nil {
 		return Natural{}, fmt.Errorf("InitNatural: failed to create request: %w", err)
 	}
-	natural.provider = config.GetLLMProvider()
 	natural.req.Header.Set("Content-Type", "application/json")
+
+	natural.provider = config.GetLLMProvider()
+
 	return natural, nil
 }
 
@@ -123,7 +128,7 @@ func (n *Natural) NewRequest(text string, eventContext *NaturalInputEventContext
 	}
 
 	// compose new input
-	now := time.Now().UTC().Truncate(24 * time.Hour).Format("02/01/2006 15:04")
+	now := time.Now().UTC().Add(n.tzOffset).Format("02/01/2006 15:04")
 	naturalInput := NaturalInput{
 		CurrentTime: now,
 		UserRequest: text,
