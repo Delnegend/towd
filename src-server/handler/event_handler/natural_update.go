@@ -86,25 +86,30 @@ func handleActionTypeUpdate(as *utils.AppState, s *discordgo.Session, i *discord
 	// #endregion
 
 	// #region - compose new event
-	newEventModel := *oldEventModel
-	newEventModel.NotificationSent = false
-	if naturalOutput.Body.Title != "" {
-		newEventModel.Summary = naturalOutput.Body.Title
-	}
-	if naturalOutput.Body.Description != "" {
-		newEventModel.Description = naturalOutput.Body.Description
-	}
-	if naturalOutput.Body.Location != "" {
-		newEventModel.Location = naturalOutput.Body.Location
-	}
-	if naturalOutput.Body.URL != "" {
-		newEventModel.URL = naturalOutput.Body.URL
-	}
-	if startDate.Unix() != int64(as.GetTimezoneOffset().Seconds()) {
-		newEventModel.StartDateUnixUTC = startDate.Unix()
-	}
-	if endDate.Unix() != int64(as.GetTimezoneOffset().Seconds()) {
-		newEventModel.EndDateUnixUTC = endDate.Unix()
+	newEventModel := model.Event{
+		ID:               oldEventModel.ID,
+		Summary:          naturalOutput.Body.Title,
+		Description:      naturalOutput.Body.Description,
+		Location:         naturalOutput.Body.Location,
+		URL:              naturalOutput.Body.URL,
+		Organizer:        oldEventModel.Organizer,
+		StartDateUnixUTC: startDate.Unix(),
+		EndDateUnixUTC:   endDate.Unix(),
+		CreatedAt:        oldEventModel.CreatedAt,
+		Sequence:         0,
+		CalendarID:       oldEventModel.CalendarID,
+		ChannelID:        oldEventModel.ChannelID,
+		Attendees: func() []*model.Attendee {
+			attendeeModels := make([]*model.Attendee, len(naturalOutput.Body.Attendees))
+			for i, attendee := range naturalOutput.Body.Attendees {
+				attendeeModels[i] = &model.Attendee{
+					EventID: oldEventModel.ID,
+					Data:    attendee,
+				}
+			}
+			return attendeeModels
+		}(),
+		NotificationSent: false,
 	}
 	// #endregion
 
@@ -288,17 +293,12 @@ func handleActionTypeUpdate(as *utils.AppState, s *discordgo.Session, i *discord
 			Exec(ctx); err != nil {
 			return err
 		}
-		if len(naturalOutput.Body.Attendees) > 0 {
-			attendeeModels := make([]model.Attendee, len(naturalOutput.Body.Attendees))
-			for i, attendee := range naturalOutput.Body.Attendees {
-				attendeeModels[i] = model.Attendee{
-					EventID: newEventModel.ID,
-					Data:    attendee,
-				}
+		if len(newEventModel.Attendees) > 0 {
+			attendeeModelsDeref := make([]model.Attendee, len(naturalOutput.Body.Attendees))
+			for i, model := range newEventModel.Attendees {
+				attendeeModelsDeref[i] = *model
 			}
-			if _, err := tx.NewInsert().
-				Model(&attendeeModels).
-				Exec(ctx); err != nil {
+			if _, err := tx.NewInsert().Model(&attendeeModelsDeref).Exec(ctx); err != nil {
 				return err
 			}
 		}
