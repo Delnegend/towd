@@ -121,10 +121,10 @@ func naturalHandler(as *utils.AppState) func(s *discordgo.Session, i *discordgo.
 				Scan(context.Background()); err != nil {
 				slog.Warn("naturalHandler: can't scan event context", "error", err)
 			}
-			startTime := time.Unix(0, naturalInputEventModel.StartDateUnixUTC).UTC()
-			startTimeStr := startTime.In(time.Now().Location()).Format("02/01/2006 15:04")
-			endTime := time.Unix(0, naturalInputEventModel.EndDateUnixUTC).UTC()
-			endTimeStr := endTime.In(time.Now().Location()).Format("02/01/2006 15:04")
+			startTime := time.Unix(naturalInputEventModel.StartDateUnixUTC, 0).UTC()
+			startTimeStr := startTime.Add(as.GetTimezoneOffset()).Format("02/01/2006 15:04")
+			endTime := time.Unix(naturalInputEventModel.EndDateUnixUTC, 0).UTC()
+			endTimeStr := endTime.Add(as.GetTimezoneOffset()).Format("02/01/2006 15:04")
 			attendees := make([]string, len(naturalInputEventModel.Attendees))
 			for i, attendee := range naturalInputEventModel.Attendees {
 				attendees[i] = attendee.Data
