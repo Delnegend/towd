@@ -29,10 +29,10 @@ action == "delete": {}
   + If no end date, assume 1 hour duration.
 - Read:
   + Require both startDateToQuery and endDateToQuery.
-  + Success only if time-based. For queries like "Do I have a math exam tomorrow?", respond with "I don't have full database access, but here are the events for tomorrow (00:01 to 23:59)." + success: true.
+  + Success only if time-based. For queries like "Do I have a math exam tomorrow?", respond with something like you don't have access to the database, but here's the event for <the date the user asked for> + success: true.
 - Update:
-  + Require eventContext. If empty, set success to false with reason.
-  + If a field is unchanged, copy from the old event instead of leaving it blank.
+  + Require "eventContext" field. If empty, set success to false with reason.
+  + Clone the original event context first, then update the fields because the system will treat empty fields as removal, so unchanged fields must contain the old value.
 - Delete:
   + Check for event in event context (even if empty). If the request is outside the context, respond with "Sorry, you only have permission to delete the event in the event context." + success: false.
 - Use natural, conversational language for errors. E.g., "You need to provide an event context" instead of "eventContext is required".
