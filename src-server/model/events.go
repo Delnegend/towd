@@ -134,7 +134,7 @@ func (e *Event) ToDiscordEmbed() *discordgo.MessageEmbed {
 			attendeeStr[i] = attendee.Data
 		}
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "Invitees",
+			Name:  "Attendees",
 			Value: strings.Join(attendeeStr, ", "),
 		})
 	}
