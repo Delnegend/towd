@@ -15,6 +15,7 @@ import (
 	"towd/src-server/metric"
 	"towd/src-server/model"
 	"towd/src-server/route"
+	"towd/src-server/scheduler"
 	"towd/src-server/utils"
 
 	"github.com/bwmarrin/discordgo"
@@ -147,6 +148,9 @@ func main() {
 
 	slog.Info("number of guilds", "guilds", len(as.DgSession.State.Guilds))
 	slog.Info("app is now running, press Ctrl+C to exit")
+
+	go scheduler.EventNotify(as)
+	go scheduler.CalendarUpdate(as)
 
 	signal.Notify(as.AppCloseSignalChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-as.AppCloseSignalChan
