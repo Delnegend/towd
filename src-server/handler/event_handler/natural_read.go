@@ -39,6 +39,7 @@ func handleActionTypeRead(as *utils.AppState, s *discordgo.Session, i *discordgo
 	if err := as.BunDB.
 		NewSelect().
 		Model(&eventModels).
+		Relation("Attendees").
 		Where("channel_id = ?", i.ChannelID).
 		Where("start_date >= ?", startDate.UTC().Unix()).
 		Where("start_date <= ?", endDate.UTC().Unix()).
