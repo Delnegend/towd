@@ -60,6 +60,7 @@ func handleActionTypeUpdate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}
+	startDate = startDate.UTC()
 	endDate, err := time.ParseInLocation("02/01/2006 15:04", naturalOutput.Body.End, as.Config.GetLocation())
 	if err != nil {
 		// edit the deferred message
@@ -71,6 +72,7 @@ func handleActionTypeUpdate(as *utils.AppState, s *discordgo.Session, i *discord
 		}
 		return nil
 	}
+	endDate = endDate.UTC()
 	if startDate.After(endDate) {
 		// edit the deferred message
 		msg := "Can't update event, start date must be before end date."
