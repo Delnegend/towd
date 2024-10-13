@@ -77,19 +77,11 @@ func NewConfig() *Config {
 
 		groqApiKey: func() string {
 			groqApiKey := os.Getenv("GROQ_API_KEY")
-			if groqApiKey == "" {
-				slog.Error("GROQ_API_KEY is not set")
-				os.Exit(1)
-			}
 			slog.Debug("env", "GROQ_API_KEY", groqApiKey[0:3]+"...")
 			return groqApiKey
 		}(),
 		geminiApiKey: func() string {
 			geminiApiKey := os.Getenv("GEMINI_API_KEY")
-			if geminiApiKey == "" {
-				slog.Error("GEMINI_API_KEY is not set")
-				os.Exit(1)
-			}
 			slog.Debug("env", "GEMINI_API_KEY", geminiApiKey[0:3]+"...")
 			return geminiApiKey
 		}(),
