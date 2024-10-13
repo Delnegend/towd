@@ -190,7 +190,7 @@ func (e *Event) Diff(otherEvent *Event) DiffEvent {
 
 	switch newExist, oldExist, theSame := otherEvent.EndDateUnixUTC != 0, e.EndDateUnixUTC != 0, otherEvent.EndDateUnixUTC == e.EndDateUnixUTC; {
 	case newExist && oldExist && !theSame:
-		diff.EndDate = fmt.Sprintf("<t:%d:f> `%d [old value]` <t:%d:f>", otherEvent.EndDateUnixUTC, otherEvent.EndDateUnixUTC, e.EndDateUnixUTC)
+		diff.EndDate = fmt.Sprintf("<t:%d:f> `[old value]` <t:%d:f>", otherEvent.EndDateUnixUTC, e.EndDateUnixUTC)
 	case newExist && !oldExist:
 		diff.EndDate = fmt.Sprintf("<t:%d:f> `[old value: None]`", otherEvent.EndDateUnixUTC)
 	case (!newExist && oldExist) || (newExist && theSame):
