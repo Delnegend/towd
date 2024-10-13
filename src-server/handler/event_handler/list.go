@@ -100,6 +100,7 @@ func listEventHandler(as *utils.AppState) func(s *discordgo.Session, i *discordg
 		if err := as.BunDB.
 			NewSelect().
 			Model(&eventModels).
+			Relation("Attendees").
 			Where("start_date >= ?", startStartDateRange.Unix()).
 			Where("end_date <= ?", endStartDateRange.Unix()).
 			Where("channel_id = ?", i.Interaction.ChannelID).
