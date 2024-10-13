@@ -86,42 +86,25 @@ func handleActionTypeUpdate(as *utils.AppState, s *discordgo.Session, i *discord
 	// #endregion
 
 	// #region - compose new event
-	newEventModel := model.Event{
-		ID:               oldEventModel.ID,
-		Summary:          naturalOutput.Body.Title,
-		Description:      naturalOutput.Body.Description,
-		Location:         naturalOutput.Body.Location,
-		URL:              naturalOutput.Body.URL,
-		Organizer:        i.Member.User.Username,
-		StartDateUnixUTC: startDate.UTC().Unix(),
-		EndDateUnixUTC:   endDate.UTC().Unix(),
-		CreatedAt:        oldEventModel.CreatedAt,
-		Sequence:         0,
-		CalendarID:       i.ChannelID,
-		ChannelID:        i.ChannelID,
-		NotificationSent: false,
+	newEventModel := *oldEventModel
+	newEventModel.NotificationSent = false
+	if naturalOutput.Body.Title != "" {
+		newEventModel.Summary = naturalOutput.Body.Title
 	}
-
-	if newEventModel.Summary == "" {
-		newEventModel.Summary = oldEventModel.Summary
+	if naturalOutput.Body.Description != "" {
+		newEventModel.Description = naturalOutput.Body.Description
 	}
-	if newEventModel.Description == "" {
-		newEventModel.Description = oldEventModel.Description
+	if naturalOutput.Body.Location != "" {
+		newEventModel.Location = naturalOutput.Body.Location
 	}
-	if newEventModel.Location == "" {
-		newEventModel.Location = oldEventModel.Location
+	if naturalOutput.Body.URL != "" {
+		newEventModel.URL = naturalOutput.Body.URL
 	}
-	if newEventModel.URL == "" {
-		newEventModel.URL = oldEventModel.URL
+	if startDate.Unix() != int64(as.GetTimezoneOffset().Seconds()) {
+		newEventModel.StartDateUnixUTC = startDate.Unix()
 	}
-	if newEventModel.Organizer == "" {
-		newEventModel.Organizer = oldEventModel.Organizer
-	}
-	if newEventModel.StartDateUnixUTC == tzOffsetSeconds {
-		newEventModel.StartDateUnixUTC = oldEventModel.StartDateUnixUTC
-	}
-	if newEventModel.EndDateUnixUTC == tzOffsetSeconds {
-		newEventModel.EndDateUnixUTC = oldEventModel.EndDateUnixUTC
+	if endDate.Unix() != int64(as.GetTimezoneOffset().Seconds()) {
+		newEventModel.EndDateUnixUTC = endDate.Unix()
 	}
 	// #endregion
 
